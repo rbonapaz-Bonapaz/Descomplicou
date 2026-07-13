@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CRM de Vendas v96</title>
+  <link rel="stylesheet" href="css/style.css?v=43">
+</head>
+<body>
+  <div id="loading" class="loading">Carregando...</div>
+  <div id="busyBar" class="busy-bar"></div>
+
+  <section id="login" class="login hidden">
+    <div class="login-card">
+      <div class="logo">CV</div>
+      <h1>CRM de Vendas</h1>
+      <p>CRM inteligente com vendas, estoque, relatórios e catálogo.</p>
+
+      <div class="login-tabs">
+        <button class="login-tab active" data-tab="google" onclick="App.switchLoginTab('google')">Google</button>
+        <button class="login-tab" data-tab="email" onclick="App.switchLoginTab('email')">E-mail e senha</button>
+      </div>
+
+      <div id="loginGoogle" class="login-pane">
+        <button id="btnLogin" class="btn dark" style="width:100%">Entrar com Google</button>
+      </div>
+
+      <div id="loginEmail" class="login-pane hidden">
+        <div class="field"><label>Nome (para criar conta)</label><input id="leNome" autocomplete="name"></div>
+        <div class="field"><label>E-mail</label><input id="leEmail" type="email" autocomplete="email"></div>
+        <div class="field"><label>Senha</label>
+          <div class="senha-wrap">
+            <input id="lePass" type="password" autocomplete="current-password">
+            <button type="button" class="senha-eye" tabindex="-1" onclick="const i=document.getElementById('lePass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'">👁</button>
+          </div>
+        </div>
+        <div class="login-actions">
+          <button class="btn dark" onclick="App.loginEmail()">Entrar</button>
+          <button class="btn ghost" onclick="App.cadastrarEmail()">Criar conta</button>
+        </div>
+        <button class="linkbtn" style="margin-top:10px" onclick="App.resetPassword()">Esqueci minha senha</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="bioLock" class="login hidden">
+    <div class="login-card">
+      <div class="logo">🔒</div>
+      <h1>Bloqueado</h1>
+      <p>Use a biometria deste aparelho para continuar.</p>
+      <button id="btnUnlock" class="btn dark" style="width:100%" onclick="App.tentarDesbloqueio()">Desbloquear</button>
+      <button class="linkbtn" style="margin-top:12px" onclick="App.logoutFromLock()">Sair da conta</button>
+    </div>
+  </section>
+
+  <section id="planoLock" class="login hidden">
+    <div class="login-card">
+      <div class="logo">🔒</div>
+      <h1 id="planoLockTitulo">Acesso indisponível</h1>
+      <p id="planoLockMsg"></p>
+      <div id="planoLockLink"></div>
+      <button class="linkbtn" style="margin-top:12px" onclick="App.logoutFromLock()">Sair da conta</button>
+    </div>
+  </section>
+
+  <section id="senhaLock" class="login hidden">
+    <div class="login-card">
+      <div class="logo">🔒</div>
+      <h1>Crie uma senha para continuar</h1>
+      <p>Já faz mais de 1 hora que você entrou pela primeira vez com o Google. Por segurança, crie uma senha para esta conta antes de continuar usando o sistema.</p>
+      <div class="field"><label>Nova senha</label>
+        <div class="senha-wrap">
+          <input id="perSenhaGoogleNova" type="password">
+          <button type="button" class="senha-eye" tabindex="-1" onclick="const i=document.getElementById('perSenhaGoogleNova');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'">👁</button>
+        </div>
+      </div>
+      <div class="field"><label>Confirmar senha</label>
+        <div class="senha-wrap">
+          <input id="perSenhaGoogleConfirma" type="password">
+          <button type="button" class="senha-eye" tabindex="-1" onclick="const i=document.getElementById('perSenhaGoogleConfirma');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'">👁</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12px">Mínimo 8 caracteres, com número e caractere especial.</p>
+      <button class="btn dark" style="width:100%" onclick="App.criarSenhaGoogle()">Criar senha e continuar</button>
+      <button class="linkbtn" style="margin-top:12px" onclick="App.logoutFromLock()">Sair da conta</button>
+    </div>
+  </section>
+
+  <section id="app" class="app hidden">
+    <aside class="side">
+      <div class="brand">
+        <div class="logo sm" id="sideLogo">CV</div>
+        <div><b id="brandName">CRM de Vendas</b></div>
+      </div>
+      <nav id="nav">
+        <div class="nav-section">Catálogo Farmasi</div>
+        <button class="active" data-page="dashboard">Painel Inicial</button>
+        <button data-page="catalogo">Catálogo</button>
+        <button data-page="eventos">Catálogo de Eventos</button>
+        <div class="nav-section">Operação</div>
+        <button data-page="clientes">Clientes</button>
+        <button data-page="agenda">Agenda</button>
+        <button data-page="vendas">Vendas / Carrinhos</button>
+        <button data-page="estoque">Estoque</button>
+        <button data-page="produtos">Produtos</button>
+        <div class="nav-section">Gestão</div>
+        <button data-page="relatorios">Relatórios</button>
+        <button data-page="perfil">Minha Conta</button>
+        <button data-page="admin" class="admin-only hidden">Admin</button>
+        <button data-page="sobre">Sobre</button>
+      </nav>
+      <button id="btnLogout" class="btn side-logout">Sair</button>
+    </aside>
+
+    <main class="main">
+      <header class="top">
+        <div>
+          <p class="eyebrow" id="eyebrow">Seu dia hoje</p>
+          <h2 id="title">Painel Inicial</h2>
+          <p id="subtitle">Visão geral da consultoria</p>
+        </div>
+        <div class="user">
+          <img id="photo">
+          <div><b id="uname"></b><span id="uemail"></span></div>
+        </div>
+      </header>
+
+      <section id="dashboard" class="page active"></section>
+      <section id="clientes" class="page"></section>
+      <section id="agenda" class="page"></section>
+      <section id="vendas" class="page"></section>
+      <section id="estoque" class="page"></section>
+      <section id="produtos" class="page"></section>
+      <section id="catalogo" class="page"></section>
+      <section id="relatorios" class="page"></section>
+      <section id="perfil" class="page"></section>
+      <section id="admin" class="page"></section>
+      <section id="eventos" class="page"></section>
+      <section id="sobre" class="page"></section>
+    </main>
+  </section>
+
+  <div id="modal" class="modal hidden"><div id="modalCard"></div></div>
+  <button id="modalMinBar" class="hidden" onclick="App.restaurarModal()">🗔 Janela minimizada — clique para voltar</button>
+  <div id="toast"></div>
+  <div id="printArea"></div>
+
+  <script type="module" src="js/app.js?v=72"></script>
+</body>
+</html>
