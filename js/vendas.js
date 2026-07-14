@@ -13,6 +13,34 @@ function chips(tipo, vals) {
   ).join('')}</div>`;
 }
 
+// Vendas com a linha de itens expandida (ver toggleVendaDetalhe) — só estado de tela, não persiste.
+const vendasExpandidas = new Set();
+
+export function toggleVendaDetalhe(id) {
+  if (vendasExpandidas.has(id)) vendasExpandidas.delete(id);
+  else vendasExpandidas.add(id);
+  renderVendas();
+}
+
+// Sub-linha com os produtos e valores de uma venda, sem precisar abrir o carrinho inteiro.
+function detalheVendaHtml(c) {
+  const itens = c.itens || [];
+  if (!itens.length) return '<small class="muted">Sem itens registrados.</small>';
+  return itens.map(it => {
+    const original = Number(it.precoOriginal || 0);
+    const temDesconto = original > it.precoUnitario;
+    const tags = [
+      it.motivo && it.motivo !== 'Venda' ? pill(it.motivo, 'pink') : '',
+      it.tipoEntrega === 'entrega_futura' && !it.entregue ? pill('entrega futura', 'orange') : '',
+      temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
+    ].join('');
+    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
+      <span>${it.quantidade}× ${esc(it.produtoNome)} ${tags}</span>
+      <span style="white-space:nowrap">${temDesconto ? `<del class="muted">${money(original)}</del> ` : ''}${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b></span>
+    </div>`;
+  }).join('');
+}
+
 export function renderVendas() {
   const r = salesAgg(30);
   const carrinhos = state.data.carrinhos;
@@ -75,11 +103,13 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
       ${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
     </tr></thead><tbody>${ordenarVendas(items).map(c => {
       const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
+      const expandida = vendasExpandidas.has(c.id);
       return `<tr>
         <td data-label="Cliente">
+          <button class="btn small" style="padding:3px 8px;margin-right:6px" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button>
           <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
         </td>
-        <td data-label="Itens">${(c.itens || []).length}</td>
+        <td data-label="Itens" style="cursor:pointer" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${(c.itens || []).length}</td>
         <td data-label="Total">${money(c.totalPedido)}</td>
         <td data-label="Lucro">${money(c.lucroTotal)}</td>
         <td data-label="Pgto">${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
@@ -97,7 +127,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
             ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeAtualDoCliente(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
           </div>
         </td>
-      </tr>`;
+      </tr>${expandida ? `<tr><td colspan="7" data-label="Itens da venda" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
     }).join('')}</tbody></table></div></div>`;
 }
 

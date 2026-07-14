@@ -29,10 +29,11 @@ export async function importarDoGoogleAgenda() {
     const existente = state.data.agendamentos.find(a => a.googleEventId === ev.id);
 
     if (existente) {
-      const mudou = existente.data !== dataISO || existente.hora !== hora || (existente.observacoes || '') !== (ev.description || '');
+      const mudou = existente.data !== dataISO || existente.hora !== hora || (existente.observacoes || '') !== (ev.description || '') || (existente.local || '') !== (ev.location || '');
       if (mudou) {
         await setDoc(ref('agendamentos', existente.id), {
-          data: dataISO, hora, observacoes: ev.description || existente.observacoes || '', atualizadoEm: serverTimestamp()
+          data: dataISO, hora, observacoes: ev.description || existente.observacoes || '',
+          local: ev.location || existente.local || '', atualizadoEm: serverTimestamp()
         }, { merge: true });
         atualizados++;
       }
@@ -40,7 +41,7 @@ export async function importarDoGoogleAgenda() {
       await addDoc(col('agendamentos'), {
         clienteId: '', clienteNome: clienteParte || titulo,
         tipo: TIPOS.includes(tipoParte) ? tipoParte : 'Atendimento',
-        data: dataISO, hora, observacoes: ev.description || '', status: 'agendado',
+        data: dataISO, hora, local: ev.location || '', observacoes: ev.description || '', status: 'agendado',
         googleEventId: ev.id, origemGoogle: true, criadoEm: serverTimestamp()
       });
       criados++;
@@ -53,6 +54,46 @@ const TIPOS = [
   'Atendimento', 'Entrega', 'Follow-up', 'Cobrança', 'Demonstração',
   'Reunião de oportunidade', 'Aniversário', 'Recompra', 'Retirada de pedido', 'Outro'
 ];
+
+// Abre o Google Maps sem API paga: texto vira busca (maps/search) e um link colado abre direto.
+// O link colado cobre o caso de cidade pequena em que o endereço não bate com o ponto real —
+// a consultora acha o lugar certo no app do Maps, compartilha e cola o link no agendamento.
+function mapsUrl(valor) {
+  const v = String(valor || '').trim();
+  if (!v) return '';
+  return /^https?:\/\//i.test(v) ? v : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v);
+}
+
+export function abrirMapaDoCampo(inputId) {
+  const url = mapsUrl($(inputId)?.value);
+  if (!url) return toast('Digite um endereço ou cole um link do Maps primeiro');
+  window.open(url, '_blank');
+}
+
+export function abrirMapaAgendamento(id) {
+  const a = state.data.agendamentos.find(x => x.id === id);
+  const url = mapsUrl(a?.local);
+  if (url) window.open(url, '_blank');
+}
+
+// Ao trocar o cliente no formulário, sugere o endereço do cadastro — mas nunca por cima do que
+// a consultora já digitou/colou no campo.
+export function preencherLocalDoCliente(clienteId) {
+  const el = $('aLocal');
+  if (!el || el.value.trim()) return;
+  el.value = cliById(clienteId)?.endereco || '';
+}
+
+// Campo de local compartilhado pelos modais de novo/editar agendamento.
+function localFieldHtml(valor) {
+  return `<div class="field full"><label>Local / endereço (opcional)</label>
+    <div style="display:flex;gap:8px">
+      <input id="aLocal" value="${esc(valor || '')}" placeholder="Endereço ou link do Google Maps" style="flex:1">
+      <button type="button" class="btn small" onclick="App.abrirMapaDoCampo('aLocal')" title="Ver no mapa">📍 Mapa</button>
+    </div>
+    <small class="muted">Endereço errado no mapa? Ache o ponto certo no app do Maps, compartilhe e cole o link aqui.</small>
+  </div>`;
+}
 
 export function renderAgenda() {
   const ag = agendaAgg('all');
@@ -105,6 +146,7 @@ function tableAgenda() {
           ` : ''}
           <button class="btn small" onclick="App.editarAgendamento('${a.id}')">✏️</button>
           <button class="btn small" onclick="App.removerAgendamento('${a.id}')">🗑️</button>
+          ${a.local ? `<button class="btn small" onclick="App.abrirMapaAgendamento('${a.id}')" title="Ver local no mapa">📍</button>` : ''}
           ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
         </div>
       </td>
@@ -126,13 +168,15 @@ export function openAgendamentoForm(clienteId = '') {
     `<option value="${c.id}" ${c.id === clienteId ? 'selected' : ''}>${esc(c.nome)}</option>`
   ).join('');
   const tipoOpts = TIPOS.map(t => `<option>${t}</option>`).join('');
+  const cliInicial = clienteId ? cliById(clienteId) : state.data.clientes[0];
 
   showModal(`<h3>Novo Agendamento</h3>
     <div class="grid">
-      <div class="field full"><label>Cliente</label><select id="aCli">${cliOpts}</select></div>
+      <div class="field full"><label>Cliente</label><select id="aCli" onchange="App.preencherLocalDoCliente(this.value)">${cliOpts}</select></div>
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${today()}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora"></div>
+      ${localFieldHtml(cliInicial?.endereco)}
       <div class="field full"><label>Observações</label><textarea id="aObs"></textarea></div>
     </div><br>
     <button class="btn dark" onclick="App.saveAgendamento()">Confirmar</button>
@@ -145,6 +189,7 @@ export async function saveAgendamento() {
   const dados = {
     clienteId: c.id, clienteNome: c.nome,
     tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
+    local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, status: 'agendado', criadoEm: serverTimestamp()
   };
   const r = await addDoc(col('agendamentos'), dados);
@@ -163,10 +208,11 @@ export function editarAgendamento(id) {
 
   showModal(`<h3>Editar Agendamento</h3>
     <div class="grid">
-      <div class="field full"><label>Cliente</label><select id="aCli">${cliOpts}</select></div>
+      <div class="field full"><label>Cliente</label><select id="aCli" onchange="App.preencherLocalDoCliente(this.value)">${cliOpts}</select></div>
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${a.data}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora" value="${a.hora || ''}"></div>
+      ${localFieldHtml(a.local)}
       <div class="field full"><label>Observações</label><textarea id="aObs">${esc(a.observacoes || '')}</textarea></div>
     </div><br>
     <button class="btn dark" onclick="App.updateAgendamento('${id}')">Salvar</button>
@@ -179,6 +225,7 @@ export async function updateAgendamento(id) {
   const dados = {
     clienteId: c.id, clienteNome: c.nome,
     tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
+    local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, atualizadoEm: serverTimestamp()
   };
   await setDoc(ref('agendamentos', id), dados, { merge: true });
@@ -255,7 +302,7 @@ export async function confirmarReagendamento(id) {
     const dados = {
       clienteId: a.clienteId, clienteNome: a.clienteNome,
       tipo: a.tipo, data: $('aNovaData').value, hora: $('aNovaHora').value,
-      observacoes: a.observacoes || '', status: 'agendado',
+      local: a.local || '', observacoes: a.observacoes || '', status: 'agendado',
       reagendadoDe: id, criadoEm: serverTimestamp()
     };
     const r = await addDoc(col('agendamentos'), dados);

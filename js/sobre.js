@@ -3,10 +3,18 @@ import { $, esc, sectionTabsHtml, formatDateBR } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v96';
+export const APP_VERSION = 'v97';
 
 // Changelog manual — cada entrada é uma rodada de melhorias já concluída.
 const NOVIDADES = [
+  { versao: 'v97', itens: [
+    'Sincronização em tempo real: lançamentos feitos em outro aparelho/aba aparecem sozinhos, sem precisar atualizar o navegador.',
+    'Nome do cliente corrigido no cadastro agora atualiza também nas vendas, agenda e painel (registros antigos mostram sempre o nome atual).',
+    'Agenda: novo campo "Local / endereço" no agendamento, pré-preenchido com o endereço do cliente, com botão 📍 que abre o Google Maps. Endereço errado no mapa? Cole um link do Maps no campo que ele abre direto no ponto certo. O local também vai junto pro Google Agenda.',
+    'Reabrir venda com pagamento registrado agora avisa o valor que já tinha sido pago antes de reabrir.',
+    'Produtos → Linhas: busca filtra a cada letra, produtos em ordem alfabética e seletor visual igual ao "Ativo no catálogo".',
+    'Coluna de ações das tabelas ficou mais larga — botões não ficam mais espremidos.'
+  ] },
   { versao: 'v96', itens: [
     'Todas as janelas do sistema agora têm botão de minimizar (─ no canto superior direito): dá pra navegar por outras telas no meio de um carrinho, troca ou formulário e voltar depois pela barrinha "Janela minimizada" no canto inferior.',
     'Trocas: novo toggle "Mostrar itens sem estoque" no lado dos produtos que saem — itens sem estoque entram como "vou entregar depois" e a baixa acontece sozinha quando chegar estoque.',

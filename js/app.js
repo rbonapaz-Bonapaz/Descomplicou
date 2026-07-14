@@ -8,8 +8,9 @@ import { renderDashboard } from './dashboard.js';
 import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
-  confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda } from './agenda.js';
-import { renderVendas, marcarPedidoEntregue } from './vendas.js';
+  confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
+  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente } from './agenda.js';
+import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos } from './estoque.js';
@@ -280,6 +281,7 @@ window.App = {
   openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
   reagendarAgendamento, confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
+  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente,
   // Carrinho
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
@@ -287,7 +289,7 @@ window.App = {
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento,
   // Vendas
-  renderVendas, marcarPedidoEntregue,
+  renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
   // Estoque
   openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,

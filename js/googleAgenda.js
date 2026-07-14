@@ -74,6 +74,7 @@ function eventoBody(a) {
   return {
     summary: `${a.tipo} — ${a.clienteNome}`,
     description: a.observacoes || '',
+    location: a.local || '',
     start: usaHora ? { dateTime: new Date(inicio).toISOString() } : { date: a.data },
     end: usaHora ? { dateTime: new Date(new Date(inicio).getTime() + 60 * 60000).toISOString() } : { date: a.data }
   };
