@@ -9,7 +9,7 @@ import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarCon
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
   confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
-  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente } from './agenda.js';
+  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo } from './agenda.js';
 import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
@@ -22,10 +22,12 @@ import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTo
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
   atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir,
-  filtrarLinhaAssoc, toggleProdutoNaLinha } from './produtos.js';
+  filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas } from './produtos.js';
 import { readProductFiles, previewImportProdutos, confirmImportProdutos, editarItemImportProduto } from './importar.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
-  marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde } from './preencomenda.js';
+  marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
+  registrarFreteFarmasi, removerFreteFarmasi } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf, readCatalogoFiles, importarCatalogoTexto } from './catalogo.js';
 import { renderRelatorios } from './relatorios.js';
@@ -34,13 +36,14 @@ import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarF
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta } from './perfil.js';
 import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
-  filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre } from './admin.js';
+  filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
+  adicionarLinhaColetiva, removerLinhaColetiva } from './admin.js';
 import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
-  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit } from './carrinho.js';
+  aplicarCreditoPagamento } from './carrinho.js';
 import { sendWhatsApp } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
 import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle, precisaCriarSenhaGoogle } from './auth.js';
@@ -282,23 +285,25 @@ window.App = {
   openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
   reagendarAgendamento, confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
-  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente,
+  abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo,
   // Carrinho
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
-  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
+  aplicarCreditoPagamento,
   // Vendas
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
   // Estoque
-  openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
+  renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos,
   // Pré-encomenda
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
+  registrarFreteFarmasi, removerFreteFarmasi,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
@@ -307,7 +312,7 @@ window.App = {
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
-  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha,
+  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas,
   // Importar
   readProductFiles, previewImportProdutos, confirmImportProdutos, editarItemImportProduto,
   // Catálogo
@@ -323,6 +328,7 @@ window.App = {
   carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
+  adicionarLinhaColetiva, removerLinhaColetiva,
   // WhatsApp
   sendWhatsApp,
   // PDF Pedido

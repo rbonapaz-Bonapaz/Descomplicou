@@ -104,7 +104,7 @@ export function renderDashboard() {
           const cli = state.data.clientes.find(c => c.id === a.clienteId);
           return `<div class="list-item">
             <div>
-              <b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>
+              ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>` : `<b>${esc(a.clienteNome)}</b>`}
               <small>${esc(a.tipo)} • ${esc(a.hora || '')}</small>
             </div>
             <div style="display:flex;gap:4px;align-items:center">

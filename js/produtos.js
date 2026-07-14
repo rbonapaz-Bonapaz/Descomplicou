@@ -1,4 +1,4 @@
-import { state, SECTIONS, col, ref, db, doc, collection, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
+import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
 import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today } from './utils.js';
 import { importPanelHtml } from './importar.js';
 import { gerarBeneficios } from './gemini.js';
@@ -184,6 +184,7 @@ function linhasTabHtml() {
     <div class="toolbar">
       <input id="novaLinhaNome" placeholder="Nome da nova linha (ex: Maquiagem)">
       <button class="btn dark" onclick="App.adicionarLinhaCustom()">+ Adicionar linha</button>
+      ${state.profile?.usaBaseColetiva ? '<button class="btn small" onclick="App.sincronizarLinhasColetivas()">🔄 Sincronizar linhas da base coletiva</button>' : ''}
     </div>
     ${linhas.length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">${linhas.map(l => `
       <span class="chip ${linhaSelecionadaAtribuir === l ? 'active' : ''}" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px" onclick="App.selecionarLinhaParaAtribuir('${esc(l)}')">
@@ -211,6 +212,26 @@ function linhasTabHtml() {
     </div>`;
   }
   return html;
+}
+
+// Puxa as linhas publicadas pelo Admin (/config/linhasColetivas) e ACRESCENTA às da consultora —
+// as que ela já tem permanecem (comparação normalizada pra não duplicar "Maquiagem"/"maquiagem").
+export async function sincronizarLinhasColetivas() {
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'config', 'linhasColetivas'));
+  } catch (e) {
+    return toast('Não foi possível acessar as linhas da base coletiva. Fale com a administração.');
+  }
+  const doAdmin = snap.exists() ? (snap.data().linhas || []) : [];
+  if (!doAdmin.length) return toast('A administração ainda não publicou linhas na base coletiva.');
+  const atuais = state.profile?.linhasCustom || [];
+  const novas = doAdmin.filter(l => !atuais.some(a => norm(a) === norm(l)));
+  if (!novas.length) return toast('Suas linhas já estão em dia com a base coletiva.');
+  const todas = [...atuais, ...novas];
+  await setDoc(doc(db, 'users', state.user.uid), { linhasCustom: todas }, { merge: true });
+  state.profile = { ...state.profile, linhasCustom: todas };
+  window.App.refresh(`${novas.length} linha(s) adicionada(s) da base coletiva`);
 }
 
 export async function adicionarLinhaCustom() {

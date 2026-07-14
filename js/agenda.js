@@ -84,6 +84,30 @@ export function preencherLocalDoCliente(clienteId) {
   el.value = cliById(clienteId)?.endereco || '';
 }
 
+// Cliente é opcional: um compromisso pode ser exclusivo da consultora (ex: evento de demonstração
+// para várias convidadas, sem cliente específico atrelado). Sem cliente, usa um título livre no
+// lugar do nome — é ele que aparece na tabela e no espelho do Google Agenda.
+function clienteFieldHtml(clienteIdSelecionado, tituloValor) {
+  const cliOpts = state.data.clientes.map(c =>
+    `<option value="${c.id}" ${c.id === clienteIdSelecionado ? 'selected' : ''}>${esc(c.nome)}</option>`
+  ).join('');
+  return `<div class="field full"><label>Cliente (opcional)</label>
+      <select id="aCli" onchange="App.preencherLocalDoCliente(this.value);App.toggleAgendamentoTitulo()">
+        <option value="">— Sem cliente (compromisso próprio) —</option>
+        ${cliOpts}
+      </select>
+    </div>
+    <div class="field full" id="aTituloWrap" style="${clienteIdSelecionado ? 'display:none' : ''}">
+      <label>Título do compromisso</label>
+      <input id="aTitulo" value="${esc(tituloValor || '')}" placeholder="Ex: Evento de demonstração">
+    </div>`;
+}
+
+export function toggleAgendamentoTitulo() {
+  const temCliente = !!$('aCli')?.value;
+  if ($('aTituloWrap')) $('aTituloWrap').style.display = temCliente ? 'none' : '';
+}
+
 // Campo de local compartilhado pelos modais de novo/editar agendamento.
 function localFieldHtml(valor) {
   return `<div class="field full"><label>Local / endereço (opcional)</label>
@@ -133,7 +157,7 @@ function tableAgenda() {
       <td data-label="Data">${formatDateBR(a.data)}</td>
       <td data-label="Hora">${esc(a.hora || '-')}</td>
       <td data-label="Cliente">
-        ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>` : `<b>${esc(a.clienteNome)}</b>${a.origemGoogle ? pill('via Google', 'blue') : ''}`}
+        ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>` : `<b>${esc(a.clienteNome)}</b> ${a.origemGoogle ? pill('via Google', 'blue') : pill('compromisso', 'gray')}`}
       </td>
       <td data-label="Tipo">${esc(a.tipo)}</td>
       <td data-label="Status">${pill(a.status || 'agendado', statusColor(a.status))}</td>
@@ -164,15 +188,12 @@ function statusColor(s) {
 }
 
 export function openAgendamentoForm(clienteId = '') {
-  const cliOpts = state.data.clientes.map(c =>
-    `<option value="${c.id}" ${c.id === clienteId ? 'selected' : ''}>${esc(c.nome)}</option>`
-  ).join('');
   const tipoOpts = TIPOS.map(t => `<option>${t}</option>`).join('');
-  const cliInicial = clienteId ? cliById(clienteId) : state.data.clientes[0];
+  const cliInicial = clienteId ? cliById(clienteId) : null;
 
   showModal(`<h3>Novo Agendamento</h3>
     <div class="grid">
-      <div class="field full"><label>Cliente</label><select id="aCli" onchange="App.preencherLocalDoCliente(this.value)">${cliOpts}</select></div>
+      ${clienteFieldHtml(clienteId, '')}
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${today()}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora"></div>
@@ -184,10 +205,12 @@ export function openAgendamentoForm(clienteId = '') {
 }
 
 export async function saveAgendamento() {
-  const c = cliById($('aCli').value);
-  if (!c) return toast('Selecione um cliente');
+  const clienteId = $('aCli').value;
+  const c = clienteId ? cliById(clienteId) : null;
+  const titulo = ($('aTitulo')?.value || '').trim();
+  if (!clienteId && !titulo) return toast('Escolha um cliente ou informe um título para o compromisso');
   const dados = {
-    clienteId: c.id, clienteNome: c.nome,
+    clienteId: clienteId || '', clienteNome: c ? c.nome : titulo,
     tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
     local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, status: 'agendado', criadoEm: serverTimestamp()
@@ -201,14 +224,11 @@ export async function saveAgendamento() {
 export function editarAgendamento(id) {
   const a = state.data.agendamentos.find(x => x.id === id);
   if (!a) return;
-  const cliOpts = state.data.clientes.map(c =>
-    `<option value="${c.id}" ${c.id === a.clienteId ? 'selected' : ''}>${esc(c.nome)}</option>`
-  ).join('');
   const tipoOpts = TIPOS.map(t => `<option ${t === a.tipo ? 'selected' : ''}>${t}</option>`).join('');
 
   showModal(`<h3>Editar Agendamento</h3>
     <div class="grid">
-      <div class="field full"><label>Cliente</label><select id="aCli" onchange="App.preencherLocalDoCliente(this.value)">${cliOpts}</select></div>
+      ${clienteFieldHtml(a.clienteId, a.clienteId ? '' : a.clienteNome)}
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${a.data}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora" value="${a.hora || ''}"></div>
@@ -220,10 +240,13 @@ export function editarAgendamento(id) {
 }
 
 export async function updateAgendamento(id) {
-  const c = cliById($('aCli').value);
+  const clienteId = $('aCli').value;
+  const c = clienteId ? cliById(clienteId) : null;
+  const titulo = ($('aTitulo')?.value || '').trim();
+  if (!clienteId && !titulo) return toast('Escolha um cliente ou informe um título para o compromisso');
   const a = state.data.agendamentos.find(x => x.id === id);
   const dados = {
-    clienteId: c.id, clienteNome: c.nome,
+    clienteId: clienteId || '', clienteNome: c ? c.nome : titulo,
     tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
     local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, atualizadoEm: serverTimestamp()
@@ -241,7 +264,7 @@ export function concluirAgendamento(id) {
     <p><b>${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b> — ${esc(a.tipo)} em ${formatDateBR(a.data)}</p>
     <div class="grid">
       <div class="field full"><label>Resumo do atendimento</label><textarea id="aResumo"></textarea></div>
-      <div class="field">${toggleHtml('aGerouVenda', false, '', 'Gerou venda?')}</div>
+      ${a.clienteId ? `<div class="field">${toggleHtml('aGerouVenda', false, '', 'Gerou venda?')}</div>` : ''}
       <div class="field"><label>Próximo contato (opcional)</label><input type="date" id="aProximo"></div>
     </div><br>
     <button class="btn dark" onclick="App.confirmarConclusao('${id}')">Confirmar conclusão</button>
@@ -250,9 +273,10 @@ export function concluirAgendamento(id) {
 
 export async function confirmarConclusao(id) {
   const a = state.data.agendamentos.find(x => x.id === id);
+  const gerouVenda = !!$('aGerouVenda')?.checked;
   await setDoc(ref('agendamentos', id), {
     status: 'realizado', resumo: $('aResumo').value,
-    gerouVenda: $('aGerouVenda').checked,
+    gerouVenda,
     concluidoEm: serverTimestamp()
   }, { merge: true });
 
@@ -266,7 +290,7 @@ export async function confirmarConclusao(id) {
   }
 
   closeModal();
-  if ($('aGerouVenda').checked && a) {
+  if (gerouVenda && a?.clienteId) {
     window.App.openCarrinhoForCliente(a.clienteId);
   }
   window.App.refresh('Agendamento concluído');

@@ -3,19 +3,28 @@ import { $, esc, sectionTabsHtml, formatDateBR } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v97';
+export const APP_VERSION = 'v98';
 
 // Changelog manual — cada entrada é uma rodada de melhorias já concluída.
 const NOVIDADES = [
+  { versao: 'v98', itens: [
+    '🎁 Kits mudaram de lugar: agora são montados em Estoque → Pré-encomenda, porque o kit é o que você compra da Farmasi (não o que vende ao cliente). O valor pago é rateado como custo previsto de cada produto na lista "A comprar" e vira custo médio do estoque quando o pedido chega.',
+    '🚚 Frete também mudou: registrado na Pré-encomenda (frete pago à Farmasi no pedido de compra), como despesa simples — aparece descontado no lucro líquido dos Relatórios. O campo de frete saiu do carrinho do cliente.',
+    'Vendas: nova busca por cliente acima dos filtros — digite o nome pra achar o pedido na hora.',
+    '💳 Créditos do cliente: recebeu a mais que o devido? O sistema pergunta se quer guardar o excedente como crédito no cadastro. Na próxima compra (ou num pagamento pendente), é só marcar "Usar créditos" — o saldo aparece no Cliente 360 e na gestão de pagamento.',
+    'Base coletiva: a administração agora publica também as LINHAS de produto (Admin → Catálogo mestre). Em Produtos → Linhas, o botão "🔄 Sincronizar linhas da base coletiva" acrescenta as linhas do admin às suas — as que você já tem permanecem.',
+    '📄 PDF do pedido (cliente e interno) refeito: resumo compacto no topo (pedido, pagamento e totais lado a lado), cada produto em uma linha com foto, quantidade e valores, e os benefícios e o desconto logo abaixo do nome — bem menos espaço desperdiçado.',
+    '📄 PDF do catálogo: a descrição do produto agora preenche todo o espaço do quadro (não corta mais com "..." em 3 linhas) e o cabeçalho ficou num tom suave, combinando com o restante do sistema.'
+  ] },
   { versao: 'v97', itens: [
     'Sincronização em tempo real: lançamentos feitos em outro aparelho/aba aparecem sozinhos, sem precisar atualizar o navegador.',
     'Nome do cliente corrigido no cadastro agora atualiza também nas vendas, agenda e painel (registros antigos mostram sempre o nome atual).',
     'Agenda: novo campo "Local / endereço" no agendamento, pré-preenchido com o endereço do cliente, com botão 📍 que abre o Google Maps. Endereço errado no mapa? Cole um link do Maps no campo que ele abre direto no ponto certo. O local também vai junto pro Google Agenda.',
     'Vendas: clique no ▸ (ou no número de itens) para expandir a venda e ver os produtos, quantidades e valores dali mesmo, sem abrir o carrinho.',
     'Carrinho: novo desconto sobre o pedido inteiro (% ou R$, ex: 10% na primeira compra) — o total a cobrar recalcula sozinho e o desconto aparece no PDF e no resumo de WhatsApp.',
-    'Carrinho: novo campo "Frete pago por você" — registra a despesa de entrega, que passa a descontar do lucro real do pedido e dos relatórios (o total do cliente não muda).',
-    'Novo: 🎁 Kits no carrinho — monte um kit (ex: 3 produtos que somam R$ 580 por R$ 185) e o sistema distribui o valor pago proporcionalmente entre os produtos: estoque, custo e lucro ficam certos por item, e o kit aparece agrupado na venda e nos PDFs. Kit com valor R$ 0 vira brinde.',
     'Corrigido: em telas mais baixas, o botão "Sair" invadia o menu lateral e aparecia antes do "Sobre".',
+    'Agenda: cliente deixou de ser obrigatório — dá pra criar um compromisso só seu, sem cliente vinculado (ex: um evento de demonstração), com título próprio no lugar do nome.',
+    'Corrigido: a busca do Estoque não filtrava a cada letra digitada (a função de render não estava exposta pro campo — o erro era silencioso). Agora filtra igual à de Produtos.',
     'Reabrir venda com pagamento registrado agora avisa o valor que já tinha sido pago antes de reabrir.',
     'Produtos → Linhas: busca filtra a cada letra, produtos em ordem alfabética e seletor visual igual ao "Ativo no catálogo".',
     'Coluna de ações das tabelas ficou mais larga — botões não ficam mais espremidos.'

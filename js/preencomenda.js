@@ -1,5 +1,5 @@
 import { state, ref, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml } from './utils.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR } from './utils.js';
 import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -153,6 +153,171 @@ export function btnAdicionarPreEncomenda(produtoId) {
   return `<button class="btn small" onclick="App.adicionarPreEncomenda('${produtoId}','manual',1)" title="Adicionar à pré-encomenda">📋 Pré-encomendar</button>${badges ? `<div style="display:flex;flex-direction:column;gap:2px">${badges}</div>` : ''}`;
 }
 
+// --- KITs da Farmasi (ex: 3 produtos que somam R$290 pelo site por R$185) ---
+// Kit é o que a CONSULTORA compra da Farmasi, não o que vende ao cliente. Montar um kit aqui
+// adiciona os componentes na lista "A comprar" com o custo unitário previsto já rateado
+// proporcionalmente ao preço de referência de cada um — quando o pedido chegar, esse custo
+// alimenta o custo médio do estoque.
+let kitTemp = { nome: '', valor: '', itens: [] };
+
+function precoReferencia(p) {
+  return Number(p.precoOriginal || 0) || Number(p.precoAtual || 0) || Number(p.precoVenda || 0);
+}
+
+export function openKitForm(manterComposicao = false) {
+  if (!manterComposicao) kitTemp = { nome: '', valor: '', itens: [] };
+
+  const picker = searchPickerHtml('kitProd', state.data.produtos,
+    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | ref: ${money(precoReferencia(p))}`);
+
+  const totalRef = kitTemp.itens.reduce((s, it) => {
+    const p = prodById(it.produtoId);
+    return s + (p ? precoReferencia(p) * it.quantidade : 0);
+  }, 0);
+  const valorKit = parseMoney(kitTemp.valor);
+
+  const linhas = kitTemp.itens.map((it, idx) => {
+    const p = prodById(it.produtoId);
+    if (!p) return '';
+    const refTotal = precoReferencia(p) * it.quantidade;
+    const proporcional = totalRef > 0 ? valorKit * refTotal / totalRef : (kitTemp.itens.length ? valorKit / kitTemp.itens.length : 0);
+    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)">
+      <span>${it.quantidade}× ${esc(p.nome)} <small class="muted">(ref: ${money(refTotal)})</small></span>
+      <span style="white-space:nowrap">${valorKit > 0 ? `custo <b>${money(it.quantidade ? proporcional / it.quantidade : 0)}</b>/un. ` : ''}<button class="btn small" style="color:var(--error)" onclick="App.removerProdutoKit(${idx})">✗</button></span>
+    </div>`;
+  }).join('');
+
+  showModal(`<h3>🎁 Montar kit Farmasi</h3>
+    <p class="muted">Kit que você vai comprar no site da Farmasi. O valor pago é distribuído entre os produtos na proporção do preço de referência — o custo previsto de cada um entra na lista "A comprar" e vira custo médio quando chegar. Valor R$ 0,00 = kit de brinde (custo zero).</p>
+    <div class="grid">
+      <div class="field"><label>Nome do kit</label><input id="kitNome" value="${esc(kitTemp.nome)}" placeholder="Ex: Kit Nutriplus"></div>
+      <div class="field"><label>Valor pago pelo kit</label><input id="kitValor" value="${esc(kitTemp.valor)}" placeholder="Ex: 185,00"></div>
+      <div class="field full"><label>Produto</label>${picker}</div>
+      <div class="field"><label>Quantidade</label><input id="kitQtd" type="number" value="1" min="1"></div>
+    </div>
+    <br><button class="btn small dark" onclick="App.adicionarProdutoKit()">+ Incluir no kit</button>
+    ${kitTemp.itens.length ? `<div class="panel" style="background:#F7FAFC;margin-top:12px">
+      <h4 style="margin:0 0 6px">Composição (${kitTemp.itens.length}) — referência total: ${money(totalRef)}</h4>
+      ${linhas}
+      ${valorKit > 0 && totalRef > 0 ? `<p class="muted" style="margin:8px 0 0">Economia do kit: ${money(totalRef - valorKit)} (${Math.round((1 - valorKit / totalRef) * 100)}% sobre a referência)</p>` : ''}
+    </div>` : ''}
+    <br>
+    <button class="btn dark" onclick="App.confirmarKit()">Adicionar à lista "A comprar"</button>
+    <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+}
+
+function guardarCamposKit() {
+  kitTemp.nome = $('kitNome')?.value ?? kitTemp.nome;
+  kitTemp.valor = $('kitValor')?.value ?? kitTemp.valor;
+}
+
+export function adicionarProdutoKit() {
+  const p = prodById($('kitProd')?.value);
+  if (!p) return toast('Selecione um produto');
+  const qtd = Math.max(1, Number($('kitQtd')?.value || 1));
+  guardarCamposKit();
+  const existente = kitTemp.itens.find(it => it.produtoId === p.id);
+  if (existente) existente.quantidade += qtd;
+  else kitTemp.itens.push({ produtoId: p.id, quantidade: qtd });
+  openKitForm(true);
+}
+
+export function removerProdutoKit(idx) {
+  guardarCamposKit();
+  kitTemp.itens.splice(idx, 1);
+  openKitForm(true);
+}
+
+export async function confirmarKit() {
+  guardarCamposKit();
+  if (kitTemp.itens.length < 2) return toast('Inclua pelo menos 2 produtos no kit');
+  const valorKit = parseMoney(kitTemp.valor);
+  const kitNome = (kitTemp.nome || '').trim() || 'Kit';
+
+  const totalRef = kitTemp.itens.reduce((s, it) => s + precoReferencia(prodById(it.produtoId)) * it.quantidade, 0);
+  let somaDistribuida = 0;
+
+  for (let i = 0; i < kitTemp.itens.length; i++) {
+    const it = kitTemp.itens[i];
+    const p = prodById(it.produtoId);
+    if (!p) continue;
+    const refTotal = precoReferencia(p) * it.quantidade;
+    // Rateio proporcional à referência (ou igualitário se nenhum componente tem preço); o último
+    // item recebe o resíduo do arredondamento para a soma bater exatamente com o valor do kit.
+    const ultimo = i === kitTemp.itens.length - 1;
+    const custoTotalItem = valorKit <= 0.004 ? 0
+      : ultimo ? Math.round((valorKit - somaDistribuida) * 100) / 100
+      : Math.round((totalRef > 0 ? valorKit * refTotal / totalRef : valorKit / kitTemp.itens.length) * 100) / 100;
+    somaDistribuida += custoTotalItem;
+    const custoUnit = it.quantidade ? custoTotalItem / it.quantidade : 0;
+
+    // Mesmo padrão do adicionarPreEncomenda: soma no registro "a comprar" se já existir. O custo
+    // rateado do kit vai no preço unitário previsto (pré-preenche o custo na hora da chegada).
+    const id = idPendente(p.id);
+    const jaExiste = state.data.preEncomenda.find(x => x.id === id);
+    const obsKit = `Kit: ${kitNome}`;
+    await setDoc(ref('preEncomenda', id), {
+      produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
+      quantidade: Number(jaExiste?.quantidade || 0) + it.quantidade,
+      precoUnitario: money(custoUnit),
+      observacoes: jaExiste?.observacoes ? (jaExiste.observacoes.includes(obsKit) ? jaExiste.observacoes : `${jaExiste.observacoes} | ${obsKit}`) : obsKit,
+      origem: 'kit', status: 'pendente',
+      criadoEm: jaExiste?.criadoEm || serverTimestamp()
+    }, { merge: true });
+  }
+
+  kitTemp = { nome: '', valor: '', itens: [] };
+  closeModal();
+  window.App.refresh(`Kit "${kitNome}" adicionado à lista "A comprar"`);
+}
+
+// --- Frete pago à Farmasi (despesa simples, decidido em 14/07/2026) ---
+// Registrado na coleção "despesas" e descontado do lucro líquido nos Relatórios.
+export async function registrarFreteFarmasi() {
+  const valor = parseMoney($('freteValor')?.value);
+  if (valor <= 0) return toast('Informe o valor do frete');
+  const data = $('freteData')?.value || today();
+  await setDoc(ref('despesas', 'frete_' + Date.now()), {
+    tipo: 'frete_farmasi', valor, data,
+    observacoes: $('freteObs')?.value || '', criadoEm: serverTimestamp()
+  });
+  window.App.refresh(`Frete de ${money(valor)} registrado`);
+}
+
+export async function removerFreteFarmasi(id) {
+  if (!confirm('Remover este registro de frete?')) return;
+  await deleteDoc(ref('despesas', id));
+  window.App.refresh('Registro de frete removido');
+}
+
+function fretePanelHtml() {
+  const fretes = (state.data.despesas || [])
+    .filter(x => x.tipo === 'frete_farmasi')
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const total = fretes.reduce((s, x) => s + Number(x.valor || 0), 0);
+  return `<div class="panel">
+    <div class="panel-head">
+      <h3>🚚 Frete pago à Farmasi</h3>
+      ${fretes.length ? `<span class="muted">Total registrado: <b>${money(total)}</b></span>` : ''}
+    </div>
+    <p class="muted">Registre o frete de cada pedido feito no site da Farmasi — entra como despesa e é descontado do lucro líquido nos Relatórios.</p>
+    <div class="toolbar">
+      <input id="freteValor" placeholder="Valor (ex: 25,90)" style="max-width:160px">
+      <input id="freteData" type="date" value="${today()}" style="max-width:170px">
+      <input id="freteObs" placeholder="Observação (ex: pedido de julho)">
+      <button class="btn dark small" onclick="App.registrarFreteFarmasi()">+ Registrar</button>
+    </div>
+    ${fretes.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+      ${fretes.map(f => `<tr>
+        <td data-label="Data">${formatDateBR(f.data)}</td>
+        <td data-label="Valor">${money(f.valor)}</td>
+        <td data-label="Observação">${esc(f.observacoes || '-')}</td>
+        <td><button class="btn small" style="color:var(--error)" onclick="App.removerFreteFarmasi('${f.id}')">🗑️</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>` : ''}
+  </div>`;
+}
+
 export function preEncomendaTabHtml() {
   const itens = state.data.preEncomenda;
   const aComprar = itens.filter(it => it.status !== 'pedido');
@@ -160,9 +325,12 @@ export function preEncomendaTabHtml() {
   return `<div class="panel">
     <div class="panel-head">
       <h3>Pré-encomenda</h3>
-      <p class="muted" style="margin:0">O que você precisa comprar no site da Farmasi — código à mão pra facilitar o pedido.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <p class="muted" style="margin:0">O que você precisa comprar no site da Farmasi — código à mão pra facilitar o pedido.</p>
+        <button class="btn small pink" onclick="App.openKitForm()">🎁 Montar kit</button>
+      </div>
     </div>
-    ${!itens.length ? '<p class="muted">Nenhum produto na pré-encomenda. Adicione pela tela de Produtos, Estoque (itens com estoque baixo) ou automaticamente quando vender algo sem estoque no carrinho.</p>' : `
+    ${!itens.length ? '<p class="muted">Nenhum produto na pré-encomenda. Adicione pela tela de Produtos, Estoque (itens com estoque baixo), monte um kit aqui, ou automaticamente quando vender algo sem estoque no carrinho.</p>' : `
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
     <div class="table"><table><thead><tr>
@@ -211,11 +379,11 @@ export function preEncomendaTabHtml() {
       </tr>`;
     }).join('')}</tbody></table></div>`}
     `}
-  </div>`;
+  </div>${fretePanelHtml()}`;
 }
 
 function pillOrigem(o) {
-  const map = { manual: ['Manual', 'blue'], estoque_baixo: ['Estoque baixo', 'orange'], carrinho_sem_estoque: ['Venda sem estoque', 'red'], brinde: ['Brinde Farmasi', 'green'] };
+  const map = { manual: ['Manual', 'blue'], estoque_baixo: ['Estoque baixo', 'orange'], carrinho_sem_estoque: ['Venda sem estoque', 'red'], brinde: ['Brinde Farmasi', 'green'], kit: ['Kit Farmasi', 'pink'] };
   const [label, cor] = map[o] || ['Manual', 'blue'];
   return `<span class="tag ${cor}">${label}</span>`;
 }

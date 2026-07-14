@@ -141,6 +141,8 @@ export function openCarrinho(id) {
   const itens = carr.itens || [];
   const mostrarSem = carr.mostrarSemEstoque;
   const futuraAtivo = carr.permitirEntregaFutura;
+  const creditoDisponivel = carr.clienteId ? creditoDoCliente(carr.clienteId) : 0;
+  const creditoAplicado = carr.usarCreditos ? Math.min(creditoDisponivel, carr.totalPedido || 0) : 0;
 
   // Disponível de verdade = estoque real menos tudo que já está reservado em qualquer carrinho
   // aberto (incluindo este) e em trocas em andamento — evita comprometer mais do que existe,
@@ -177,7 +179,6 @@ export function openCarrinho(id) {
       </div>
       <p class="muted" id="ciMotivoInfo" style="margin:6px 0 0"></p>
       <br><button class="btn dark small" onclick="App.adicionarItemCarrinho('${id}')">+ Adicionar ao carrinho</button>
-      <button class="btn small pink" onclick="App.openKitForm('${id}')">🎁 Adicionar kit</button>
     </div>
 
     <div class="panel" style="margin-top:12px">
@@ -207,7 +208,7 @@ export function openCarrinho(id) {
       ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total a cobrar</span><b>${money(carr.totalPedido || 0)}</b></div>
       <div class="card"><span>Desconto por item</span><b>${money(itens.reduce((s, i) => s + (Number(i.precoOriginal || i.precoUnitario || 0) - i.precoUnitario) * i.quantidade, 0))}</b></div>
-      <div class="card"><span>Lucro real (após taxas e frete)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total - Number(carr.freteCusto || 0))}</b></div>
+      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total)}</b></div>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -230,13 +231,13 @@ export function openCarrinho(id) {
         </div>
         <span class="muted" style="font-size:12px">Sobre o pedido inteiro (ex: 10% na primeira compra), além dos descontos por item. O total a cobrar recalcula sozinho.</span>
       </div>
-      <div class="field"><label>Frete pago por você (opcional)</label>
-        <input id="cFrete" value="${Number(carr.freteCusto || 0) > 0 ? money(carr.freteCusto) : ''}" placeholder="R$ 0,00" onblur="App.salvarCarrinhoOpt('${id}',true)">
-        <span class="muted" style="font-size:12px">Despesa sua com a entrega — não muda o total do cliente, só reduz o lucro real do pedido.</span>
-      </div>
+      ${creditoDisponivel > 0.004 ? `<div class="field"><label>Créditos do cliente</label>
+        ${toggleHtml('cUsarCreditos', !!carr.usarCreditos, `App.toggleCarrinhoOpt('${id}','usarCreditos',this.checked)`, `Usar ${money(Math.min(creditoDisponivel, carr.totalPedido || 0))} em créditos`)}
+        <span class="muted" style="font-size:12px">${esc(carr.clienteNome)} tem ${money(creditoDisponivel)} guardados de pagamentos anteriores.</span>
+      </div>` : ''}
       <div class="field"><label>Valor recebido agora</label>
-        <input id="cValorRecebido" value="${money(carr.valorPago > 0 ? carr.valorPago : (carr.totalPedido || 0))}">
-        <span class="muted" style="font-size:12px">Vem preenchido com o total — deixe menor se for receber só parte agora (sinal). Vira pendente/parcial/pago sozinho ao finalizar.</span>
+        <input id="cValorRecebido" value="${money(carr.valorPago > 0 ? carr.valorPago : Math.max(0, (carr.totalPedido || 0) - creditoAplicado))}">
+        <span class="muted" style="font-size:12px">Vem preenchido com o ${creditoAplicado > 0.004 ? 'que falta após os créditos' : 'total'} — deixe menor se for receber só parte agora (sinal). Vira pendente/parcial/pago sozinho ao finalizar.</span>
       </div>
       <div class="field"><label>Retorno em quantos dias? (opcional)</label>
         <input id="cRetornoDias" type="number" min="0" placeholder="Ex: 7" value="${carr.retornoDias || ''}" onblur="App.salvarCarrinhoOpt('${id}',true)">
@@ -262,14 +263,13 @@ export function openCarrinho(id) {
 function openCarrinhoView(carr) {
   const itens = carr.itens || [];
   const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
-  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total - Number(carr.freteCusto || 0);
+  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total;
   showModal(`<h3>Pedido — ${esc(carr.clienteNome)}</h3>
     <div class="cards">
       <div class="card"><span>Status</span><b>${pill(carr.status, carr.status === 'finalizado' ? 'green' : carr.status === 'cancelado' ? 'red' : 'blue')}</b></div>
       ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total</span><b>${money(carr.totalPedido)}</b></div>
-      ${Number(carr.freteCusto || 0) > 0.004 ? `<div class="card"><span>Frete (sua despesa)</span><b style="color:var(--error)">− ${money(carr.freteCusto)}</b></div>` : ''}
-      <div class="card"><span>Lucro real (após taxas e frete)</span><b>${money(lucroReal)}</b></div>
+      <div class="card"><span>Lucro real (após taxas)</span><b>${money(lucroReal)}</b></div>
       <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || '-')}</b></div>
     </div>
     <div class="table" style="margin-top:12px"><table><thead><tr>
@@ -317,6 +317,7 @@ function pagamentoResumoHtml(carr) {
     <div class="cards">
       <div class="card"><span>Recebido</span><b>${money(pago)}</b></div>
       <div class="card"><span>Restante</span><b style="color:${restante > 0.004 ? 'var(--error)' : 'inherit'}">${money(restante)}</b></div>
+      ${carr.clienteId && creditoDoCliente(carr.clienteId) > 0.004 ? `<div class="card"><span>Créditos do cliente</span><b style="color:var(--success)">${money(creditoDoCliente(carr.clienteId))}</b></div>` : ''}
     </div>
     ${pagamentos.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th></tr></thead><tbody>
       ${pagamentos.map(p => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td></tr>`).join('')}
@@ -330,6 +331,31 @@ const COR_STATUS_PAG_LOCAL = { pendente: 'red', pago: 'green', parcial: 'orange'
 function labelStatusPagLocal(v) { return LABEL_STATUS_PAG_LOCAL[v]; }
 function corStatusPagLocal(v) { return COR_STATUS_PAG_LOCAL[v]; }
 
+// --- Créditos do cliente ---
+// Excedente de pagamento pode virar crédito guardado no cadastro do cliente (campo "credito"),
+// usável nas próximas compras — tanto no fechamento do carrinho quanto num pagamento posterior.
+export function creditoDoCliente(clienteId) {
+  return Math.round(Number(cliById(clienteId)?.credito || 0) * 100) / 100;
+}
+
+async function ajustarCreditoCliente(clienteId, delta) {
+  if (!clienteId || Math.abs(delta) < 0.005) return;
+  const novo = Math.round(Math.max(0, creditoDoCliente(clienteId) + delta) * 100) / 100;
+  await setDoc(ref('clientes', clienteId), { credito: novo }, { merge: true });
+  const c = cliById(clienteId);
+  if (c) c.credito = novo;
+}
+
+// Pergunta se o excedente recebido vira crédito do cliente. Devolve o valor guardado (0 se a
+// consultora preferir não guardar — aí o excedente fica só registrado como pagamento a mais).
+async function perguntarExcedenteComoCredito(clienteId, clienteNome, excedente) {
+  if (!clienteId || excedente < 0.005) return 0;
+  const guardar = confirm(`Você recebeu ${money(excedente)} a MAIS que o valor devido.\n\nGuardar esse valor como crédito para ${clienteNome}?\nO crédito fica no cadastro e pode ser usado nas próximas compras.`);
+  if (!guardar) return 0;
+  await ajustarCreditoCliente(clienteId, excedente);
+  return excedente;
+}
+
 // Abre o formulário pra registrar um pagamento recebido (total ou parcial) de um pedido já
 // finalizado. Já vem preenchido com o valor restante — deixa como está pra quitar de uma vez,
 // ou edita pra registrar só um sinal/parte.
@@ -337,8 +363,12 @@ export function registrarPagamento(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
   const restante = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));
+  const creditoDisponivel = carr.clienteId ? creditoDoCliente(carr.clienteId) : 0;
   showModal(`<h3>Registrar pagamento</h3>
     <p class="muted">Total do pedido: ${money(carr.totalPedido)} — já recebido: ${money(carr.valorPago || 0)} — restante: ${money(restante)}</p>
+    ${creditoDisponivel > 0.004 ? `<div class="field" style="margin-bottom:8px">
+      ${toggleHtml('pgUsarCreditos', false, `App.aplicarCreditoPagamento('${carrinhoId}',this.checked)`, `Usar créditos do cliente (${money(Math.min(creditoDisponivel, restante))} de ${money(creditoDisponivel)} disponíveis)`)}
+    </div>` : ''}
     <div class="grid">
       <div class="field"><label>Valor recebido agora</label><input id="pgValor" value="${money(restante)}" onchange="App.atualizarCalcPagamento('${carrinhoId}')"></div>
       <div class="field"><label>Forma</label>
@@ -371,6 +401,17 @@ export function registrarPagamento(carrinhoId) {
   atualizarCalcPagamento(carrinhoId);
 }
 
+// Marcar/desmarcar "usar créditos" no pagamento posterior: ajusta o campo de valor em dinheiro
+// para o que falta depois de aplicar os créditos (a consultora pode editar depois, claro).
+export function aplicarCreditoPagamento(carrinhoId, usar) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr || !$('pgValor')) return;
+  const restante = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));
+  const credito = usar ? Math.min(creditoDoCliente(carr.clienteId), restante) : 0;
+  $('pgValor').value = money(Math.max(0, restante - credito));
+  atualizarCalcPagamento(carrinhoId);
+}
+
 // Mostra/esconde Tipo (Débito/Crédito) e Parcelas conforme a forma escolhida, e calcula na hora o
 // custo estimado da maquininha pra esse pagamento — mesma lógica usada no carrinho na hora da venda.
 export function atualizarCalcPagamento(carrinhoId) {
@@ -396,21 +437,34 @@ export function atualizarCalcPagamento(carrinhoId) {
 export async function confirmarPagamento(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  const valor = parseMoney($('pgValor').value);
-  if (valor <= 0) return toast('Informe um valor maior que zero');
+  const restante = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));
+  const creditoUsado = $('pgUsarCreditos')?.checked && carr.clienteId
+    ? Math.round(Math.min(creditoDoCliente(carr.clienteId), restante) * 100) / 100 : 0;
+  let valor = parseMoney($('pgValor').value);
+  if (valor <= 0 && creditoUsado < 0.005) return toast('Informe um valor maior que zero');
+  const dataPg = $('pgData').value || today();
+
+  // Excedente (créditos + dinheiro acima do restante) pode virar crédito novo pro cliente.
+  const excedente = Math.round((creditoUsado + valor - restante) * 100) / 100;
+  const creditoGerado = excedente > 0.004 ? await perguntarExcedenteComoCredito(carr.clienteId, carr.clienteNome, excedente) : 0;
+  if (creditoGerado > 0.004) valor = Math.round((valor - creditoGerado) * 100) / 100;
+  await ajustarCreditoCliente(carr.clienteId, -creditoUsado);
+
   const forma = $('pgForma').value;
   const ehCartao = forma === 'Cartão';
   const cartaoTipo = ehCartao ? ($('pgCartaoTipo')?.value || 'Crédito') : '';
   const parcelas = ehCartao && cartaoTipo === 'Crédito' ? Number($('pgParcelas')?.value || 1) : 1;
   const jurosPor = ehCartao ? (cartaoTipo === 'Débito' ? 'vendedor' : jurosAutomatico(valor, parcelas, state.profile)) : 'vendedor';
-  const custoCartao = ehCartao ? calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, cartaoTipo).total : 0;
+  const custoCartao = ehCartao && valor > 0.004 ? calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, cartaoTipo).total : 0;
 
-  const pagamento = {
-    valor, forma, data: $('pgData').value || today(), observacoes: $('pgObs').value.trim(),
+  const pagamentos = [...(carr.pagamentos || [])];
+  if (creditoUsado > 0.004) pagamentos.push({ valor: creditoUsado, forma: 'Créditos do cliente', data: dataPg, observacoes: 'Créditos do cadastro usados' });
+  if (valor > 0.004) pagamentos.push({
+    valor, forma, data: dataPg,
+    observacoes: ($('pgObs').value.trim() + (creditoGerado > 0.004 ? ` (${money(creditoGerado)} guardado como crédito)` : '')).trim(),
     ...(ehCartao ? { cartaoTipo, parcelas, custoCartao } : {})
-  };
-  const pagamentos = [...(carr.pagamentos || []), pagamento];
-  const valorPago = Number(carr.valorPago || 0) + valor;
+  });
+  const valorPago = Number(carr.valorPago || 0) + creditoUsado + valor;
   const statusPagamento = statusPagamentoAuto(carr.totalPedido, valorPago);
   await setDoc(ref('carrinhos', carrinhoId), { pagamentos, valorPago, statusPagamento, atualizadoEm: serverTimestamp() }, { merge: true });
 
@@ -421,7 +475,7 @@ export async function confirmarPagamento(carrinhoId) {
     const venda = state.data.vendas.find(v => v.carrinhoId === carrinhoId);
     if (venda) {
       const novoCustoCartao = Number(venda.custoCartao || 0) + custoCartao;
-      const novoLucroReal = Number(venda.lucroTotal || 0) - novoCustoCartao - Number(venda.freteCusto || 0);
+      const novoLucroReal = Number(venda.lucroTotal || 0) - novoCustoCartao;
       await setDoc(ref('vendas', venda.id), {
         custoCartao: novoCustoCartao, lucroReal: novoLucroReal,
         margemReal: venda.totalPedido ? (novoLucroReal / venda.totalPedido) * 100 : 0
@@ -430,7 +484,7 @@ export async function confirmarPagamento(carrinhoId) {
   }
 
   closeModal();
-  window.App.refresh(`Pagamento de ${money(valor)} registrado`);
+  window.App.refresh(`Pagamento de ${money(creditoUsado + valor)} registrado${creditoUsado > 0.004 ? ` (${money(creditoUsado)} em créditos)` : ''}`);
 }
 
 export function preencherPrecoItem() {
@@ -566,148 +620,6 @@ export async function aplicarDescontoPedido(id) {
   openCarrinho(id);
 }
 
-// --- KITs (ex: Farmasi vende 3 produtos que somam R$290 por R$185) ---
-// O kit não é um produto próprio: vira itens normais do carrinho com o valor pago distribuído
-// proporcionalmente ao preço de referência de cada componente — assim estoque, custo e lucro
-// continuam corretos por produto. kitId/kitNome só agrupam visualmente.
-let kitTemp = { nome: '', valor: '', itens: [] };
-
-function precoReferencia(p) {
-  return Number(p.precoOriginal || 0) || Number(p.precoVenda || 0) || Number(p.precoAtual || 0);
-}
-
-export function openKitForm(carrinhoId, manterComposicao = false) {
-  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
-  if (!carr) return;
-  if (!manterComposicao) kitTemp = { nome: '', valor: '', itens: [] };
-
-  const prods = state.data.produtos.filter(p => carr.mostrarSemEstoque || estoqueDisponivel(p.id) > 0);
-  const picker = searchPickerHtml('kitProd', prods,
-    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ref: ${money(precoReferencia(p))}`);
-
-  const totalRef = kitTemp.itens.reduce((s, it) => {
-    const p = prodById(it.produtoId);
-    return s + (p ? precoReferencia(p) * it.quantidade : 0);
-  }, 0);
-  const valorKit = parseMoney(kitTemp.valor);
-
-  const linhas = kitTemp.itens.map((it, idx) => {
-    const p = prodById(it.produtoId);
-    if (!p) return '';
-    const ref = precoReferencia(p) * it.quantidade;
-    const proporcional = totalRef > 0 ? valorKit * ref / totalRef : (kitTemp.itens.length ? valorKit / kitTemp.itens.length : 0);
-    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)">
-      <span>${it.quantidade}× ${esc(p.nome)} <small class="muted">(ref: ${money(ref)})</small></span>
-      <span style="white-space:nowrap">${valorKit > 0 ? `<b>${money(proporcional)}</b> no kit ` : ''}<button class="btn small" style="color:var(--error)" onclick="App.removerProdutoKit('${carrinhoId}',${idx})">✗</button></span>
-    </div>`;
-  }).join('');
-
-  showModal(`<h3>🎁 Montar kit</h3>
-    <p class="muted">O valor pago pelo kit é distribuído entre os produtos na proporção do preço de referência de cada um — estoque e lucro ficam certos por produto. Valor R$ 0,00 = kit de brinde.</p>
-    <div class="grid">
-      <div class="field"><label>Nome do kit</label><input id="kitNome" value="${esc(kitTemp.nome)}" placeholder="Ex: Kit Nutriplus"></div>
-      <div class="field"><label>Valor pago pelo kit</label><input id="kitValor" value="${esc(kitTemp.valor)}" placeholder="Ex: 185,00"></div>
-      <div class="field full"><label>Produto</label>${picker}</div>
-      <div class="field"><label>Quantidade</label><input id="kitQtd" type="number" value="1" min="1"></div>
-    </div>
-    <br><button class="btn small dark" onclick="App.adicionarProdutoKit('${carrinhoId}')">+ Incluir no kit</button>
-    ${kitTemp.itens.length ? `<div class="panel" style="background:#F7FAFC;margin-top:12px">
-      <h4 style="margin:0 0 6px">Composição (${kitTemp.itens.length}) — referência total: ${money(totalRef)}</h4>
-      ${linhas}
-      ${valorKit > 0 && totalRef > 0 ? `<p class="muted" style="margin:8px 0 0">Desconto do kit: ${money(totalRef - valorKit)} (${Math.round((1 - valorKit / totalRef) * 100)}% sobre a referência)</p>` : ''}
-    </div>` : ''}
-    <br>
-    <button class="btn dark" onclick="App.confirmarKit('${carrinhoId}')">Adicionar kit ao carrinho</button>
-    <button class="btn ghost" onclick="App.openCarrinho('${carrinhoId}')">Voltar ao carrinho</button>`);
-}
-
-function guardarCamposKit() {
-  kitTemp.nome = $('kitNome')?.value ?? kitTemp.nome;
-  kitTemp.valor = $('kitValor')?.value ?? kitTemp.valor;
-}
-
-export function adicionarProdutoKit(carrinhoId) {
-  const p = prodById($('kitProd')?.value);
-  if (!p) return toast('Selecione um produto');
-  const qtd = Math.max(1, Number($('kitQtd')?.value || 1));
-  guardarCamposKit();
-  const existente = kitTemp.itens.find(it => it.produtoId === p.id);
-  if (existente) existente.quantidade += qtd;
-  else kitTemp.itens.push({ produtoId: p.id, quantidade: qtd });
-  openKitForm(carrinhoId, true);
-}
-
-export function removerProdutoKit(carrinhoId, idx) {
-  guardarCamposKit();
-  kitTemp.itens.splice(idx, 1);
-  openKitForm(carrinhoId, true);
-}
-
-export async function confirmarKit(carrinhoId) {
-  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
-  if (!carr) return;
-  guardarCamposKit();
-  if (kitTemp.itens.length < 2) return toast('Inclua pelo menos 2 produtos no kit');
-  const valorKit = parseMoney(kitTemp.valor);
-  const kitNome = (kitTemp.nome || '').trim() || 'Kit';
-  const isVenda = valorKit > 0.004;
-
-  // Confere estoque de todos os componentes antes de mexer em qualquer coisa
-  for (const it of kitTemp.itens) {
-    const p = prodById(it.produtoId);
-    if (!p) return toast('Produto do kit não encontrado');
-    if (estoqueDisponivel(p.id) < it.quantidade && !carr.permitirEntregaFutura) {
-      return toast(`Estoque insuficiente de ${p.nome}. Ative "Permitir entrega futura" no carrinho ou ajuste o kit.`);
-    }
-  }
-
-  const totalRef = kitTemp.itens.reduce((s, it) => s + precoReferencia(prodById(it.produtoId)) * it.quantidade, 0);
-  const kitId = 'kit_' + Date.now();
-  const novos = [];
-  let somaDistribuida = 0;
-
-  kitTemp.itens.forEach((it, i) => {
-    const p = prodById(it.produtoId);
-    const ref = precoReferencia(p) * it.quantidade;
-    // Rateio proporcional à referência (ou igualitário se nenhum componente tem preço); o último
-    // item recebe o resíduo do arredondamento para a soma bater exatamente com o valor do kit.
-    const ultimo = i === kitTemp.itens.length - 1;
-    let totalItem = !isVenda ? 0
-      : ultimo ? Math.round((valorKit - somaDistribuida) * 100) / 100
-      : Math.round((totalRef > 0 ? valorKit * ref / totalRef : valorKit / kitTemp.itens.length) * 100) / 100;
-    somaDistribuida += totalItem;
-    const custoMedio = Number(p.custoMedio || 0);
-    const tipoEntrega = estoqueDisponivel(p.id) < it.quantidade ? 'entrega_futura' : 'pronta_entrega';
-    novos.push({
-      produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
-      quantidade: it.quantidade, precoUnitario: totalItem / it.quantidade,
-      precoOriginal: Number(p.precoOriginal || 0) || (totalItem / it.quantidade),
-      totalItem, custoMedioUsado: custoMedio, custoTotal: custoMedio * it.quantidade,
-      lucroTotal: isVenda ? totalItem - (custoMedio * it.quantidade) : 0,
-      motivo: isVenda ? 'Venda' : 'Brinde', geraLucro: isVenda,
-      tipoEntrega, baixouEstoque: false,
-      kitId, kitNome
-    });
-  });
-
-  const itens = [...(carr.itens || []), ...novos];
-  const totais = calcTotais(itens, carr.descontoPedido);
-  await setDoc(ref('carrinhos', carrinhoId), {
-    ...totais, itens,
-    possuiEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
-    atualizadoEm: serverTimestamp()
-  }, { merge: true });
-
-  for (const n of novos) {
-    if (n.tipoEntrega === 'entrega_futura') await adicionarPreEncomenda(n.produtoId, 'carrinho_sem_estoque', n.quantidade - estoqueDisponivel(n.produtoId));
-  }
-
-  kitTemp = { nome: '', valor: '', itens: [] };
-  await window.App.refresh();
-  openCarrinho(carrinhoId);
-  toast(`Kit "${kitNome}" adicionado (${novos.length} produtos)`);
-}
-
 export async function toggleCarrinhoOpt(id, campo, valor) {
   await setDoc(ref('carrinhos', id), { [campo]: valor, atualizadoEm: serverTimestamp() }, { merge: true });
   await window.App.refresh();
@@ -719,7 +631,6 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
   if ($('cPag')) updates.pagamento = $('cPag').value;
   if ($('cCartaoTipo')) updates.cartaoTipo = $('cCartaoTipo').value;
   if ($('cObs')) updates.observacoes = $('cObs').value;
-  if ($('cFrete')) updates.freteCusto = parseMoney($('cFrete').value);
   if ($('cParcelas')) {
     const parcelas = Number($('cParcelas').value);
     updates.parcelas = parcelas;
@@ -768,15 +679,28 @@ export async function finalizarCarrinho(id) {
   // pagamentos registrados (ex: foi reaberto e está sendo finalizado de novo), preserva o que já
   // foi recebido, não zera.
   const jaTinhaPagamento = (carr.pagamentos && carr.pagamentos.length) || Number(carr.valorPago || 0) > 0.004;
-  const valorRecebidoAgora = $('cValorRecebido') ? parseMoney($('cValorRecebido').value) : Number(carr.totalPedido || 0);
-  const statusFinal = jaTinhaPagamento ? normStatusPag(carr.statusPagamento) : statusPagamentoAuto(carr.totalPedido, valorRecebidoAgora);
-  const updatesPagamento = jaTinhaPagamento ? {} : {
-    valorPago: valorRecebidoAgora,
-    statusPagamento: statusFinal,
-    pagamentos: valorRecebidoAgora > 0.004
-      ? [{ valor: valorRecebidoAgora, forma: pagamentoFinal || 'Não informado', data: today(), observacoes: 'Pagamento no fechamento da venda' }]
-      : []
-  };
+  let updatesPagamento = {};
+  let statusFinal = normStatusPag(carr.statusPagamento);
+  if (!jaTinhaPagamento) {
+    const totalP = Number(carr.totalPedido || 0);
+    let dinheiro = $('cValorRecebido') ? parseMoney($('cValorRecebido').value) : totalP;
+
+    // Créditos do cliente entram primeiro (se a consultora ativou o toggle); o dinheiro cobre o
+    // resto. Excedente da soma pode virar crédito novo — pergunta antes de guardar.
+    const creditoUsado = carr.usarCreditos && carr.clienteId
+      ? Math.round(Math.min(creditoDoCliente(carr.clienteId), totalP) * 100) / 100 : 0;
+    const excedente = Math.round((creditoUsado + dinheiro - totalP) * 100) / 100;
+    const creditoGerado = excedente > 0.004 ? await perguntarExcedenteComoCredito(carr.clienteId, carr.clienteNome, excedente) : 0;
+    if (creditoGerado > 0.004) dinheiro = Math.round((dinheiro - creditoGerado) * 100) / 100;
+    await ajustarCreditoCliente(carr.clienteId, -creditoUsado);
+
+    const valorPago = Math.round((creditoUsado + dinheiro) * 100) / 100;
+    const pagamentos = [];
+    if (creditoUsado > 0.004) pagamentos.push({ valor: creditoUsado, forma: 'Créditos do cliente', data: today(), observacoes: 'Créditos do cadastro usados no fechamento' });
+    if (dinheiro > 0.004) pagamentos.push({ valor: dinheiro, forma: pagamentoFinal || 'Não informado', data: today(), observacoes: creditoGerado > 0.004 ? `Pagamento no fechamento da venda (${money(creditoGerado)} guardado como crédito)` : 'Pagamento no fechamento da venda' });
+    statusFinal = statusPagamentoAuto(totalP, valorPago);
+    updatesPagamento = { valorPago, statusPagamento: statusFinal, pagamentos, usarCreditos: false };
+  }
 
   // Usa a regra automática calculada agora, não o carr.jurosPor salvo — esse campo só é gravado
   // quando a consultora mexe manualmente na parcela, então podia ficar desatualizado (ex: "vendedor"
@@ -792,17 +716,13 @@ export async function finalizarCarrinho(id) {
   }, { merge: true });
 
   const custoCartao = calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, jurosPorFinal, state.profile, carr.cartaoTipo).total;
-  // Lê o frete direto do campo (como o valor recebido): salvarCarrinhoOpt acabou de gravar no
-  // banco, mas o objeto carr em memória ainda é o de antes do salvamento.
-  const freteCusto = $('cFrete') ? parseMoney($('cFrete').value) : Number(carr.freteCusto || 0);
-  const lucroReal = carr.lucroTotal - custoCartao - freteCusto;
+  const lucroReal = carr.lucroTotal - custoCartao;
 
   await addDoc(col('vendas'), {
     carrinhoId: id, clienteId: carr.clienteId, clienteNome: carr.clienteNome,
     data: today(), receita: carr.totalPedido, totalPedido: carr.totalPedido,
     subtotalPedido: carr.subtotalPedido ?? carr.totalPedido,
     descontoPedidoValor: carr.descontoPedidoValor || 0,
-    freteCusto,
     custoTotal: carr.custoTotal, lucroTotal: carr.lucroTotal,
     custoCartao, lucroReal,
     margem: carr.totalPedido ? ((carr.lucroTotal) / carr.totalPedido) * 100 : 0,

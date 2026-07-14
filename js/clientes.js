@@ -159,6 +159,7 @@ export function openCliente360(id) {
       <div class="card"><span>Compras</span><b>${vendas.length}</b></div>
       <div class="card"><span>Faturamento</span><b>${money(totalFat)}</b></div>
       <div class="card"><span>Lucro gerado</span><b>${money(totalLuc)}</b></div>
+      ${Number(c.credito || 0) > 0.004 ? `<div class="card"><span>Créditos</span><b style="color:var(--success)">${money(c.credito)}</b></div>` : ''}
       <div class="card"><span>Status</span><b>${pill(ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio', ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red')}</b></div>
     </div>
 

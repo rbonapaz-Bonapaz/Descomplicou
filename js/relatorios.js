@@ -80,7 +80,12 @@ export function renderRelatorios() {
   const custoSaidasNaoVenda = (state.data.movimentacoesEstoque || [])
     .filter(m => m.tipo === 'saida' && !m.geraLucro && !String(m.motivo || '').startsWith('Troca') && inPeriod(m.data, d))
     .reduce((s, m) => s + Number(m.valorFinanceiro || 0), 0);
-  const lucroLiquido = r.lucReal - custoSaidasNaoVenda;
+  // Fretes pagos à Farmasi nos pedidos de compra (registrados em Estoque → Pré-encomenda) —
+  // despesa simples do período, fora do custo médio dos produtos (decisão de 14/07/2026).
+  const freteFarmasi = (state.data.despesas || [])
+    .filter(x => x.tipo === 'frete_farmasi' && inPeriod(x.data, d))
+    .reduce((s, x) => s + Number(x.valor || 0), 0);
+  const lucroLiquido = r.lucReal - custoSaidasNaoVenda - freteFarmasi;
 
   // Saídas de estoque que não são venda, agrupadas por motivo (Brinde, Parceria, Consumo próprio,
   // Perda, Ajuste) — trocas ficam de fora daqui porque já têm o próprio painel "Trocas" acima.
@@ -116,10 +121,11 @@ export function renderRelatorios() {
 
     <div class="panel">
       <h3>Lucro líquido consolidado</h3>
-      <p class="muted">Lucro real das vendas, já descontando taxa de cartão e o custo de brindes/parcerias/consumo/perdas — o número mais próximo do que realmente sobra no bolso.</p>
+      <p class="muted">Lucro real das vendas, já descontando taxa de cartão, o custo de brindes/parcerias/consumo/perdas e o frete pago à Farmasi — o número mais próximo do que realmente sobra no bolso.</p>
       <div class="pedido-totais" style="width:100%;margin:10px 0 0">
         <div class="pedido-total-line"><span>Lucro real das vendas</span><b>${money(r.lucReal)}</b></div>
         <div class="pedido-total-line"><span>Custo de brindes/perdas/consumo</span><b style="color:var(--error)">- ${money(custoSaidasNaoVenda)}</b></div>
+        ${freteFarmasi > 0 ? `<div class="pedido-total-line"><span>Frete pago à Farmasi</span><b style="color:var(--error)">- ${money(freteFarmasi)}</b></div>` : ''}
         <div class="pedido-total-line" style="font-size:11pt;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span><b>Lucro líquido</b></span><b>${money(lucroLiquido)}</b></div>
       </div>
       ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}

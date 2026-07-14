@@ -30,6 +30,17 @@ export function renderAdmin() {
   if (sec === 'catalogoMestre') {
     html += `<div class="panel">
       <div class="panel-head">
+        <h3>Linhas da base coletiva</h3>
+      </div>
+      <p class="muted">Linhas de produto publicadas para todas as consultoras. Quem usa a base coletiva pode sincronizar em Produtos → Linhas — as linhas daqui são <b>acrescentadas</b> às que a consultora já tem (nada é apagado).</p>
+      <div class="toolbar">
+        <input id="novaLinhaColetiva" placeholder="Nome da linha (ex: Maquiagem)">
+        <button class="btn dark" onclick="App.adicionarLinhaColetiva()">+ Adicionar linha</button>
+      </div>
+      <div id="lcLista" style="margin-top:12px"><p class="muted">Carregando linhas...</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
         <h3>Catálogo mestre (base coletiva)</h3>
         <span id="cmCount" class="pill blue">carregando...</span>
       </div>
@@ -75,7 +86,65 @@ export function renderAdmin() {
   }
 
   $('admin').innerHTML = html;
-  if (sec === 'catalogoMestre') carregarCatalogoMestre();
+  if (sec === 'catalogoMestre') { carregarCatalogoMestre(); carregarLinhasColetivas(); }
+}
+
+// --- Linhas da base coletiva (G.4) ---
+// Guardadas em /config/linhasColetivas (leitura: qualquer autenticado; escrita: só admin — já
+// coberto pelas regras existentes de /config). As consultoras sincronizam em Produtos → Linhas.
+let linhasColetivasCache = null;
+
+async function carregarLinhasColetivas() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'linhasColetivas'));
+    linhasColetivasCache = snap.exists() ? (snap.data().linhas || []) : [];
+    renderLinhasColetivas();
+  } catch (e) {
+    if ($('lcLista')) $('lcLista').innerHTML = `<p class="muted">Erro ao carregar: ${esc(e.message)} — as regras do Firestore podem não estar publicadas.</p>`;
+  }
+}
+
+function renderLinhasColetivas() {
+  const box = $('lcLista');
+  if (!box) return;
+  const linhas = linhasColetivasCache || [];
+  box.innerHTML = linhas.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${linhas.map(l => `
+        <span class="chip" style="display:inline-flex;align-items:center;gap:8px">
+          ${esc(labelLinha(l))}
+          <button style="border:0;background:none;cursor:pointer;color:var(--error);font-weight:900" onclick="App.removerLinhaColetiva('${esc(l)}')" title="Remover linha">✗</button>
+        </span>`).join('')}</div>`
+    : '<p class="muted">Nenhuma linha publicada ainda.</p>';
+}
+
+async function salvarLinhasColetivas(linhas) {
+  await setDoc(doc(db, 'config', 'linhasColetivas'), { linhas, atualizadoEm: serverTimestamp() }, { merge: true });
+  linhasColetivasCache = linhas;
+  renderLinhasColetivas();
+}
+
+export async function adicionarLinhaColetiva() {
+  const nome = ($('novaLinhaColetiva')?.value || '').trim();
+  if (!nome) return toast('Digite o nome da linha');
+  const atuais = linhasColetivasCache || [];
+  if (atuais.some(l => norm(l) === norm(nome))) return toast('Essa linha já existe na base coletiva');
+  try {
+    await salvarLinhasColetivas([...atuais, nome]);
+    if ($('novaLinhaColetiva')) $('novaLinhaColetiva').value = '';
+    toast(`Linha "${nome}" publicada na base coletiva`);
+  } catch (e) {
+    toast('Não foi possível salvar: ' + e.message);
+  }
+}
+
+export async function removerLinhaColetiva(nome) {
+  if (!confirm(`Remover a linha "${nome}" da base coletiva? As consultoras que já sincronizaram continuam com ela.`)) return;
+  try {
+    await salvarLinhasColetivas((linhasColetivasCache || []).filter(l => l !== nome));
+    toast(`Linha "${nome}" removida da base coletiva`);
+  } catch (e) {
+    toast('Não foi possível remover: ' + e.message);
+  }
 }
 
 async function carregarCatalogoMestre(mostrarToast) {

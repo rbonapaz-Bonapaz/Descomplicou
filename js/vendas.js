@@ -1,5 +1,5 @@
 import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente } from './state.js';
-import { $, esc, money, pill, normStatusPag, norm, thSort } from './utils.js';
+import { $, esc, money, pill, normStatusPag, norm, thSort, withFocusPreserved } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
 const LABEL_STATUS_PAG = { pendente: 'Pendente', pago: 'Pago', parcial: 'Parcial' };
@@ -42,8 +42,13 @@ function detalheVendaHtml(c) {
 }
 
 export function renderVendas() {
+  withFocusPreserved('qvendas', () => {
   const r = salesAgg(30);
-  const carrinhos = state.data.carrinhos;
+  // Busca por cliente: filtra todas as listas (abertos, finalizados etc.) pelo nome atual do
+  // cliente ou pelo nome salvo na época — objetivo é achar o pedido da pessoa rapidinho.
+  const q = norm($('qvendas')?.value || '');
+  let carrinhos = state.data.carrinhos;
+  if (q) carrinhos = carrinhos.filter(c => norm(nomeAtualDoCliente(c.clienteId, c.clienteNome) + ' ' + (c.clienteNome || '')).includes(q));
   const abertos = carrinhos.filter(c => c.status === 'aberto');
   const finalizados = carrinhos.filter(c => c.status === 'finalizado' || c.status === 'parcial' || c.status === 'entregue');
   const futuras = carrinhos.filter(c => (c.status === 'parcial' || c.status === 'finalizado') && c.possuiEntregaFutura && c.itens?.some(i => i.tipoEntrega === 'entrega_futura' && !i.entregue));
@@ -64,6 +69,9 @@ export function renderVendas() {
         <h3>Vendas e Carrinhos</h3>
         <button class="btn dark" onclick="App.openNovoCarrinho()">+ Novo carrinho</button>
       </div>
+      <div class="toolbar">
+        <input id="qvendas" placeholder="Buscar cliente..." oninput="App.renderVendas()" value="${esc($('qvendas')?.value || '')}">
+      </div>
       ${chips('vendas', [['todos', 'Todos'], ['abertos', 'Carrinhos abertos'], ['finalizados', 'Finalizados'], ['futuras', 'Entregas futuras'], ['pgto_pendente', 'Pgto pendente'], ['cancelados', 'Cancelados']])}
 
       ${f === 'todos' || f === 'abertos' ? renderSection('🛒 Carrinhos abertos', abertos, true) : ''}
@@ -72,6 +80,7 @@ export function renderVendas() {
       ${f === 'pgto_pendente' ? renderSection('💰 Pagamento pendente', finalizados.filter(c => normStatusPag(c.statusPagamento) === 'pendente' || normStatusPag(c.statusPagamento) === 'parcial'), false) : ''}
       ${f === 'cancelados' ? renderSection('✗ Cancelados', cancelados, false) : ''}
     </div>`;
+  });
 }
 
 // Ordena a lista de carrinhos/pedidos pela coluna clicada (state.filters.vendasSort, ex: "total_desc").
