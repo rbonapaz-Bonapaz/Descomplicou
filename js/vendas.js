@@ -1,4 +1,4 @@
-import { state, ref, setDoc, serverTimestamp, salesAgg } from './state.js';
+import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente } from './state.js';
 import { $, esc, money, pill, normStatusPag, norm, thSort } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
@@ -77,7 +77,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
       const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
       return `<tr>
         <td data-label="Cliente">
-          <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(c.clienteNome)}</b>
+          <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
         </td>
         <td data-label="Itens">${(c.itens || []).length}</td>
         <td data-label="Total">${money(c.totalPedido)}</td>
@@ -94,7 +94,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
             ${!isAberto && normStatusPag(c.statusPagamento) !== 'pago' ? `<button class="btn small" style="color:var(--success)" onclick="App.registrarPagamento('${c.id}')">💰 Registrar pagamento</button>` : ''}
             ${!isAberto && c.status !== 'cancelado' ? `<button class="btn small" onclick="App.reabrirCarrinho('${c.id}')">↩️ Reabrir</button>` : ''}
             ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}
-            ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: c.clienteNome, telefone: cli?.whatsapp, carrinho: c })}
+            ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeAtualDoCliente(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
           </div>
         </td>
       </tr>`;

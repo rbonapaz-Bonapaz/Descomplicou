@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, ref, db, doc, collection, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, linhasDe, labelLinha, descontoPercent, today } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today } from './utils.js';
 import { importPanelHtml } from './importar.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
@@ -46,29 +46,43 @@ function productCard(x) {
   </div>`;
 }
 
+// A busca de Produtos (qprod) e a busca de atribuir linhas (qLinhaAssoc) convivem na mesma
+// função de render, em abas diferentes — por isso preserva foco/cursor de qualquer uma das
+// duas que estiver ativa (withFocusPreserved de utils.js só cobre um id por vez).
+const FOCUS_IDS_PRODUTOS = ['qprod', 'qLinhaAssoc'];
 export function renderProdutos() {
-  withFocusPreserved('qprod', () => {
-    const s = stockAgg(), f = state.filters.prod;
-    let ps = s.ps;
-    if (f === 'em') ps = ps.filter(x => x.est > 0);
-    if (f === 'sem') ps = ps.filter(x => x.est <= 0);
-    if (f === 'promo') ps = ps.filter(x => x.promo);
-    if (f === 'semcusto') ps = ps.filter(x => x.semCusto);
-    if (f === 'baixo') ps = ps.filter(x => x.baixo);
-    if (f === 'catalogo') ps = ps.filter(x => x.p.ativoCatalogo !== false);
-    if (f === 'foracatalogo') ps = ps.filter(x => x.p.ativoCatalogo === false);
+  const idAtivo = FOCUS_IDS_PRODUTOS.find(id => document.activeElement?.id === id);
+  const elAtivo = idAtivo ? document.getElementById(idAtivo) : null;
+  const cursorPos = elAtivo ? elAtivo.selectionStart : null;
+  renderProdutosInner();
+  if (idAtivo) {
+    const el = document.getElementById(idAtivo);
+    if (el) { el.focus(); el.setSelectionRange(cursorPos, cursorPos); }
+  }
+}
 
-    const linhaFiltro = state.filters.prodLinha || '';
-    if (linhaFiltro) ps = ps.filter(x => linhasDe(x.p).includes(linhaFiltro));
+function renderProdutosInner() {
+  const s = stockAgg(), f = state.filters.prod;
+  let ps = s.ps;
+  if (f === 'em') ps = ps.filter(x => x.est > 0);
+  if (f === 'sem') ps = ps.filter(x => x.est <= 0);
+  if (f === 'promo') ps = ps.filter(x => x.promo);
+  if (f === 'semcusto') ps = ps.filter(x => x.semCusto);
+  if (f === 'baixo') ps = ps.filter(x => x.baixo);
+  if (f === 'catalogo') ps = ps.filter(x => x.p.ativoCatalogo !== false);
+  if (f === 'foracatalogo') ps = ps.filter(x => x.p.ativoCatalogo === false);
 
-    const q = norm($('qprod')?.value || '');
-    if (q) ps = ps.filter(x => norm(x.p.nome + ' ' + x.p.codigoFarmasi + ' ' + x.p.linha).includes(q));
-    ps = sortWrapped(ps, state.filters.prodSort);
+  const linhaFiltro = state.filters.prodLinha || '';
+  if (linhaFiltro) ps = ps.filter(x => linhasDe(x.p).includes(linhaFiltro));
 
-    const todasLinhas = Array.from(new Set(state.data.produtos.flatMap(linhasDe))).sort((a, b) => labelLinha(a).localeCompare(labelLinha(b), 'pt-BR'));
+  const q = norm($('qprod')?.value || '');
+  if (q) ps = ps.filter(x => norm(x.p.nome + ' ' + x.p.codigoFarmasi + ' ' + x.p.linha).includes(q));
+  ps = sortWrapped(ps, state.filters.prodSort);
 
-    const sec = state.section.produtos;
-    let html = `
+  const todasLinhas = Array.from(new Set(state.data.produtos.flatMap(linhasDe))).sort((a, b) => labelLinha(a).localeCompare(labelLinha(b), 'pt-BR'));
+
+  const sec = state.section.produtos;
+  let html = `
       <div class="cards">
         <div class="card"><span>Total produtos</span><b>${state.data.produtos.length}</b></div>
         <div class="card"><span>Em estoque</span><b>${s.em.length}</b></div>
@@ -109,8 +123,7 @@ export function renderProdutos() {
 
     if (sec === 'importar') html += importPanelHtml();
 
-    $('produtos').innerHTML = html;
-  });
+  $('produtos').innerHTML = html;
 }
 
 export async function excluirProduto(id) {
@@ -183,12 +196,13 @@ function linhasTabHtml() {
     const q = norm(qLinhaAssoc);
     let prods = state.data.produtos;
     if (q) prods = prods.filter(p => norm(p.nome + ' ' + p.codigoFarmasi).includes(q));
+    prods = [...prods].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     html += `<div class="panel">
       <div class="panel-head"><h3>Atribuir "${esc(linhaSelecionadaAtribuir)}" aos produtos</h3></div>
-      <input id="qLinhaAssoc" placeholder="Buscar produto..." onchange="App.filtrarLinhaAssoc(this.value)" value="${esc(qLinhaAssoc)}">
+      <input id="qLinhaAssoc" placeholder="Buscar produto..." oninput="App.filtrarLinhaAssoc(this.value)" value="${esc(qLinhaAssoc)}">
       <div class="table" style="margin-top:10px"><table><thead><tr><th></th><th>Produto</th><th>Código</th><th>Linhas atuais</th></tr></thead><tbody>
         ${prods.map(p => `<tr>
-          <td><input type="checkbox" ${linhasDe(p).includes(linhaSelecionadaAtribuir) ? 'checked' : ''} onchange="App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)"></td>
+          <td>${toggleBareHtml('toggle_' + p.id, linhasDe(p).includes(linhaSelecionadaAtribuir), `App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)`)}</td>
           <td data-label="Produto">${esc(p.nome)}</td>
           <td data-label="Código">${esc(p.codigoFarmasi || '-')}</td>
           <td data-label="Linhas">${esc(linhasDe(p).map(labelLinha).join(', ') || '-')}</td>

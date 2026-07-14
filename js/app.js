@@ -1,6 +1,6 @@
 import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, minimizarModal, restaurarModal,
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
-  onAuthStateChanged, signOut, getDoc, getDocs, setDoc, doc, serverTimestamp, planoInfo
+  onAuthStateChanged, signOut, getDoc, getDocs, setDoc, doc, serverTimestamp, planoInfo, onSnapshot
 } from './state.js';
 import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
 
@@ -55,13 +55,14 @@ $('btnLogin').onclick = async () => {
   try { await signInWithPopup(auth, p); }
   catch (e) { if (e.code === 'auth/popup-blocked') await signInWithRedirect(auth, p); else toast(e.message); }
 };
-$('btnLogout').onclick = () => signOut(auth);
+$('btnLogout').onclick = () => { teardownListeners(); signOut(auth); };
 $('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 getRedirectResult(auth).catch(() => {});
 
 function logoutFromLock() {
   $('bioLock').classList.add('hidden');
   $('planoLock').classList.add('hidden');
+  teardownListeners();
   signOut(auth);
 }
 
@@ -97,6 +98,7 @@ async function tentarDesbloqueio() {
 onAuthStateChanged(auth, async u => {
   $('loading').classList.add('hidden');
   if (!u) {
+    teardownListeners();
     $('login').classList.remove('hidden');
     $('app').classList.add('hidden');
     $('bioLock').classList.add('hidden');
@@ -108,6 +110,7 @@ onAuthStateChanged(auth, async u => {
   setupUI();
   await loadAll();
   renderAll();
+  setupListeners();
 
   if (checkBloqueioPlano()) {
     $('planoLock').classList.remove('hidden');
@@ -195,6 +198,27 @@ function setupUI() {
 }
 
 // --- Data ---
+let _unsubscribes = [];
+let _renderDebounce = null;
+
+function setupListeners() {
+  teardownListeners();
+  for (const n of Object.keys(state.data)) {
+    const unsub = onSnapshot(col(n), snap => {
+      state.data[n] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!_renderDebounce) {
+        _renderDebounce = setTimeout(() => { _renderDebounce = null; renderAll(); }, 80);
+      }
+    });
+    _unsubscribes.push(unsub);
+  }
+}
+
+function teardownListeners() {
+  _unsubscribes.forEach(fn => fn());
+  _unsubscribes = [];
+}
+
 async function loadAll() {
   for (const n of Object.keys(state.data)) {
     const s = await getDocs(col(n));

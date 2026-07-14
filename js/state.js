@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential,
   reauthenticateWithPopup, deleteUser } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { $, daysSince, inPeriod, today } from './utils.js';
 
 const fb = initializeApp(firebaseConfig);
@@ -15,7 +15,7 @@ export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectRes
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential,
   reauthenticateWithPopup, deleteUser };
-export { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch };
+export { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch, onSnapshot };
 
 export const ADMINS = ADMIN_EMAILS;
 
@@ -92,6 +92,7 @@ export function restaurarModal() {
 
 export function prodById(id) { return state.data.produtos.find(p => p.id === id); }
 export function cliById(id) { return state.data.clientes.find(c => c.id === id); }
+export function nomeAtualDoCliente(clienteId, fallback) { return cliById(clienteId)?.nome || fallback || 'Cliente'; }
 export function carrinhoById(id) { return state.data.carrinhos.find(c => c.id === id); }
 
 // Configurável por consultora em Minha Conta (padrão 30 dias caso ela nunca tenha ajustado).

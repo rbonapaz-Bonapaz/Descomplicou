@@ -1,4 +1,4 @@
-import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio } from './state.js';
+import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente } from './state.js';
 import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
@@ -104,12 +104,12 @@ export function renderDashboard() {
           const cli = state.data.clientes.find(c => c.id === a.clienteId);
           return `<div class="list-item">
             <div>
-              <b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(a.clienteNome)}</b>
+              <b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>
               <small>${esc(a.tipo)} • ${esc(a.hora || '')}</small>
             </div>
             <div style="display:flex;gap:4px;align-items:center">
               <span class="tag blue">${esc(a.status || 'agendado')}</span>
-              ${whatsAppBtn(cli?.whatsapp, 'agenda', { nome: a.clienteNome, telefone: cli?.whatsapp, hora: a.hora })}
+              ${whatsAppBtn(cli?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: cli?.whatsapp, hora: a.hora })}
               ${(a.status || 'agendado') === 'agendado' ? `<button class="btn small" onclick="App.concluirAgendamento('${a.id}')">✓</button>` : ''}
             </div>
           </div>`;
@@ -136,7 +136,7 @@ export function renderDashboard() {
         <div class="panel-head"><h3>🛒 Carrinhos pendentes</h3><button class="linkbtn" onclick="App.goto('vendas')">Ver todos</button></div>
         <div class="list">${carrAbertos.slice(0, 5).map(c => `<div class="list-item">
           <div>
-            <b class="cli-link" onclick="App.openCarrinho('${c.id}')">${esc(c.clienteNome)}</b>
+            <b class="cli-link" onclick="App.openCarrinho('${c.id}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
             <small>${(c.itens || []).length} itens • ${money(c.totalPedido || 0)}</small>
           </div>
           <button class="btn small dark" onclick="App.openCarrinho('${c.id}')">Abrir</button>
@@ -151,11 +151,11 @@ export function renderDashboard() {
           const itensNomes = (c.itens || []).map(i => i.produtoNome).join(', ');
           return `<div class="list-item">
             <div>
-              <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(c.clienteNome)}</b>
+              <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
               <small>${esc(itensNomes)} • ${atraso <= 0 ? 'previsto para hoje' : atraso + ' dia(s) de atraso'}</small>
             </div>
             <div style="display:flex;gap:4px;align-items:center">
-              ${whatsAppBtn(cli?.whatsapp, 'retorno', { nome: c.clienteNome, telefone: cli?.whatsapp, carrinho: c })}
+              ${whatsAppBtn(cli?.whatsapp, 'retorno', { nome: nomeAtualDoCliente(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
               <button class="btn small" onclick="App.marcarRetornoFeito('${c.id}')">✓ Feito</button>
             </div>
           </div>`;

@@ -631,7 +631,11 @@ export async function cancelarCarrinho(id) {
 export async function reabrirCarrinho(id) {
   const carr = state.data.carrinhos.find(c => c.id === id);
   if (!carr) return;
-  if (!confirm('Reabrir este carrinho? Os itens já baixados voltam ao estoque e a venda registrada será removida.')) return;
+  let aviso = 'Reabrir este carrinho? Os itens já baixados voltam ao estoque e a venda registrada será removida.';
+  if (normStatusPag(carr.statusPagamento) !== 'pendente' && carr.valorPago > 0) {
+    aviso += `\n\n⚠️ Este carrinho tem pagamento registrado (${money(carr.valorPago)}). Reabrir também apagará o registro de pagamento.`;
+  }
+  if (!confirm(aviso)) return;
 
   for (const item of carr.itens || []) {
     if (item.baixouEstoque) {

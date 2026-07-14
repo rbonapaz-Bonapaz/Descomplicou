@@ -1,4 +1,4 @@
-import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, cliById, agendaAgg } from './state.js';
+import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, cliById, nomeAtualDoCliente, agendaAgg } from './state.js';
 import { $, esc, today, pill, formatDateBR, toggleHtml } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { sincronizarAgendamento, removerEventoGoogle, googleAgendaConectada, listarEventosGoogle } from './googleAgenda.js';
@@ -92,7 +92,7 @@ function tableAgenda() {
       <td data-label="Data">${formatDateBR(a.data)}</td>
       <td data-label="Hora">${esc(a.hora || '-')}</td>
       <td data-label="Cliente">
-        ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(a.clienteNome)}</b>` : `<b>${esc(a.clienteNome)}</b>${a.origemGoogle ? pill('via Google', 'blue') : ''}`}
+        ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>` : `<b>${esc(a.clienteNome)}</b>${a.origemGoogle ? pill('via Google', 'blue') : ''}`}
       </td>
       <td data-label="Tipo">${esc(a.tipo)}</td>
       <td data-label="Status">${pill(a.status || 'agendado', statusColor(a.status))}</td>
@@ -105,7 +105,7 @@ function tableAgenda() {
           ` : ''}
           <button class="btn small" onclick="App.editarAgendamento('${a.id}')">✏️</button>
           <button class="btn small" onclick="App.removerAgendamento('${a.id}')">🗑️</button>
-          ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: a.clienteNome, telefone: c?.whatsapp, hora: a.hora })}
+          ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
         </div>
       </td>
     </tr>`;
@@ -191,7 +191,7 @@ export function concluirAgendamento(id) {
   const a = state.data.agendamentos.find(x => x.id === id);
   if (!a) return;
   showModal(`<h3>Concluir Agendamento</h3>
-    <p><b>${esc(a.clienteNome)}</b> — ${esc(a.tipo)} em ${formatDateBR(a.data)}</p>
+    <p><b>${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b> — ${esc(a.tipo)} em ${formatDateBR(a.data)}</p>
     <div class="grid">
       <div class="field full"><label>Resumo do atendimento</label><textarea id="aResumo"></textarea></div>
       <div class="field">${toggleHtml('aGerouVenda', false, '', 'Gerou venda?')}</div>
@@ -236,7 +236,7 @@ export function reagendarAgendamento(id) {
   const a = state.data.agendamentos.find(x => x.id === id);
   if (!a) return;
   showModal(`<h3>Reagendar</h3>
-    <p><b>${esc(a.clienteNome)}</b> — ${esc(a.tipo)}</p>
+    <p><b>${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b> — ${esc(a.tipo)}</p>
     <div class="grid">
       <div class="field"><label>Nova data</label><input type="date" id="aNovaData" value="${today()}"></div>
       <div class="field"><label>Nova hora</label><input type="time" id="aNovaHora" value="${a.hora || ''}"></div>
