@@ -35,7 +35,7 @@ function detalheVendaHtml(c) {
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
     return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
-      <span>${it.quantidade}× ${esc(it.produtoNome)} ${tags}</span>
+      <span>${it.quantidade}× ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small> ` : ''}${esc(it.produtoNome)} ${tags}</span>
       <span style="white-space:nowrap">${temDesconto ? `<del class="muted">${money(original)}</del> ` : ''}${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b></span>
     </div>`;
   }).join('');

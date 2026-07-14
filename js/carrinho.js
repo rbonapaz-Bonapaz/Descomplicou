@@ -177,6 +177,7 @@ export function openCarrinho(id) {
       </div>
       <p class="muted" id="ciMotivoInfo" style="margin:6px 0 0"></p>
       <br><button class="btn dark small" onclick="App.adicionarItemCarrinho('${id}')">+ Adicionar ao carrinho</button>
+      <button class="btn small pink" onclick="App.openKitForm('${id}')">🎁 Adicionar kit</button>
     </div>
 
     <div class="panel" style="margin-top:12px">
@@ -188,7 +189,7 @@ export function openCarrinho(id) {
         const temDesconto = original > it.precoUnitario;
         const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
         return `<tr>
-        <td data-label="Produto">${esc(it.produtoNome)}</td>
+        <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
         <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
         <td data-label="Qtd">${it.quantidade}</td>
         <td data-label="Original">${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
@@ -203,9 +204,10 @@ export function openCarrinho(id) {
 
     <div class="cards" style="margin-top:12px">
       <div class="card"><span>Total original</span><b>${money(itens.reduce((s, i) => s + Number(i.precoOriginal || i.precoUnitario || 0) * i.quantidade, 0))}</b></div>
-      <div class="card"><span>Total</span><b>${money(carr.totalPedido || 0)}</b></div>
-      <div class="card"><span>Desconto total</span><b>${money(itens.reduce((s, i) => s + (Number(i.precoOriginal || i.precoUnitario || 0) - i.precoUnitario) * i.quantidade, 0))}</b></div>
-      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total)}</b></div>
+      ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
+      <div class="card"><span>Total a cobrar</span><b>${money(carr.totalPedido || 0)}</b></div>
+      <div class="card"><span>Desconto por item</span><b>${money(itens.reduce((s, i) => s + (Number(i.precoOriginal || i.precoUnitario || 0) - i.precoUnitario) * i.quantidade, 0))}</b></div>
+      <div class="card"><span>Lucro real (após taxas e frete)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total - Number(carr.freteCusto || 0))}</b></div>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -217,6 +219,20 @@ export function openCarrinho(id) {
           <option ${carr.pagamento === 'Cartão' ? 'selected' : ''}>Cartão</option>
           <option ${carr.pagamento === 'Link de pagamento' ? 'selected' : ''}>Link de pagamento</option>
         </select>
+      </div>
+      <div class="field"><label>Desconto no pedido (opcional)</label>
+        <div style="display:flex;gap:8px">
+          <input id="cDescontoValor" placeholder="Ex: 10" value="${carr.descontoPedido?.valor ?? ''}" style="flex:1" onblur="App.aplicarDescontoPedido('${id}')">
+          <select id="cDescontoTipo" style="max-width:80px" onchange="App.aplicarDescontoPedido('${id}')">
+            <option value="percent" ${(!carr.descontoPedido || carr.descontoPedido.tipo === 'percent') ? 'selected' : ''}>%</option>
+            <option value="valor" ${carr.descontoPedido?.tipo === 'valor' ? 'selected' : ''}>R$</option>
+          </select>
+        </div>
+        <span class="muted" style="font-size:12px">Sobre o pedido inteiro (ex: 10% na primeira compra), além dos descontos por item. O total a cobrar recalcula sozinho.</span>
+      </div>
+      <div class="field"><label>Frete pago por você (opcional)</label>
+        <input id="cFrete" value="${Number(carr.freteCusto || 0) > 0 ? money(carr.freteCusto) : ''}" placeholder="R$ 0,00" onblur="App.salvarCarrinhoOpt('${id}',true)">
+        <span class="muted" style="font-size:12px">Despesa sua com a entrega — não muda o total do cliente, só reduz o lucro real do pedido.</span>
       </div>
       <div class="field"><label>Valor recebido agora</label>
         <input id="cValorRecebido" value="${money(carr.valorPago > 0 ? carr.valorPago : (carr.totalPedido || 0))}">
@@ -246,12 +262,14 @@ export function openCarrinho(id) {
 function openCarrinhoView(carr) {
   const itens = carr.itens || [];
   const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
-  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total;
+  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total - Number(carr.freteCusto || 0);
   showModal(`<h3>Pedido — ${esc(carr.clienteNome)}</h3>
     <div class="cards">
       <div class="card"><span>Status</span><b>${pill(carr.status, carr.status === 'finalizado' ? 'green' : carr.status === 'cancelado' ? 'red' : 'blue')}</b></div>
+      ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total</span><b>${money(carr.totalPedido)}</b></div>
-      <div class="card"><span>Lucro real (após taxas)</span><b>${money(lucroReal)}</b></div>
+      ${Number(carr.freteCusto || 0) > 0.004 ? `<div class="card"><span>Frete (sua despesa)</span><b style="color:var(--error)">− ${money(carr.freteCusto)}</b></div>` : ''}
+      <div class="card"><span>Lucro real (após taxas e frete)</span><b>${money(lucroReal)}</b></div>
       <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || '-')}</b></div>
     </div>
     <div class="table" style="margin-top:12px"><table><thead><tr>
@@ -261,7 +279,7 @@ function openCarrinhoView(carr) {
       const temDesconto = original > it.precoUnitario;
       const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
       return `<tr>
-      <td data-label="Produto">${esc(it.produtoNome)}</td>
+      <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
       <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
       <td data-label="Qtd">${it.quantidade}</td>
       <td data-label="Original">${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
@@ -403,7 +421,7 @@ export async function confirmarPagamento(carrinhoId) {
     const venda = state.data.vendas.find(v => v.carrinhoId === carrinhoId);
     if (venda) {
       const novoCustoCartao = Number(venda.custoCartao || 0) + custoCartao;
-      const novoLucroReal = Number(venda.lucroTotal || 0) - novoCustoCartao;
+      const novoLucroReal = Number(venda.lucroTotal || 0) - novoCustoCartao - Number(venda.freteCusto || 0);
       await setDoc(ref('vendas', venda.id), {
         custoCartao: novoCustoCartao, lucroReal: novoLucroReal,
         margemReal: venda.totalPedido ? (novoLucroReal / venda.totalPedido) * 100 : 0
@@ -468,7 +486,7 @@ export async function adicionarItemCarrinho(carrinhoId) {
   };
 
   const itens = [...(carr.itens || []), item];
-  const totais = calcTotais(itens);
+  const totais = calcTotais(itens, carr.descontoPedido);
 
   await setDoc(ref('carrinhos', carrinhoId), {
     ...totais, itens,
@@ -487,9 +505,17 @@ export async function adicionarItemCarrinho(carrinhoId) {
 export async function removerItemCarrinho(carrinhoId, idx) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  const itens = [...(carr.itens || [])];
-  itens.splice(idx, 1);
-  const totais = calcTotais(itens);
+  let itens = [...(carr.itens || [])];
+  const alvo = itens[idx];
+  // Item de kit não sai sozinho: o valor foi rateado entre os componentes, então remover um só
+  // deixaria os outros com preços que não fazem sentido — remove o kit inteiro.
+  if (alvo?.kitId) {
+    if (!confirm(`"${alvo.produtoNome}" faz parte do kit "${alvo.kitNome}". Remover o kit inteiro do carrinho?`)) return;
+    itens = itens.filter(i => i.kitId !== alvo.kitId);
+  } else {
+    itens.splice(idx, 1);
+  }
+  const totais = calcTotais(itens, carr.descontoPedido);
 
   await setDoc(ref('carrinhos', carrinhoId), {
     ...totais, itens,
@@ -501,12 +527,185 @@ export async function removerItemCarrinho(carrinhoId, idx) {
   openCarrinho(carrinhoId);
 }
 
-function calcTotais(itens) {
+// Valor em R$ do desconto sobre o pedido inteiro ({tipo:'percent'|'valor', valor}), limitado
+// ao subtotal — um desconto fixo maior que o pedido não pode deixar o total negativo.
+function valorDescontoPedido(subtotal, d) {
+  if (!d || !Number(d.valor)) return 0;
+  const calc = d.tipo === 'percent' ? subtotal * Number(d.valor) / 100 : Number(d.valor);
+  return Math.min(Math.max(calc, 0), subtotal);
+}
+
+// totalPedido é sempre o valor líquido (após desconto do pedido) — é ele que alimenta status de
+// pagamento, venda, relatórios, PDF e WhatsApp. O desconto concedido sai direto do lucro.
+function calcTotais(itens, descontoPedido) {
+  const subtotalPedido = itens.reduce((s, i) => s + i.totalItem, 0);
+  const descontoPedidoValor = valorDescontoPedido(subtotalPedido, descontoPedido);
   return {
-    totalPedido: itens.reduce((s, i) => s + i.totalItem, 0),
+    subtotalPedido,
+    descontoPedidoValor,
+    totalPedido: subtotalPedido - descontoPedidoValor,
     custoTotal: itens.reduce((s, i) => s + i.custoTotal, 0),
-    lucroTotal: itens.reduce((s, i) => s + i.lucroTotal, 0)
+    lucroTotal: itens.reduce((s, i) => s + i.lucroTotal, 0) - descontoPedidoValor
   };
+}
+
+// Desconto sobre o pedido inteiro (ex: 10% na primeira compra), além dos descontos por item.
+// Recalcula na hora o total a cobrar e o lucro; trocar itens depois reaplica o mesmo desconto.
+export async function aplicarDescontoPedido(id) {
+  const carr = state.data.carrinhos.find(c => c.id === id);
+  if (!carr) return;
+  const tipo = $('cDescontoTipo')?.value || 'percent';
+  const bruto = tipo === 'percent'
+    ? Number(String($('cDescontoValor')?.value || '').replace(',', '.'))
+    : parseMoney($('cDescontoValor')?.value);
+  const valor = Math.max(0, tipo === 'percent' ? Math.min(bruto || 0, 100) : (bruto || 0));
+  const descontoPedido = valor > 0 ? { tipo, valor } : null;
+  const totais = calcTotais(carr.itens || [], descontoPedido);
+  await setDoc(ref('carrinhos', id), { descontoPedido, ...totais, atualizadoEm: serverTimestamp() }, { merge: true });
+  await window.App.refresh();
+  openCarrinho(id);
+}
+
+// --- KITs (ex: Farmasi vende 3 produtos que somam R$290 por R$185) ---
+// O kit não é um produto próprio: vira itens normais do carrinho com o valor pago distribuído
+// proporcionalmente ao preço de referência de cada componente — assim estoque, custo e lucro
+// continuam corretos por produto. kitId/kitNome só agrupam visualmente.
+let kitTemp = { nome: '', valor: '', itens: [] };
+
+function precoReferencia(p) {
+  return Number(p.precoOriginal || 0) || Number(p.precoVenda || 0) || Number(p.precoAtual || 0);
+}
+
+export function openKitForm(carrinhoId, manterComposicao = false) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+  if (!manterComposicao) kitTemp = { nome: '', valor: '', itens: [] };
+
+  const prods = state.data.produtos.filter(p => carr.mostrarSemEstoque || estoqueDisponivel(p.id) > 0);
+  const picker = searchPickerHtml('kitProd', prods,
+    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ref: ${money(precoReferencia(p))}`);
+
+  const totalRef = kitTemp.itens.reduce((s, it) => {
+    const p = prodById(it.produtoId);
+    return s + (p ? precoReferencia(p) * it.quantidade : 0);
+  }, 0);
+  const valorKit = parseMoney(kitTemp.valor);
+
+  const linhas = kitTemp.itens.map((it, idx) => {
+    const p = prodById(it.produtoId);
+    if (!p) return '';
+    const ref = precoReferencia(p) * it.quantidade;
+    const proporcional = totalRef > 0 ? valorKit * ref / totalRef : (kitTemp.itens.length ? valorKit / kitTemp.itens.length : 0);
+    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)">
+      <span>${it.quantidade}× ${esc(p.nome)} <small class="muted">(ref: ${money(ref)})</small></span>
+      <span style="white-space:nowrap">${valorKit > 0 ? `<b>${money(proporcional)}</b> no kit ` : ''}<button class="btn small" style="color:var(--error)" onclick="App.removerProdutoKit('${carrinhoId}',${idx})">✗</button></span>
+    </div>`;
+  }).join('');
+
+  showModal(`<h3>🎁 Montar kit</h3>
+    <p class="muted">O valor pago pelo kit é distribuído entre os produtos na proporção do preço de referência de cada um — estoque e lucro ficam certos por produto. Valor R$ 0,00 = kit de brinde.</p>
+    <div class="grid">
+      <div class="field"><label>Nome do kit</label><input id="kitNome" value="${esc(kitTemp.nome)}" placeholder="Ex: Kit Nutriplus"></div>
+      <div class="field"><label>Valor pago pelo kit</label><input id="kitValor" value="${esc(kitTemp.valor)}" placeholder="Ex: 185,00"></div>
+      <div class="field full"><label>Produto</label>${picker}</div>
+      <div class="field"><label>Quantidade</label><input id="kitQtd" type="number" value="1" min="1"></div>
+    </div>
+    <br><button class="btn small dark" onclick="App.adicionarProdutoKit('${carrinhoId}')">+ Incluir no kit</button>
+    ${kitTemp.itens.length ? `<div class="panel" style="background:#F7FAFC;margin-top:12px">
+      <h4 style="margin:0 0 6px">Composição (${kitTemp.itens.length}) — referência total: ${money(totalRef)}</h4>
+      ${linhas}
+      ${valorKit > 0 && totalRef > 0 ? `<p class="muted" style="margin:8px 0 0">Desconto do kit: ${money(totalRef - valorKit)} (${Math.round((1 - valorKit / totalRef) * 100)}% sobre a referência)</p>` : ''}
+    </div>` : ''}
+    <br>
+    <button class="btn dark" onclick="App.confirmarKit('${carrinhoId}')">Adicionar kit ao carrinho</button>
+    <button class="btn ghost" onclick="App.openCarrinho('${carrinhoId}')">Voltar ao carrinho</button>`);
+}
+
+function guardarCamposKit() {
+  kitTemp.nome = $('kitNome')?.value ?? kitTemp.nome;
+  kitTemp.valor = $('kitValor')?.value ?? kitTemp.valor;
+}
+
+export function adicionarProdutoKit(carrinhoId) {
+  const p = prodById($('kitProd')?.value);
+  if (!p) return toast('Selecione um produto');
+  const qtd = Math.max(1, Number($('kitQtd')?.value || 1));
+  guardarCamposKit();
+  const existente = kitTemp.itens.find(it => it.produtoId === p.id);
+  if (existente) existente.quantidade += qtd;
+  else kitTemp.itens.push({ produtoId: p.id, quantidade: qtd });
+  openKitForm(carrinhoId, true);
+}
+
+export function removerProdutoKit(carrinhoId, idx) {
+  guardarCamposKit();
+  kitTemp.itens.splice(idx, 1);
+  openKitForm(carrinhoId, true);
+}
+
+export async function confirmarKit(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+  guardarCamposKit();
+  if (kitTemp.itens.length < 2) return toast('Inclua pelo menos 2 produtos no kit');
+  const valorKit = parseMoney(kitTemp.valor);
+  const kitNome = (kitTemp.nome || '').trim() || 'Kit';
+  const isVenda = valorKit > 0.004;
+
+  // Confere estoque de todos os componentes antes de mexer em qualquer coisa
+  for (const it of kitTemp.itens) {
+    const p = prodById(it.produtoId);
+    if (!p) return toast('Produto do kit não encontrado');
+    if (estoqueDisponivel(p.id) < it.quantidade && !carr.permitirEntregaFutura) {
+      return toast(`Estoque insuficiente de ${p.nome}. Ative "Permitir entrega futura" no carrinho ou ajuste o kit.`);
+    }
+  }
+
+  const totalRef = kitTemp.itens.reduce((s, it) => s + precoReferencia(prodById(it.produtoId)) * it.quantidade, 0);
+  const kitId = 'kit_' + Date.now();
+  const novos = [];
+  let somaDistribuida = 0;
+
+  kitTemp.itens.forEach((it, i) => {
+    const p = prodById(it.produtoId);
+    const ref = precoReferencia(p) * it.quantidade;
+    // Rateio proporcional à referência (ou igualitário se nenhum componente tem preço); o último
+    // item recebe o resíduo do arredondamento para a soma bater exatamente com o valor do kit.
+    const ultimo = i === kitTemp.itens.length - 1;
+    let totalItem = !isVenda ? 0
+      : ultimo ? Math.round((valorKit - somaDistribuida) * 100) / 100
+      : Math.round((totalRef > 0 ? valorKit * ref / totalRef : valorKit / kitTemp.itens.length) * 100) / 100;
+    somaDistribuida += totalItem;
+    const custoMedio = Number(p.custoMedio || 0);
+    const tipoEntrega = estoqueDisponivel(p.id) < it.quantidade ? 'entrega_futura' : 'pronta_entrega';
+    novos.push({
+      produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
+      quantidade: it.quantidade, precoUnitario: totalItem / it.quantidade,
+      precoOriginal: Number(p.precoOriginal || 0) || (totalItem / it.quantidade),
+      totalItem, custoMedioUsado: custoMedio, custoTotal: custoMedio * it.quantidade,
+      lucroTotal: isVenda ? totalItem - (custoMedio * it.quantidade) : 0,
+      motivo: isVenda ? 'Venda' : 'Brinde', geraLucro: isVenda,
+      tipoEntrega, baixouEstoque: false,
+      kitId, kitNome
+    });
+  });
+
+  const itens = [...(carr.itens || []), ...novos];
+  const totais = calcTotais(itens, carr.descontoPedido);
+  await setDoc(ref('carrinhos', carrinhoId), {
+    ...totais, itens,
+    possuiEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
+
+  for (const n of novos) {
+    if (n.tipoEntrega === 'entrega_futura') await adicionarPreEncomenda(n.produtoId, 'carrinho_sem_estoque', n.quantidade - estoqueDisponivel(n.produtoId));
+  }
+
+  kitTemp = { nome: '', valor: '', itens: [] };
+  await window.App.refresh();
+  openCarrinho(carrinhoId);
+  toast(`Kit "${kitNome}" adicionado (${novos.length} produtos)`);
 }
 
 export async function toggleCarrinhoOpt(id, campo, valor) {
@@ -520,6 +719,7 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
   if ($('cPag')) updates.pagamento = $('cPag').value;
   if ($('cCartaoTipo')) updates.cartaoTipo = $('cCartaoTipo').value;
   if ($('cObs')) updates.observacoes = $('cObs').value;
+  if ($('cFrete')) updates.freteCusto = parseMoney($('cFrete').value);
   if ($('cParcelas')) {
     const parcelas = Number($('cParcelas').value);
     updates.parcelas = parcelas;
@@ -592,11 +792,17 @@ export async function finalizarCarrinho(id) {
   }, { merge: true });
 
   const custoCartao = calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, jurosPorFinal, state.profile, carr.cartaoTipo).total;
-  const lucroReal = carr.lucroTotal - custoCartao;
+  // Lê o frete direto do campo (como o valor recebido): salvarCarrinhoOpt acabou de gravar no
+  // banco, mas o objeto carr em memória ainda é o de antes do salvamento.
+  const freteCusto = $('cFrete') ? parseMoney($('cFrete').value) : Number(carr.freteCusto || 0);
+  const lucroReal = carr.lucroTotal - custoCartao - freteCusto;
 
   await addDoc(col('vendas'), {
     carrinhoId: id, clienteId: carr.clienteId, clienteNome: carr.clienteNome,
     data: today(), receita: carr.totalPedido, totalPedido: carr.totalPedido,
+    subtotalPedido: carr.subtotalPedido ?? carr.totalPedido,
+    descontoPedidoValor: carr.descontoPedidoValor || 0,
+    freteCusto,
     custoTotal: carr.custoTotal, lucroTotal: carr.lucroTotal,
     custoCartao, lucroReal,
     margem: carr.totalPedido ? ((carr.lucroTotal) / carr.totalPedido) * 100 : 0,

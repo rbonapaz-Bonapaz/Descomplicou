@@ -39,7 +39,8 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
-  registrarPagamento, confirmarPagamento, atualizarCalcPagamento } from './carrinho.js';
+  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit } from './carrinho.js';
 import { sendWhatsApp } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
 import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle, precisaCriarSenhaGoogle } from './auth.js';
@@ -287,7 +288,8 @@ window.App = {
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
-  registrarPagamento, confirmarPagamento, atualizarCalcPagamento,
+  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
   // Vendas
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
   // Estoque

@@ -11,6 +11,11 @@ const NOVIDADES = [
     'Sincronização em tempo real: lançamentos feitos em outro aparelho/aba aparecem sozinhos, sem precisar atualizar o navegador.',
     'Nome do cliente corrigido no cadastro agora atualiza também nas vendas, agenda e painel (registros antigos mostram sempre o nome atual).',
     'Agenda: novo campo "Local / endereço" no agendamento, pré-preenchido com o endereço do cliente, com botão 📍 que abre o Google Maps. Endereço errado no mapa? Cole um link do Maps no campo que ele abre direto no ponto certo. O local também vai junto pro Google Agenda.',
+    'Vendas: clique no ▸ (ou no número de itens) para expandir a venda e ver os produtos, quantidades e valores dali mesmo, sem abrir o carrinho.',
+    'Carrinho: novo desconto sobre o pedido inteiro (% ou R$, ex: 10% na primeira compra) — o total a cobrar recalcula sozinho e o desconto aparece no PDF e no resumo de WhatsApp.',
+    'Carrinho: novo campo "Frete pago por você" — registra a despesa de entrega, que passa a descontar do lucro real do pedido e dos relatórios (o total do cliente não muda).',
+    'Novo: 🎁 Kits no carrinho — monte um kit (ex: 3 produtos que somam R$ 580 por R$ 185) e o sistema distribui o valor pago proporcionalmente entre os produtos: estoque, custo e lucro ficam certos por item, e o kit aparece agrupado na venda e nos PDFs. Kit com valor R$ 0 vira brinde.',
+    'Corrigido: em telas mais baixas, o botão "Sair" invadia o menu lateral e aparecia antes do "Sobre".',
     'Reabrir venda com pagamento registrado agora avisa o valor que já tinha sido pago antes de reabrir.',
     'Produtos → Linhas: busca filtra a cada letra, produtos em ordem alfabética e seletor visual igual ao "Ativo no catálogo".',
     'Coluna de ações das tabelas ficou mais larga — botões não ficam mais espremidos.'

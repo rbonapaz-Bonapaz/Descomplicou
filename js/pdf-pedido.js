@@ -68,7 +68,7 @@ function gerarPdf(carr, interno) {
         const temDesconto = original > it.precoUnitario;
         return `<tr>
         <td>${esc(it.codigoFarmasi || '-')}</td>
-        <td>${esc(it.produtoNome)}</td><td style="text-align:center">${it.quantidade}</td>
+        <td>${it.kitNome ? `<small style="color:#A83E63">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td><td style="text-align:center">${it.quantidade}</td>
         <td style="text-align:right">${temDesconto ? money(original) : '-'}</td>
         <td style="text-align:right">${money(it.precoUnitario)}${temDesconto ? ` <span style="color:var(--success);font-weight:900">-${descontoPercent(original, it.precoUnitario)}%</span>` : ''}</td>
         <td style="text-align:right">${money(it.totalItem)}</td>
@@ -89,7 +89,7 @@ function gerarPdf(carr, interno) {
         const temDesconto = original > it.precoUnitario;
         return `<tr>
         <td>${esc(it.codigoFarmasi || '-')}</td>
-        <td>${esc(it.produtoNome)}</td><td style="text-align:center">${it.quantidade}</td>
+        <td>${it.kitNome ? `<small style="color:#A83E63">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td><td style="text-align:center">${it.quantidade}</td>
         <td style="text-align:right">${temDesconto ? money(original) : '-'}</td>
         <td style="text-align:right">${money(it.precoUnitario)}${temDesconto ? ` <span style="color:var(--success);font-weight:900">-${descontoPercent(original, it.precoUnitario)}%</span>` : ''}</td>
         <td style="text-align:right">${money(it.totalItem)}</td>
@@ -104,14 +104,17 @@ function gerarPdf(carr, interno) {
   html += `<div class="pedido-totais">
     ${totalDesconto > 0 ? `<div class="pedido-total-line"><span>Valor original</span><b>${money(totalOriginal)}</b></div>
       <div class="pedido-total-line"><span>Desconto</span><b style="color:var(--success)">- ${money(totalDesconto)} (-${descontoPercent(totalOriginal, totalOriginal - totalDesconto)}%)</b></div>` : ''}
+    ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="pedido-total-line"><span>Subtotal</span><b>${money(carr.subtotalPedido || 0)}</b></div>
+      <div class="pedido-total-line"><span>Desconto do pedido${carr.descontoPedido?.tipo === 'percent' ? ` (${carr.descontoPedido.valor}%)` : ''}</span><b style="color:var(--success)">- ${money(carr.descontoPedidoValor)}</b></div>` : ''}
     <div class="pedido-total-line"><span>Total do pedido</span><b>${money(carr.totalPedido)}</b></div>
     ${interno ? (() => {
       const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
       const custoCartao = venda ? Number(venda.custoCartao || 0) : calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total;
-      const lucroReal = venda?.lucroReal != null ? Number(venda.lucroReal) : carr.lucroTotal - custoCartao;
+      const lucroReal = venda?.lucroReal != null ? Number(venda.lucroReal) : carr.lucroTotal - custoCartao - Number(carr.freteCusto || 0);
       return `<div class="pedido-total-line"><span>Custo total</span><b>${money(carr.custoTotal)}</b></div>
       <div class="pedido-total-line"><span>Lucro bruto</span><b>${money(carr.lucroTotal)}</b></div>
       ${custoCartao > 0 ? `<div class="pedido-total-line"><span>Custo de cartão/maquininha</span><b style="color:var(--error)">- ${money(custoCartao)}</b></div>` : ''}
+      ${Number(carr.freteCusto || 0) > 0.004 ? `<div class="pedido-total-line"><span>Frete (despesa da consultora)</span><b style="color:var(--error)">- ${money(carr.freteCusto)}</b></div>` : ''}
       <div class="pedido-total-line"><span>Lucro real</span><b>${money(lucroReal)}</b></div>
       <div class="pedido-total-line"><span>Margem real</span><b>${carr.totalPedido ? ((lucroReal / carr.totalPedido) * 100).toFixed(1) : 0}%</b></div>`;
     })() : ''}

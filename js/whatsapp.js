@@ -24,6 +24,10 @@ const templates = {
       futura.forEach(i => msg += `${i.quantidade}x ${i.produtoNome} - ${money(i.totalItem)}\n`);
       msg += '\n';
     }
+    if ((carrinho.descontoPedidoValor || 0) > 0.004) {
+      msg += `Subtotal: ${money(carrinho.subtotalPedido)}\n`;
+      msg += `Desconto: -${money(carrinho.descontoPedidoValor)} 🎁\n`;
+    }
     msg += `*Total: ${money(carrinho.totalPedido)}*\n`;
     msg += `Pagamento: ${carrinho.pagamento || 'A combinar'}`;
     return msg;
