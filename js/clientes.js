@@ -277,10 +277,41 @@ export function openCliente360(id) {
         </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum agendamento.</p>'}
     </div>
 
+    ${(c.interesses || []).length ? `<div class="panel" style="margin-top:12px">
+      <h3>⭐ Produtos de interesse</h3>
+      <p class="muted">Ela demonstrou interesse mas ainda não comprou — bom gancho pra próxima abordagem.</p>
+      <div class="list">${c.interesses.map(i => `<div class="list-item">
+        <div><b>${esc(i.produtoNome)}</b><small>${i.origem ? esc(i.origem) + ' • ' : ''}${formatDateBR(i.adicionadoEm)}</small></div>
+        <button class="btn small" style="color:var(--error)" onclick="App.removerInteresseCliente('${id}','${esc(i.produtoId)}')" title="Remover da lista">✗</button>
+      </div>`).join('')}</div>
+    </div>` : ''}
+
     ${c.observacoes ? `<div class="panel" style="margin-top:12px"><h3>Observações</h3><p>${esc(c.observacoes)}</p></div>` : ''}
 
     <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>
   </div>`);
+}
+
+// --- Lista de interesse (permanente no cadastro do cliente) ---
+// Diferente da lista de desejos de um evento (que só existe enquanto o evento existe), isso fica
+// gravado no cliente pra sempre — ela demonstrou interesse mas não comprou ainda; a consultora
+// acompanha e oferece de novo depois, de qualquer evento ou tela.
+export async function adicionarInteresseCliente(clienteId, produto, origem = 'Manual') {
+  const c = cliById(clienteId);
+  if (!c) return toast('Cliente não encontrado');
+  const atuais = c.interesses || [];
+  if (atuais.some(i => i.produtoId === produto.produtoId)) return false; // já está na lista, não duplica
+  const novo = { ...produto, origem, adicionadoEm: today() };
+  await setDoc(ref('clientes', clienteId), { interesses: [...atuais, novo], atualizadoEm: serverTimestamp() }, { merge: true });
+  return true;
+}
+
+export async function removerInteresseCliente(clienteId, produtoId) {
+  const c = cliById(clienteId);
+  if (!c) return;
+  const interesses = (c.interesses || []).filter(i => i.produtoId !== produtoId);
+  await setDoc(ref('clientes', clienteId), { interesses, atualizadoEm: serverTimestamp() }, { merge: true });
+  window.App.refresh('Item removido da lista de interesse');
 }
 
 export async function marcarContatado(id) {

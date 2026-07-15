@@ -459,7 +459,8 @@ function renderListasInline(eventoId) {
       ${l.whatsapp ? `<a class="btn small" style="background:#25D366;color:#fff" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">💬</a>` : ''}
       ${!l._clienteId
         ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
-        : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>`}
+        : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>
+           <button class="btn small" onclick="App.marcarInteresseDaLista('${eventoId}','${l.id}')" title="Ela tem interesse mas ainda não vai comprar — salva os produtos permanentemente no cadastro dela pra você oferecer de novo depois">⭐ Lista de interesse</button>`}
     </td>
   </tr>`).join('')}</tbody></table></div>`;
 }
@@ -541,6 +542,29 @@ export function abrirNovoClienteDeLista(eventoId, listaId) {
   const nascimentoISO = parseDataDigitada(lista?.nascimento);
   if (lista?.nascimento && !nascimentoISO) toast(`Confira a data de aniversário digitada: "${lista.nascimento}"`);
   window.App.openClienteForm('', { eventoId, listaId, nome: lista?.nomeVisitante || '', apelido: lista?.apelido || '', whatsapp: lista?.whatsapp || '', nascimento: nascimentoISO, origem: 'Evento' });
+}
+
+// Copia os produtos da lista de desejos do evento pra lista de interesse PERMANENTE do cliente
+// (fica no cadastro dela, não só enquanto o evento existir) — pra quando ela tem interesse mas
+// não vai comprar agora, e a consultora quer lembrar de oferecer de novo depois.
+export async function marcarInteresseDaLista(eventoId, listaId) {
+  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
+  if (!lista) return toast('Lista não encontrada');
+  const clienteId = lista._clienteId;
+  if (!clienteId) return toast('Vincule esta pessoa a um cliente primeiro.');
+  const { adicionarInteresseCliente } = await import('./clientes.js');
+  const evento = state.data.eventos.find(e => e.id === eventoId);
+
+  let novos = 0;
+  for (const w of lista.produtosDesejados || []) {
+    const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
+    const adicionou = await adicionarInteresseCliente(clienteId, {
+      produtoId: p?.id || w.nome, produtoNome: p?.nome || w.nome, codigoFarmasi: p?.codigoFarmasi || ''
+    }, `Evento: ${evento?.nome || ''}`);
+    if (adicionou) novos++;
+  }
+  if (!novos) return toast('Esses produtos já estavam na lista de interesse dela, ou a lista está vazia.');
+  window.App.refresh(`${novos} produto(s) adicionado(s) à lista de interesse permanente de ${lista.nomeVisitante}`);
 }
 
 export async function transformarEmCarrinho(eventoId, listaId) {

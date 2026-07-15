@@ -6,7 +6,7 @@ import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
 import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
-  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem } from './clientes.js';
+  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem, removerInteresseCliente } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
   confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
@@ -18,7 +18,7 @@ import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, s
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe } from './trocas.js';
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca } from './trocas.js';
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
@@ -51,7 +51,7 @@ import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha
 import { biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria, desbloquearBiometria } from './biometria.js';
 import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, excluirEvento,
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
-  confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
+  confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
   marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado } from './eventos.js';
 import { renderSobre } from './sobre.js';
@@ -301,7 +301,7 @@ window.App = {
   biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria,
   // Clientes
   renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
-  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem,
+  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem, removerInteresseCliente,
   // Agenda
   openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
@@ -329,7 +329,7 @@ window.App = {
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe,
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca,
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
@@ -357,7 +357,7 @@ window.App = {
   // Eventos
   renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, excluirEvento,
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
-  confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
+  confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
   marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado,
   // Sobre

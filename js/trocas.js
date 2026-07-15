@@ -169,6 +169,7 @@ export function openTroca(id) {
       ${t.status === 'aberta' ? `<button class="btn dark" onclick="App.finalizarTroca('${id}')">✓ Finalizar troca</button>
         <button class="btn" onclick="App.salvarTroca('${id}')">💾 Salvar</button>
         <button class="btn small" style="color:var(--error)" onclick="App.cancelarTroca('${id}')">✗ Cancelar</button>` : ''}
+      ${t.status === 'finalizada' || t.status === 'parcial' ? `<button class="btn" onclick="App.reabrirTroca('${id}')" title="Estorna os lançamentos de estoque já processados e volta a troca para 'Em andamento'">↩️ Reabrir troca</button>` : ''}
       <button class="btn small" onclick="App.editarParceiraTroca('${id}')">✏️ Editar parceira</button>
       <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${id}')">🗑️ Excluir troca</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
@@ -302,6 +303,44 @@ export async function finalizarTroca(trocaId) {
 
   closeModal();
   window.App.refresh(pendente ? 'Troca registrada — ainda há itens pendentes de entrega/recebimento' : 'Troca concluída!');
+}
+
+// Estorna os lançamentos de estoque já processados (saída volta como entrada, entrada volta como
+// saída) e volta a troca para "aberta" — mesmo espírito do reabrirCarrinho, mas trocas têm as duas
+// direções de estoque, então a reversão de um item "entrada" pode falhar se o produto já foi usado
+// em outro lugar depois (estoque insuficiente); nesse caso avisa e segue com os demais itens.
+export async function reabrirTroca(trocaId) {
+  const t = state.data.trocas.find(x => x.id === trocaId);
+  if (!t) return;
+  if (!confirm('Reabrir esta troca? Os lançamentos de estoque já processados serão estornados (produtos que saíram voltam ao estoque; produtos que entraram são baixados de novo).')) return;
+
+  const itensSaida = [...(t.itensSaida || [])];
+  const itensEntrada = [...(t.itensEntrada || [])];
+  let erros = 0;
+
+  for (let i = 0; i < itensSaida.length; i++) {
+    const item = itensSaida[i];
+    if (!item.processado) continue;
+    try {
+      await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario || 0, 'Ajuste', 'reabertura');
+      itensSaida[i] = { ...item, processado: false };
+    } catch (e) { erros++; toast(`Erro ao estornar ${item.produtoNome}: ${e.message}`); }
+  }
+  for (let i = 0; i < itensEntrada.length; i++) {
+    const item = itensEntrada[i];
+    if (!item.processado) continue;
+    try {
+      await saidaEstoque(item.produtoId, item.quantidade, 'Ajuste');
+      itensEntrada[i] = { ...item, processado: false };
+    } catch (e) { erros++; toast(`Erro ao estornar ${item.produtoNome}: ${e.message}`); }
+  }
+
+  await setDoc(ref('trocas', trocaId), {
+    itensSaida, itensEntrada, status: 'aberta', atualizadoEm: serverTimestamp()
+  }, { merge: true });
+
+  closeModal();
+  window.App.refresh(erros ? 'Troca reaberta — alguns lançamentos não puderam ser estornados (veja os avisos)' : 'Troca reaberta — lançamentos de estoque estornados');
 }
 
 export async function marcarItemTrocaProcessado(trocaId, lado, idx) {
