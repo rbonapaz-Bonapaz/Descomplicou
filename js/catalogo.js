@@ -1,7 +1,5 @@
 import { state, SECTIONS, col, addDoc, serverTimestamp, setDoc, ref, toast, writeBatch, db } from './state.js';
 import { $, esc, money, today, norm, withFocusPreserved, sectionTabsHtml, linhasDe, descontoPercent, labelLinha } from './utils.js';
-import { extractProdutos, dedupBatch } from './importar.js';
-import { upsertProduto } from './produtos.js';
 
 // Estado do catálogo. ocultarPrecoAtual => mostra só o preço original (PDF "Preços originais").
 let ocultarPrecoAtual = false;
@@ -82,21 +80,6 @@ export function renderCatalogo() {
     </div>`;
   }
 
-  if (sec === 'importar') {
-    html += `<div class="panel">
-      <div class="panel-head">
-        <h3>Importar produtos para o catálogo</h3>
-        <span class="pill blue">${totalCatalogo} no catálogo</span>
-      </div>
-      <p class="muted">Cole o JSON dos bookmarklets Farmasi ou selecione os arquivos. Produtos existentes são atualizados, não duplicados.</p>
-      <label class="btn pink">Selecionar JSON<input type="file" multiple accept=".json" style="display:none" onchange="App.readCatalogoFiles(this.files)"></label>
-      <br><br>
-      <textarea id="catJson" placeholder="Ou cole o JSON aqui..."></textarea>
-      <br><br><button class="btn dark" onclick="App.importarCatalogoTexto()">Analisar e importar</button>
-      <div id="catImportInfo"></div>
-    </div>`;
-  }
-
   $('catalogo').innerHTML = html;
   if (sec === 'montar') previewCatalogo();
 }
@@ -109,32 +92,6 @@ export function toggleOcultarAtual() {
 export function toggleBeneficiosPdf() {
   mostrarBeneficiosPdf = !mostrarBeneficiosPdf;
   renderCatalogo();
-}
-
-// --- Importação direto no catálogo (reusa helpers de importar.js) ---
-export async function readCatalogoFiles(files) {
-  let all = [];
-  for (const f of files) {
-    try { all = all.concat(extractProdutos(JSON.parse(await f.text()))); }
-    catch (e) { toast(`Erro em ${f.name}: ${e.message}`); }
-  }
-  await salvarImportacaoCatalogo(dedupBatch(all));
-}
-
-export async function importarCatalogoTexto() {
-  try {
-    const arr = dedupBatch(extractProdutos(JSON.parse($('catJson').value)));
-    if (!arr.length) return toast('Nenhum produto encontrado no JSON.');
-    await salvarImportacaoCatalogo(arr);
-  } catch (e) { toast('Erro: ' + e.message); }
-}
-
-async function salvarImportacaoCatalogo(arr) {
-  if (!arr.length) return;
-  const info = $('catImportInfo');
-  if (info) info.innerHTML = `<p class="muted">Importando ${arr.length} produto(s)...</p>`;
-  for (const p of arr) await upsertProduto(p);
-  await window.App.refresh(`${arr.length} produto(s) importado(s) no catálogo`);
 }
 
 export function selectAllCatalogLines() {

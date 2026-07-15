@@ -236,14 +236,8 @@ function renderEstoqueInner() {
 
     if (sec === 'importar') {
       html += `<div class="panel">
-        <h3>Importar pedido/estoque</h3>
-        <p class="muted">Cole ou selecione um JSON de pedido para alimentar o estoque e atualizar o custo médio.</p>
-        <label class="btn pink">Selecionar JSON pedido<input type="file" accept=".json" style="display:none" onchange="App.readPedidoFile(this.files)"></label>
-        <br><br><textarea id="pedidoJson" placeholder="Ou cole o JSON do pedido..."></textarea>
-        <br><br><button class="btn dark" onclick="App.previewPedidoEstoque()">Analisar pedido</button>
-        <hr style="margin:20px 0;border:0;border-top:1px solid var(--line)">
-        <h3>Ou importar PDF do pedido Farmasi</h3>
-        <p class="muted">Selecione o PDF de "Detalhes do pedido" baixado do site da Farmasi. O sistema identifica os produtos do seu catálogo que aparecem no PDF (por código ou nome) — a quantidade de cada um entra como 1 e pode ser ajustada na conferência abaixo antes de confirmar.</p>
+        <h3>Importar pedido Farmasi (PDF)</h3>
+        <p class="muted">Selecione o PDF de "Detalhes do pedido" baixado do site da Farmasi. O sistema identifica os produtos do seu catálogo (por código ou nome), monta os kits automaticamente e preenche a quantidade/custo quando o valor está legível no PDF — confira tudo na tabela abaixo antes de confirmar.</p>
         <label class="btn pink">Selecionar PDF do pedido<input type="file" accept=".pdf" style="display:none" onchange="App.readPedidoPdf(this.files)"></label>
       </div>
       <div id="pedidoPreview"></div>`;
@@ -325,10 +319,6 @@ export async function saveSaidaManual() {
   } catch (e) {
     toast('Erro ao registrar saída: ' + e.message);
   }
-}
-
-export async function readPedidoFile(files) {
-  if (files && files[0]) { $('pedidoJson').value = await files[0].text(); previewPedidoEstoque(); }
 }
 
 // --- Leitura do PDF "Detalhes do pedido" da Farmasi ---
@@ -568,34 +558,6 @@ export async function readPedidoPdf(files) {
   }
 }
 
-// Um item de pedido, vindo em vários formatos possíveis, para {nome, codigo, quantidade, valorTotal, imagem}
-function normalizePedidoItem(i, mult = 1) {
-  const qtd = Number(i.quantidade || i.qtd || 1) * mult;
-  const valorTotal = Number(
-    i.valorTotalNumero != null ? i.valorTotalNumero
-    : i.valorTotal != null ? parseMoney(i.valorTotal)
-    : (i.valorUnitarioNumero != null ? i.valorUnitarioNumero : parseMoney(i.valorUnitario || 0)) * (Number(i.quantidade || 1))
-  ) || 0;
-  return {
-    nome: String(i.produto || i.nome || i.name || '').trim(),
-    codigo: String(i.codigo || i.codigoFarmasi || i.code || '').trim(),
-    quantidade: qtd,
-    valorTotal,
-    imagem: String(i.imagem || i.image || '').trim()
-  };
-}
-
-// Aceita: array puro de itens (bookmarklet pedido), {itens:[...]} ou combos com itensInternos
-function normalizePedido(obj) {
-  const arr = Array.isArray(obj) ? obj : (obj.itens || obj.produtos || []);
-  const itens = arr.flatMap(i =>
-    i.itensInternos
-      ? i.itensInternos.map(x => normalizePedidoItem(x, Number(i.quantidade || 1)))
-      : [normalizePedidoItem(i)]
-  ).filter(i => i.nome);
-  return dedupPedido(itens);
-}
-
 // Mesma nota fiscal pode trazer o mesmo produto em mais de uma linha (comprado em momentos
 // diferentes do pedido). Sem isso, cada linha virava um toggle "pronta entrega"/"monitorar"
 // separado pro MESMO produto, e o último processado sobrescrevia o anterior de forma
@@ -668,14 +630,6 @@ function renderPedidoPreview() {
     }).join('')}</tbody></table></div><br>
     <button class="btn dark" onclick="App.confirmPedidoEstoque()">Confirmar e alimentar estoque</button>` : '<p class="muted">Nenhum item restante — cole outro JSON.</p>'}
   </div>`;
-}
-
-export function previewPedidoEstoque() {
-  try {
-    const obj = JSON.parse($('pedidoJson').value);
-    window.__pedidoEstoque = normalizePedido(obj);
-    renderPedidoPreview();
-  } catch (e) { toast('JSON inválido: ' + e.message); }
 }
 
 export async function confirmPedidoEstoque() {

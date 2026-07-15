@@ -33,9 +33,9 @@ export const state = {
 export const SECTIONS = {
   admin: [['consultoras', 'Consultoras'], ['financeiro', 'Financeiro'], ['catalogoMestre', 'Catálogo mestre'], ['planos', 'Planos']],
   perfil: [['conta', 'Conta'], ['pagamento', 'Pagamento'], ['plano', 'Meu plano'], ['baseColetiva', 'Base coletiva'], ['relatorios', 'Relatórios'], ['seguranca', 'Segurança']],
-  produtos: [['produtos', 'Produtos'], ['linhas', 'Linhas'], ['importar', 'Importar']],
+  produtos: [['produtos', 'Produtos'], ['linhas', 'Linhas']],
   estoque: [['estoque', 'Estoque'], ['importar', 'Importar pedido'], ['trocas', 'Trocas'], ['preEncomenda', 'Pré-encomenda']],
-  catalogo: [['montar', 'Montar catálogo'], ['importar', 'Importar']],
+  catalogo: [['montar', 'Montar catálogo']],
   sobre: [['dados', 'Dados do sistema'], ['novidades', 'Novidades'], ['manual', 'Manual']]
 };
 

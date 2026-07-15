@@ -14,7 +14,10 @@ const NOVIDADES = [
     'Catálogo de Eventos: botão de WhatsApp na lista de desejos, abre conversa direto com o número que a pessoa cadastrou. Link público do evento agora mostra a foto de perfil da consultora (maior) em vez das iniciais genéricas.',
     'Novo campo "Como deseja ser chamado(a)?" no cadastro de cliente e no link de evento — todas as mensagens de WhatsApp do sistema passam a usar esse apelido quando cadastrado (ex: "Fabiula de Oliveira – Fabi" vira só "Fabi" na mensagem); sem apelido, usa o nome completo como sempre.',
     'Painel Inicial → Recomendações: o item "Repor produto" agora tem o botão de pré-encomenda direto, mostrando quantos já estão na lista ou a caminho.',
-    'Painel Inicial → Agenda de hoje: nova seção (opcional, configurável em Minha Conta) mostrando os próximos dias além de hoje, recolhida por padrão — clique para expandir cada compromisso e ver endereço (com link de mapa) e observações.'
+    'Painel Inicial → Agenda de hoje: nova seção (opcional, configurável em Minha Conta) mostrando os próximos dias além de hoje, recolhida por padrão — clique para expandir cada compromisso e ver endereço (com link de mapa) e observações.',
+    'Trocas: agora dá para reabrir uma troca finalizada — os lançamentos de estoque já feitos são estornados automaticamente (o que saiu volta a entrar, o que entrou sai de novo) e ela volta para "Em andamento".',
+    '⭐ Nova lista de interesse permanente no cadastro do cliente: na lista de desejos de um evento, além de "Virar carrinho" agora tem "Lista de interesse" — pra quando ela gosta mas não vai comprar agora. Fica salvo no Cliente 360 pra sempre, não desaparece com o evento.',
+    'Removida a opção de importar por JSON nas telas de Produtos, Catálogo e Estoque (pedido) — ficou só o essencial: cadastro manual em Produtos, sincronização com a base coletiva, e o importador de PDF do pedido Farmasi no Estoque (com reconhecimento de kits).'
   ] },
   { versao: 'v99', itens: [
     '⚠️ Reabrir uma venda com pagamento registrado deixou de apagar o pagamento — agora ele é mantido e aparece um aviso bem visível no topo do carrinho reaberto com o valor já pago. Ao finalizar de novo, o status (pendente/parcial/pago) é recalculado sozinho contra o total atual; se o valor pago passar do novo total, o sistema avisa o excedente para você decidir (crédito ou estorno).',

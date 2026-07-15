@@ -13,7 +13,7 @@ import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, 
   abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo } from './agenda.js';
 import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
-  readPedidoFile, readPedidoPdf, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
+  readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos } from './estoque.js';
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
@@ -24,13 +24,12 @@ import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTo
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
   atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir,
   filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas } from './produtos.js';
-import { readProductFiles, previewImportProdutos, confirmImportProdutos, editarItemImportProduto } from './importar.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
-  excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf, readCatalogoFiles, importarCatalogoTexto } from './catalogo.js';
+  excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
 import { renderRelatorios } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
@@ -318,7 +317,7 @@ window.App = {
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
   // Estoque
   renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
-  readPedidoFile, readPedidoPdf, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
+  readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos,
   // Pré-encomenda
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
@@ -334,11 +333,9 @@ window.App = {
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
   atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas,
-  // Importar
-  readProductFiles, previewImportProdutos, confirmImportProdutos, editarItemImportProduto,
   // Catálogo
   selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo, excluirTodoCatalogo,
-  toggleOcultarAtual, toggleBeneficiosPdf, readCatalogoFiles, importarCatalogoTexto,
+  toggleOcultarAtual, toggleBeneficiosPdf,
   // Relatórios
   renderRelatorios,
   // Perfil

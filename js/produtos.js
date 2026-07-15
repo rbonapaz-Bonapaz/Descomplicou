@@ -1,6 +1,5 @@
 import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
 import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today } from './utils.js';
-import { importPanelHtml } from './importar.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 
@@ -124,8 +123,6 @@ function renderProdutosInner() {
     }
 
     if (sec === 'linhas') html += linhasTabHtml();
-
-    if (sec === 'importar') html += importPanelHtml();
 
   $('produtos').innerHTML = html;
 }
