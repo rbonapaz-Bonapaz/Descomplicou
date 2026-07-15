@@ -1,5 +1,5 @@
 import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
-import { $, esc, money, norm, pill, labelLinha, toggleBareHtml } from './utils.js';
+import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml } from './utils.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
 
@@ -137,10 +137,10 @@ function formHtmlEvento(ev) {
       </div>
     </div>
     <div class="grid" style="margin-top:8px">
-      <div class="field"><div>${toggleBareHtml('evTodoCatalogo', !!ev?.todoCatalogo, 'App.aoMudarTodoCatalogo(this.checked)')} <label for="evTodoCatalogo" style="display:inline;font-weight:700">Mostrar todo o catálogo</label></div></div>
-      <div class="field"><div>${toggleBareHtml('evMostrarPrecos', ev ? ev.mostrarPrecos !== false : true)} <label for="evMostrarPrecos" style="display:inline;font-weight:700">Mostrar preços</label></div></div>
-      <div class="field"><div>${toggleBareHtml('evMostrarBeneficios', ev ? ev.mostrarBeneficios !== false : true)} <label for="evMostrarBeneficios" style="display:inline;font-weight:700">Mostrar benefícios</label></div></div>
-      <div class="field"><div>${toggleBareHtml('evMostrarEstoque', ev ? ev.mostrarEstoque !== false : true)} <label for="evMostrarEstoque" style="display:inline;font-weight:700">Mostrar estoque</label></div></div>
+      <div class="field">${toggleHtml('evTodoCatalogo', !!ev?.todoCatalogo, 'App.aoMudarTodoCatalogo(this.checked)', 'Mostrar todo o catálogo')}</div>
+      <div class="field">${toggleHtml('evMostrarPrecos', ev ? ev.mostrarPrecos !== false : true, '', 'Mostrar preços')}</div>
+      <div class="field">${toggleHtml('evMostrarBeneficios', ev ? ev.mostrarBeneficios !== false : true, '', 'Mostrar benefícios')}</div>
+      <div class="field">${toggleHtml('evMostrarEstoque', ev ? ev.mostrarEstoque !== false : true, '', 'Mostrar estoque')}</div>
       <div class="field"><label>% em Todos itens</label><input id="evDescontoTodos" placeholder="Ex: 10" onchange="App.aplicarDescontoTodos()"></div>
     </div>
     <small class="muted">Sem marcar "todo o catálogo": só os produtos das linhas participantes aparecem no link. Marcando: todo o catálogo aparece, mas o desconto só vale pras linhas participantes escolhidas abaixo — as demais aparecem pelo preço normal. Preencher "% em Todos itens" aplica esse desconto em todas as linhas de uma vez — depois ainda dá pra ajustar uma linha específica na mão, o valor digitado nela é o que vale. Vazio = sem desconto.</small>
@@ -158,10 +158,10 @@ function formHtmlEvento(ev) {
     </tbody></table></div><br>`;
 }
 
-// "Mostrar todo o catálogo" ligado marca automaticamente todas as linhas como participantes —
-// desmarcar continua manual (a consultora pode tirar linhas específicas depois de marcar tudo).
+// "Mostrar todo o catálogo" liga/desliga TODAS as linhas participantes junto — simétrico: ligar
+// marca tudo, desligar desmarca tudo. A consultora ainda pode ajustar linha por linha depois.
 export function aoMudarTodoCatalogo(ligado) {
-  if (ligado) document.querySelectorAll('.evLinhaChk').forEach(c => { c.checked = true; });
+  document.querySelectorAll('.evLinhaChk').forEach(c => { c.checked = ligado; });
 }
 
 // Preenche o desconto de TODAS as linhas de uma vez com o valor digitado em "% em Todos itens" —

@@ -6,6 +6,7 @@ import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
 import { importarDoGoogleAgenda } from './agenda.js';
 import { gerarBeneficios } from './gemini.js';
+import { CARDS_INTELIGENCIA } from './relatorios.js';
 
 export function renderPerfil() {
   const p = state.profile || {};
@@ -104,6 +105,20 @@ export function renderPerfil() {
     html += `<div class="panel">
       <h3>Meu plano</h3>
       ${planoBox()}
+    </div>`;
+  }
+
+  if (sec === 'relatorios') {
+    const cfg = p.relCardsAtivos || {};
+    html += `<div class="panel">
+      <h3>Cards de Inteligência</h3>
+      <p class="muted">Escolha quais indicadores avançados aparecem na tela de Relatórios. Todos vêm ativados por padrão.</p>
+      <div class="grid" style="margin-top:8px">
+        ${CARDS_INTELIGENCIA.map(c => `<div class="field">
+          ${toggleHtml('relCard_' + c.key, cfg[c.key] !== false, `App.salvarConfigRelatorios('${c.key}',this.checked)`, c.label)}
+          <small class="muted">${esc(c.desc)}</small>
+        </div>`).join('')}
+      </div>
     </div>`;
   }
 
@@ -337,6 +352,13 @@ export async function salvarGeminiKey() {
   await setDoc(doc(db, 'users', state.user.uid), { geminiApiKey: key, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, geminiApiKey: key };
   window.App.refresh(key ? 'Chave do Gemini salva' : 'Chave removida');
+}
+
+export async function salvarConfigRelatorios(key, ativo) {
+  const atual = { ...(state.profile?.relCardsAtivos || {}), [key]: ativo };
+  await setDoc(doc(db, 'users', state.user.uid), { relCardsAtivos: atual, atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, relCardsAtivos: atual };
+  toast(ativo ? 'Card ativado' : 'Card desativado');
 }
 
 export async function toggleBaseColetiva(v) {

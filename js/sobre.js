@@ -27,7 +27,9 @@ const NOVIDADES = [
     'Nova promoção de indicação (Admin → Planos, ativar/desativar): cada consultora ganha um link próprio em Minha Conta → Meu Plano; se a pessoa indicada virar plano pago, quem indicou ganha 30 dias grátis automaticamente.',
     'Catálogo de Eventos: excluir evento agora exige que todos os leads estejam marcados como "Tratado" (novo seletor na lista de desejos) — evita perder um lead que ainda não virou cliente.',
     'Catálogo de Eventos: "Mostrar todo o catálogo" agora marca sozinho todas as linhas como participantes ao ligar. Novos seletores pra personalizar o link — mostrar ou não preços, benefícios e estoque. Campo "% em Todos os itens" aplica o desconto em todas as linhas de uma vez (ainda dá pra ajustar uma linha na mão depois). Link do evento agora pode ser personalizado ao criar (opcional).',
-    'Corrigido: excluir um evento estava sempre falhando por permissão — as regras do Firestore bloqueavam apagar as listas de desejo recebidas.'
+    'Corrigido: excluir um evento estava sempre falhando por permissão — as regras do Firestore bloqueavam apagar as listas de desejo recebidas.',
+    '🧠 Novos Cards de Inteligência em Relatórios: Taxa de Recompra, Curva ABC de Estoque, Taxa de Ruptura, Análise de Descontos, Ticket Médio por Linha e Conversão de Agendamentos. Escolha quais aparecer em Minha Conta → Relatórios (todos vêm ativados por padrão).',
+    'Corrigido: nos seletores "Mostrar todo o catálogo/preços/benefícios/estoque" do evento, o clique só funcionava em cima da palavra — agora o toggle inteiro reage ao clique, igual ao resto do sistema. Corrigido também: desmarcar "Mostrar todo o catálogo" agora desliga as linhas participantes junto (antes só ligava, nunca desligava).'
   ] },
   { versao: 'v98', itens: [
     '🎁 Kits mudaram de lugar: agora são montados em Estoque → Pré-encomenda, porque o kit é o que você compra da Farmasi (não o que vende ao cliente). O valor pago é rateado como custo previsto de cada produto na lista "A comprar" e vira custo médio do estoque quando o pedido chega.',

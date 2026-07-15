@@ -2,6 +2,94 @@ import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agen
 import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, thSort, norm } from './utils.js';
 import { recommendations } from './dashboard.js';
 
+// Registro dos "Cards de Inteligência" — cada consultora escolhe quais quer ver (Minha Conta →
+// Relatórios), tudo ativado por padrão. Exportado pra reaproveitar a mesma lista de nomes/chaves
+// na tela de configuração (perfil.js), sem duplicar a definição em dois lugares.
+export const CARDS_INTELIGENCIA = [
+  { key: 'recompra', label: 'Taxa de Recompra', desc: 'Fidelidade — % de clientes que compraram mais de uma vez' },
+  { key: 'curvaAbc', label: 'Curva ABC de Estoque', desc: 'Eficiência — quantos produtos puxam 80% do faturamento (classe A)' },
+  { key: 'ruptura', label: 'Taxa de Ruptura', desc: 'Eficiência — % do catálogo ativo sem estoque agora' },
+  { key: 'descontos', label: 'Análise de Descontos', desc: 'Performance — % de vendas com desconto no pedido e valor médio' },
+  { key: 'ticketLinha', label: 'Ticket Médio por Linha', desc: 'Performance — ranking das linhas com maior valor médio de pedido' },
+  { key: 'conversaoAgenda', label: 'Conversão de Agendamentos', desc: 'Quantos atendimentos viraram venda' }
+];
+
+// Sem configuração salva ainda = tudo ativado (padrão pedido: "todos os indicadores vêm
+// ativados por padrão, garantindo que o sistema funcione com a visão completa desde o primeiro uso").
+function cardAtivo(key) {
+  const cfg = state.profile?.relCardsAtivos;
+  return !cfg || cfg[key] !== false;
+}
+
+function taxaRecompra() {
+  const porCliente = {};
+  state.data.vendas.forEach(v => {
+    const k = v.clienteId || v.clienteNome;
+    if (!k) return;
+    porCliente[k] = (porCliente[k] || 0) + 1;
+  });
+  const clientesComCompra = Object.keys(porCliente).length;
+  const recompraram = Object.values(porCliente).filter(n => n > 1).length;
+  return { pct: clientesComCompra ? (recompraram / clientesComCompra) * 100 : 0, recompraram, clientesComCompra };
+}
+
+// Classifica os produtos vendidos no período pelo critério de Pareto: classe A = os que juntos
+// somam até 80% do faturamento, B = até 95%, C = o resto — mostra onde focar reposição/promoção.
+function curvaAbc(prodMap) {
+  const arr = Object.values(prodMap).sort((a, b) => b.rec - a.rec);
+  const total = arr.reduce((s, x) => s + x.rec, 0);
+  let acumulado = 0;
+  const classes = { A: 0, B: 0, C: 0 };
+  arr.forEach(x => {
+    acumulado += x.rec;
+    const pct = total ? acumulado / total : 0;
+    if (pct <= 0.8) classes.A++;
+    else if (pct <= 0.95) classes.B++;
+    else classes.C++;
+  });
+  return { ...classes, totalProdutos: arr.length };
+}
+
+function taxaRuptura() {
+  const ativos = state.data.produtos.filter(p => p.ativoCatalogo !== false);
+  if (!ativos.length) return { pct: 0, semEstoque: 0, total: 0 };
+  const semEstoque = ativos.filter(p => Number(p.estoqueAtual || 0) <= 0).length;
+  return { pct: (semEstoque / ativos.length) * 100, semEstoque, total: ativos.length };
+}
+
+function analiseDescontos(d) {
+  const vendasPeriodo = state.data.vendas.filter(v => inPeriod(v.data, d));
+  const comDesconto = vendasPeriodo.filter(v => Number(v.descontoPedidoValor || 0) > 0.004);
+  const totalDesconto = vendasPeriodo.reduce((s, v) => s + Number(v.descontoPedidoValor || 0), 0);
+  return {
+    pctComDesconto: vendasPeriodo.length ? (comDesconto.length / vendasPeriodo.length) * 100 : 0,
+    qtdComDesconto: comDesconto.length, totalVendas: vendasPeriodo.length,
+    mediaDesconto: comDesconto.length ? totalDesconto / comDesconto.length : 0, totalDesconto
+  };
+}
+
+// Ticket médio dos pedidos que incluíram cada linha — um pedido com produtos de 2 linhas soma
+// o valor do pedido inteiro nas duas (mede "quando essa linha aparece, o pedido vale quanto").
+function ticketMedioPorLinha(d) {
+  const porLinha = {};
+  state.data.vendas.filter(v => inPeriod(v.data, d)).forEach(v => {
+    const carr = state.data.carrinhos.find(c => c.id === v.carrinhoId);
+    if (!carr) return;
+    const linhasNoPedido = new Set();
+    (carr.itens || []).forEach(it => {
+      const p = state.data.produtos.find(x => x.id === it.produtoId);
+      String(p?.linha || 'Sem linha').split(',').map(s => s.trim()).forEach(l => linhasNoPedido.add(l));
+    });
+    const valorPedido = Number(v.receita || v.totalPedido || 0);
+    linhasNoPedido.forEach(l => {
+      porLinha[l] = porLinha[l] || { total: 0, qtd: 0 };
+      porLinha[l].total += valorPedido;
+      porLinha[l].qtd += 1;
+    });
+  });
+  return Object.entries(porLinha).map(([nome, x]) => ({ nome, valor: x.qtd ? x.total / x.qtd : 0 })).sort((a, b) => b.valor - a.valor);
+}
+
 // Badge de variação % ao lado de um indicador, comparado com o período anterior equivalente.
 function variacaoBadge(atual, anterior) {
   const v = variacao(atual, anterior);
@@ -100,6 +188,15 @@ export function renderRelatorios() {
     });
   const saidasList = Object.entries(saidasPorMotivo).sort((a, b) => b[1].valor - a[1].valor);
 
+  // Cards de Inteligência — só calcula os que estão ativados (Minha Conta → Relatórios), evita
+  // trabalho à toa se a consultora desligou algum.
+  const recompra = cardAtivo('recompra') ? taxaRecompra() : null;
+  const abc = cardAtivo('curvaAbc') ? curvaAbc(r.prod) : null;
+  const ruptura = cardAtivo('ruptura') ? taxaRuptura() : null;
+  const descontosInfo = cardAtivo('descontos') ? analiseDescontos(d) : null;
+  const ticketLinha = cardAtivo('ticketLinha') ? ticketMedioPorLinha(d) : null;
+  const nenhumCardAtivo = CARDS_INTELIGENCIA.every(c => !cardAtivo(c.key));
+
   // Relatório completo por produto (não só top 5): todos os produtos com venda no período,
   // ordenável por qualquer coluna clicando no cabeçalho.
   const produtosVendidos = Object.values(r.prod).map(x => ({ ...x, precoMedio: x.q ? x.rec / x.q : 0 }));
@@ -146,6 +243,19 @@ export function renderRelatorios() {
       <div class="card clickable" onclick="App.goto('vendas')"><span>Margem real</span><b>${r.margemReal.toFixed(1)}%</b></div>
       <div class="card clickable" onclick="App.goto('vendas')"><span>Ticket médio</span><b>${money(r.ticket)}</b></div>
       <div class="card clickable" onclick="App.goto('relatorios');document.getElementById('relPorProduto')?.scrollIntoView({behavior:'smooth'})"><span>Unidades vendidas</span><b>${r.itens}</b></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>🧠 Cards de Inteligência</h3><button class="linkbtn" onclick="App.goto('perfil');App.setSection('perfil','relatorios')">Configurar</button></div>
+      ${nenhumCardAtivo ? '<p class="muted">Todos os cards de inteligência estão desligados — ative em Minha Conta → Relatórios.</p>' : `
+      <div class="cards">
+        ${recompra ? `<div class="card clickable" onclick="App.goto('clientes')" title="${esc(CARDS_INTELIGENCIA[0].desc)}"><span>Taxa de Recompra</span><b>${recompra.pct.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">${recompra.recompraram} de ${recompra.clientesComCompra} clientes</small></div>` : ''}
+        ${abc ? `<div class="card clickable" onclick="App.goto('estoque')" title="${esc(CARDS_INTELIGENCIA[1].desc)}"><span>Curva ABC</span><b>${abc.A} classe A</b><small class="muted" style="display:block;margin-top:2px">${abc.B} classe B · ${abc.C} classe C</small></div>` : ''}
+        ${ruptura ? `<div class="card clickable" onclick="App.goto('estoque')" title="${esc(CARDS_INTELIGENCIA[2].desc)}"><span>Taxa de Ruptura</span><b>${ruptura.pct.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">${ruptura.semEstoque} de ${ruptura.total} produtos</small></div>` : ''}
+        ${descontosInfo ? `<div class="card clickable" onclick="App.goto('vendas')" title="${esc(CARDS_INTELIGENCIA[3].desc)}"><span>Vendas com Desconto</span><b>${descontosInfo.pctComDesconto.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">média ${money(descontosInfo.mediaDesconto)}</small></div>` : ''}
+        ${ticketLinha ? `<div class="card clickable" onclick="App.goto('vendas')" title="${esc(CARDS_INTELIGENCIA[4].desc)}"><span>Melhor Ticket Médio</span><b>${ticketLinha[0] ? money(ticketLinha[0].valor) : '-'}</b><small class="muted" style="display:block;margin-top:2px">${ticketLinha[0] ? esc(ticketLinha[0].nome) : 'sem vendas no período'}</small></div>` : ''}
+        ${cardAtivo('conversaoAgenda') ? `<div class="card clickable" onclick="App.goto('agenda')" title="${esc(CARDS_INTELIGENCIA[5].desc)}"><span>Conversão de Agendamentos</span><b>${ag.conversaoVenda.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">${ag.taxaComparecimento.toFixed(0)}% de comparecimento</small></div>` : ''}
+      </div>`}
     </div>
 
     <div class="panel">
