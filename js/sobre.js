@@ -32,7 +32,16 @@ const NOVIDADES = [
     'Corrigido: nos seletores "Mostrar todo o catálogo/preços/benefícios/estoque" do evento, o clique só funcionava em cima da palavra — agora o toggle inteiro reage ao clique, igual ao resto do sistema. Corrigido também: desmarcar "Mostrar todo o catálogo" agora desliga as linhas participantes junto (antes só ligava, nunca desligava).',
     'Produtos: as linhas do cadastro agora usam o mesmo seletor visual de "Ativo no catálogo", em vez de checkbox comum. Tooltips explicando "Em estoque/Sem estoque" e "Catálogo" ao passar o mouse — igual ao que já tinha em Estoque.',
     'Pré-encomenda: os produtos de um kit agora aparecem visualmente presos ao cabeçalho do kit (borda lateral rosa + seta "↳"), e ficam sempre juntos na lista mesmo que um item avulso seja adicionado no meio — antes podiam ficar espalhados e sem identificação clara de qual kit pertenciam.',
-    'Corrigido na raiz: os seletores tipo "liga/desliga" (toggle) de todo o sistema não respondiam ao clique bem em cima do botão em vários lugares — Catálogo de Eventos ("Participa" nas linhas), Carrinho ("Quando entregar") e outros. O visual do botão estava tampando o clique. Agora qualquer toggle do sistema reage ao clique em qualquer ponto do próprio botão.'
+    'Corrigido na raiz: os seletores tipo "liga/desliga" (toggle) de todo o sistema não respondiam ao clique bem em cima do botão em vários lugares — Catálogo de Eventos ("Participa" nas linhas), Carrinho ("Quando entregar") e outros. O visual do botão estava tampando o clique. Agora qualquer toggle do sistema reage ao clique em qualquer ponto do próprio botão.',
+    '📄 Estoque → Importar pedido: agora dá pra importar direto o PDF de "Detalhes do pedido" do site da Farmasi — o sistema identifica os produtos do seu catálogo mesmo com o texto "quebrado" do PDF (a fonte do site perde letras/números na extração). Quantidades entram como 1 e você ajusta na conferência antes de confirmar.',
+    'Clientes: novo campo de Tags (VIP, Skincare, etc.) — aparecem na lista, no Cliente 360 e entram na busca.',
+    '💰 Estoque → Pré-encomenda: novo painel "Despesas operacionais" (sacolas, espelhos, embalagens...) — descontado do lucro líquido nos Relatórios, junto com o frete.',
+    '🤖 Cliente 360: novo botão "Gerar Sugestão de Abordagem" (IA/Gemini) — usa o histórico real de compras, tags e aniversário pra sugerir uma mensagem de WhatsApp personalizada. Você revisa/edita antes de enviar; nada é enviado sozinho. Requer sua chave do Gemini em Minha Conta.',
+    'Ícone oficial do WhatsApp (verde) em todos os botões que abriam o WhatsApp — antes era um emoji de balão.',
+    'Produtos → Linhas: o nome da linha agora respeita exatamente o que você digitou (não força mais maiúsculas) e a lista aparece em ordem alfabética.',
+    'Relatórios: passe o mouse sobre "Mais vendido", "Mais lucrativo" e "Maior faturamento" (produtos e clientes) pra ver a explicação exata de cada um.',
+    'Trocas com outras consultoras: clique na troca (▸) pra expandir e ver os produtos que saem e entram, igual aos carrinhos abertos.',
+    'Painel Inicial: corrigido a data colada no nome da data comemorativa ("Dia dos Pais09/08").'
   ] },
   { versao: 'v98', itens: [
     '🎁 Kits mudaram de lugar: agora são montados em Estoque → Pré-encomenda, porque o kit é o que você compra da Farmasi (não o que vende ao cliente). O valor pago é rateado como custo previsto de cada produto na lista "A comprar" e vira custo médio do estoque quando o pedido chega.',

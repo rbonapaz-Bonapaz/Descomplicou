@@ -331,30 +331,79 @@ export async function readPedidoFile(files) {
   if (files && files[0]) { $('pedidoJson').value = await files[0].text(); previewPedidoEstoque(); }
 }
 
-// Casa o texto extraído do PDF do pedido Farmasi contra o catálogo já cadastrado (por código
-// Farmasi, quando aparece isolado numa linha, e por nome normalizado presente no texto corrido).
-// O layout do PDF do site da Farmasi é irregular (colunas se misturam na extração de texto) —
-// tentar deduzir a quantidade pela posição do texto não é confiável. Em vez disso, cada produto
-// identificado entra com quantidade 1 e a consultora ajusta na tabela de conferência (mesma tela
-// de revisão do import por JSON) antes de confirmar — nada é gravado sem essa revisão.
-function matchPedidoPdfComCatalogo(texto) {
-  const linhasBrutas = texto.split('\n').map(l => l.trim()).filter(Boolean);
-  const fimIdx = linhasBrutas.findIndex(l => /^Endereços de entrega/i.test(l));
-  const linhas = fimIdx >= 0 ? linhasBrutas.slice(0, fimIdx) : linhasBrutas;
-  const textoJunto = norm(linhas.join(' '));
-  const reCodigoPuro = /^[A-Za-z]{0,4}(\d{4,})$/;
+// Casa o texto extraído do PDF do pedido Farmasi contra o catálogo já cadastrado.
+// O PDF do site da Farmasi usa uma fonte com glifos sem mapeamento de texto — na extração,
+// certos caracteres (ex: "a", dígitos "4"/"6"/"9") viram ESPAÇO ("1002167" sai "10021 7",
+// "Tuna" sai "Tun "). Por isso o casamento tolera curingas: um espaço no texto pode valer por
+// 1 caractere do alvo, com limite de curingas por match. Quando um mesmo trecho casa com mais
+// de um código do catálogo (ex: "100135 " casa com 1001355 E 1001356), ninguém leva por código
+// — esses produtos só entram se o NOME casar. Cada produto identificado entra com quantidade 1;
+// a consultora ajusta na tabela de conferência antes de confirmar — nada é gravado sem revisão.
+function normPdfTexto(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, ' '); // NÃO colapsa espaços — cada glifo perdido é 1 curinga
+}
+function normPdfAlvo(s) {
+  return normPdfTexto(s).replace(/ +/g, ' ').trim();
+}
 
-  const encontrados = {};
-  linhas.forEach(l => {
-    const m = reCodigoPuro.exec(l);
-    if (!m) return;
-    const p = state.data.produtos.find(x => x.codigoFarmasi && String(x.codigoFarmasi) === m[1]);
-    if (p) encontrados[p.id] = p;
+// Posições onde 'alvo' casa em 'texto': espaço do texto = curinga de 1 caractere (até
+// maxCuringas); espaço do alvo consome 0+ espaços do texto; exige fronteira não alfanumérica.
+function posicoesComCuringa(texto, alvo, maxCuringas) {
+  const n = texto.length, m = alvo.length;
+  const alnum = ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+  const posicoes = [];
+  outer: for (let i = 0; i < n; i++) {
+    if (texto[i] !== alvo[0] && texto[i] !== ' ') continue;
+    let ti = i, curingas = 0;
+    for (let j = 0; j < m; j++) {
+      const c = alvo[j];
+      if (c === ' ') {
+        while (ti < n && texto[ti] === ' ') ti++;
+        continue;
+      }
+      if (ti >= n) continue outer;
+      const t = texto[ti];
+      if (t === c) { ti++; continue; }
+      if (t === ' ' && ++curingas <= maxCuringas) { ti++; continue; }
+      continue outer;
+    }
+    const antes = i > 0 ? texto[i - 1] : ' ';
+    const depois = ti < n ? texto[ti] : ' ';
+    if (!alnum(antes) && !alnum(depois)) posicoes.push(i);
+  }
+  return posicoes;
+}
+
+function matchPedidoPdfComCatalogo(textoBruto) {
+  const texto = normPdfTexto(textoBruto);
+  const produtos = state.data.produtos;
+
+  // 1ª passada: códigos — cada posição do texto pode ser reivindicada por vários códigos
+  const reivindicacoes = {};
+  const posPorProduto = {};
+  produtos.forEach(p => {
+    const cod = normPdfAlvo(String(p.codigoFarmasi || ''));
+    if (cod.length < 5) return;
+    const pos = posicoesComCuringa(texto, cod, Math.max(1, Math.floor(cod.length * 0.35)));
+    if (pos.length) {
+      posPorProduto[p.id] = pos;
+      pos.forEach(i => (reivindicacoes[i] = reivindicacoes[i] || []).push(p.id));
+    }
   });
-  state.data.produtos.forEach(p => {
+  const encontrados = {};
+  produtos.forEach(p => {
+    const pos = posPorProduto[p.id] || [];
+    if (pos.some(i => reivindicacoes[i].length === 1)) encontrados[p.id] = p;
+  });
+  // 2ª passada: nome (pra quem não entrou por código)
+  produtos.forEach(p => {
     if (encontrados[p.id]) return;
-    const n = norm(p.nome);
-    if (n.length > 4 && textoJunto.includes(n)) encontrados[p.id] = p;
+    const nomeN = normPdfAlvo(p.nome);
+    if (nomeN.length > 4 &&
+        posicoesComCuringa(texto, nomeN, Math.max(2, Math.floor(nomeN.replace(/ /g, '').length * 0.4))).length) {
+      encontrados[p.id] = p;
+    }
   });
   return Object.values(encontrados).map(p => ({ nome: p.nome, codigo: p.codigoFarmasi || '', quantidade: 1 }));
 }
@@ -390,7 +439,9 @@ export async function readPedidoPdf(files) {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      texto += content.items.map(it => it.str).join('\n') + '\n';
+      // Junta os fragmentos SEM separador (o pdf.js quebra palavras em vários itens) — só
+      // quebra de linha real (hasEOL) vira '\n'. Glifos perdidos já vêm como itens de espaço.
+      texto += content.items.map(it => it.str + (it.hasEOL ? '\n' : '')).join('') + '\n';
     }
     const itens = matchPedidoPdfComCatalogo(texto);
     if (!itens.length) return toast('Nenhum produto do seu catálogo foi identificado neste PDF. Cadastre os produtos antes ou use o JSON.');
