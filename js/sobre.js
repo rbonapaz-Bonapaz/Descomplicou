@@ -17,7 +17,12 @@ const NOVIDADES = [
     'Painel Inicial → Agenda de hoje: nova seção (opcional, configurável em Minha Conta) mostrando os próximos dias além de hoje, recolhida por padrão — clique para expandir cada compromisso e ver endereço (com link de mapa) e observações.',
     'Trocas: agora dá para reabrir uma troca finalizada — os lançamentos de estoque já feitos são estornados automaticamente (o que saiu volta a entrar, o que entrou sai de novo) e ela volta para "Em andamento".',
     '⭐ Nova lista de interesse permanente no cadastro do cliente: na lista de desejos de um evento, além de "Virar carrinho" agora tem "Lista de interesse" — pra quando ela gosta mas não vai comprar agora. Fica salvo no Cliente 360 pra sempre, não desaparece com o evento.',
-    'Removida a opção de importar por JSON nas telas de Produtos, Catálogo e Estoque (pedido) — ficou só o essencial: cadastro manual em Produtos, sincronização com a base coletiva, e o importador de PDF do pedido Farmasi no Estoque (com reconhecimento de kits).'
+    'Removida a opção de importar por JSON nas telas de Produtos, Catálogo e Estoque (pedido) — ficou só o essencial: cadastro manual em Produtos, sincronização com a base coletiva, e o importador de PDF do pedido Farmasi no Estoque (com reconhecimento de kits).',
+    'Nova numeração de pedido: cada venda ganha um número sequencial + um sufixo exclusivo do cliente (ex: "1042-01" na 1ª compra dela, "-02" na 2ª). Aparece em Vendas, Cliente 360 e no PDF do pedido. Em Minha Conta → Segurança tem um botão pra numerar retroativamente os pedidos já existentes.',
+    'Trocas: os blocos "Saem" e "Entram" agora têm cor (azul/verde) pra diferenciar rapidinho, e mostram o lucro ou prejuízo da troca em valor e %.',
+    'Corrigido: em vários lugares (principalmente Relatórios) o texto em negrito ficava colado na legenda ao lado — mesmo bug das "datas comemorativas", só que espalhado. Corrigido na raiz com uma regra geral, não item por item.',
+    'Corrigido: os cards de estatística do Cliente 360 e do Carrinho ficavam espremidos em 4/3 colunas no celular (uma regra mais específica sobrescrevia o ajuste mobile) — agora ficam em 2 colunas.',
+    'Ícone do WhatsApp na lista de desejos do evento agora usa o mesmo ícone oficial do resto do sistema (antes era um emoji genérico).'
   ] },
   { versao: 'v99', itens: [
     '⚠️ Reabrir uma venda com pagamento registrado deixou de apagar o pagamento — agora ele é mantido e aparece um aviso bem visível no topo do carrinho reaberto com o valor já pago. Ao finalizar de novo, o status (pendente/parcial/pago) é recalculado sozinho contra o total atual; se o valor pago passar do novo total, o sistema avisa o excedente para você decidir (crédito ou estorno).',

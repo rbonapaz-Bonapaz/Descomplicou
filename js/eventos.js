@@ -448,21 +448,21 @@ function renderListasInline(eventoId) {
   if (!listas.length) { box.innerHTML = cabecalho + '<p class="muted">Ninguém enviou lista ainda.</p>'; return; }
   box.innerHTML = cabecalho + `<div class="table" style="margin-top:8px"><table><thead><tr>
     <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Tratado</th><th>Ações</th>
-  </tr></thead><tbody>${listas.map(l => `<tr>
+  </tr></thead><tbody>${listas.map(l => { const matchId = !l._clienteId ? matchCliente(l) : null; return `<tr>
     <td data-label="Nome">${esc(l.nomeVisitante)}</td>
     <td data-label="Aniversário">${esc(l.nascimento || '-')}</td>
     <td data-label="WhatsApp">${esc(l.whatsapp || '-')}</td>
-    <td data-label="Situação">${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : ''}</td>
+    <td data-label="Situação">${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : matchId ? `<br>${pill('📌 Telefone de ' + (cliById(matchId)?.nome || ''), 'orange', 'Mesmo WhatsApp de um cliente já cadastrado — clique em "Vincular cliente" pra confirmar')}` : ''}</td>
     <td data-label="Produtos">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
     <td data-label="Tratado">${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
-      ${l.whatsapp ? `<a class="btn small" style="background:#25D366;color:#fff" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">💬</a>` : ''}
+      ${l.whatsapp ? `<a class="btn small green-btn" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">${WA_ICON}</a>` : ''}
       ${!l._clienteId
         ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
         : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>
            <button class="btn small" onclick="App.marcarInteresseDaLista('${eventoId}','${l.id}')" title="Ela tem interesse mas ainda não vai comprar — salva os produtos permanentemente no cadastro dela pra você oferecer de novo depois">⭐ Lista de interesse</button>`}
     </td>
-  </tr>`).join('')}</tbody></table></div>`;
+  </tr>`; }).join('')}</tbody></table></div>`;
 }
 
 // Marca/desmarca uma lista de desejo como "tratada" — libera (ou não) a exclusão do evento.
