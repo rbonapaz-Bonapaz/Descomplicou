@@ -14,7 +14,8 @@ const NOVIDADES = [
     '💳 Créditos do cliente: recebeu a mais que o devido? O sistema pergunta se quer guardar o excedente como crédito no cadastro. Na próxima compra (ou num pagamento pendente), é só marcar "Usar créditos" — o saldo aparece no Cliente 360 e na gestão de pagamento.',
     'Base coletiva: a administração agora publica também as LINHAS de produto (Admin → Catálogo mestre). Em Produtos → Linhas, o botão "🔄 Sincronizar linhas da base coletiva" acrescenta as linhas do admin às suas — as que você já tem permanecem.',
     '📄 PDF do pedido (cliente e interno) refeito: resumo compacto no topo (pedido, pagamento e totais lado a lado), cada produto em uma linha com foto, quantidade e valores, e os benefícios e o desconto logo abaixo do nome — bem menos espaço desperdiçado.',
-    '📄 PDF do catálogo: a descrição do produto agora preenche todo o espaço do quadro (não corta mais com "..." em 3 linhas) e o cabeçalho ficou num tom suave, combinando com o restante do sistema.'
+    '📄 PDF do catálogo: a descrição do produto agora preenche todo o espaço do quadro (não corta mais com "..." em 3 linhas) e o cabeçalho ficou num tom suave, combinando com o restante do sistema.',
+    'Carrinho: cada item ganhou um seletor de entrega "Agora / Depois" — mesmo com estoque, dá pra marcar que o item será entregue em outro momento (o pedido finaliza como parcial e a entrega é confirmada depois pelo botão 📦 em Vendas). Ligar "Agora" exige estoque disponível.'
   ] },
   { versao: 'v97', itens: [
     'Sincronização em tempo real: lançamentos feitos em outro aparelho/aba aparecem sozinhos, sem precisar atualizar o navegador.',

@@ -40,7 +40,7 @@ import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, s
   adicionarLinhaColetiva, removerLinhaColetiva } from './admin.js';
 import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
-  toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
+  toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento } from './carrinho.js';
@@ -289,7 +289,7 @@ window.App = {
   // Carrinho
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
-  toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
+  toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento,

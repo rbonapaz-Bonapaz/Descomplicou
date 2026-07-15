@@ -1,6 +1,6 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto } from './state.js';
-import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, porGenero } from './utils.js';
+import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 
@@ -197,7 +197,10 @@ export function openCarrinho(id) {
         <td data-label="Preço">${money(it.precoUnitario)}</td>
         <td data-label="Desconto">${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
         <td data-label="Total">${money(it.totalItem)}</td>
-        <td data-label="Entrega">${pill(it.tipoEntrega === 'entrega_futura' ? 'Futura' : 'Pronta', it.tipoEntrega === 'entrega_futura' ? 'orange' : 'green')}</td>
+        <td data-label="Entrega"><div style="display:flex;align-items:center;gap:6px" title="Ligado = entrega na finalização; desligado = fica pendente pra entregar em outro momento">
+          ${toggleBareHtml('entrItem_' + idx, it.tipoEntrega !== 'entrega_futura', `App.toggleEntregaItem('${id}',${idx},this.checked)`)}
+          <small class="muted" style="white-space:nowrap">${it.tipoEntrega === 'entrega_futura' ? 'Depois' : 'Agora'}</small>
+        </div></td>
         <td><button class="btn small" onclick="App.removerItemCarrinho('${id}',${idx})">✗</button></td>
       </tr>`;
       }).join('')}</tbody></table></div>` : '<p class="muted">Carrinho vazio.</p>'}
@@ -552,6 +555,31 @@ export async function adicionarItemCarrinho(carrinhoId) {
   // sem sobrescrever se a consultora já tiver colocado esse produto lá manualmente.
   if (tipoEntrega === 'entrega_futura') await adicionarPreEncomenda(p.id, 'carrinho_sem_estoque', qtd - estoque);
 
+  await window.App.refresh();
+  openCarrinho(carrinhoId);
+}
+
+// A entrega de cada item é escolha da consultora: mesmo com estoque, um item pode ficar pra
+// entregar em outro momento (vira "entrega futura" e o pedido finaliza como parcial — a entrega
+// é confirmada depois pelo botão 📦 em Vendas). O caminho contrário exige estoque disponível:
+// não dá pra prometer entrega agora do que não existe. Item de "entrega futura" não reserva
+// estoque, então a checagem contra estoqueDisponivel() já conta tudo certo.
+export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  const it = carr?.itens?.[idx];
+  if (!it) return;
+  if (entregarAgora && estoqueDisponivel(it.produtoId) < it.quantidade) {
+    toast(`Sem estoque disponível pra entregar "${it.produtoNome}" agora (disponível: ${estoqueDisponivel(it.produtoId)} de ${it.quantidade}).`);
+    openCarrinho(carrinhoId);
+    return;
+  }
+  it.tipoEntrega = entregarAgora ? 'pronta_entrega' : 'entrega_futura';
+  if (entregarAgora) delete it.entregue;
+  await setDoc(ref('carrinhos', carrinhoId), {
+    itens: carr.itens,
+    possuiEntregaFutura: carr.itens.some(i => i.tipoEntrega === 'entrega_futura'),
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
   await window.App.refresh();
   openCarrinho(carrinhoId);
 }
