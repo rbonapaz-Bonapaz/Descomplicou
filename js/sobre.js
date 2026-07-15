@@ -22,7 +22,12 @@ const NOVIDADES = [
     'Carrinho: novo botão "💳 Enviar link de pagamento" (aparece quando há link cadastrado em Minha Conta e saldo pendente) — manda o link certo com o valor que falta receber.',
     'Painel Inicial: alerta quando o plano está a 7 dias ou menos do vencimento, com atalho pra renovar.',
     'Mensagem de aniversário no WhatsApp agora convida pra uma condição especial de presente, não só os parabéns.',
-    'Painel Inicial: novo card "🎁 Datas comemorativas" — feriados nacionais (buscados automaticamente) + datas comerciais (Dia das Mães, Namorados, Pais, Crianças, Black Friday, Páscoa, Natal, Dia da Mulher) nos próximos 30 dias. Ótimas datas pra oferecer presente.'
+    'Painel Inicial: novo card "🎁 Datas comemorativas" — feriados nacionais (buscados automaticamente) + datas comerciais (Dia das Mães, Namorados, Pais, Crianças, Black Friday, Páscoa, Natal, Dia da Mulher) nos próximos 30 dias. Ótimas datas pra oferecer presente.',
+    'Admin → Planos: novo lembrete de reajuste anual por IPCA — você digita o % e a data, o sistema avisa você e a consultora, mas nunca muda preço sozinho.',
+    'Nova promoção de indicação (Admin → Planos, ativar/desativar): cada consultora ganha um link próprio em Minha Conta → Meu Plano; se a pessoa indicada virar plano pago, quem indicou ganha 30 dias grátis automaticamente.',
+    'Catálogo de Eventos: excluir evento agora exige que todos os leads estejam marcados como "Tratado" (novo seletor na lista de desejos) — evita perder um lead que ainda não virou cliente.',
+    'Catálogo de Eventos: "Mostrar todo o catálogo" agora marca sozinho todas as linhas como participantes ao ligar. Novos seletores pra personalizar o link — mostrar ou não preços, benefícios e estoque. Campo "% em Todos os itens" aplica o desconto em todas as linhas de uma vez (ainda dá pra ajustar uma linha na mão depois). Link do evento agora pode ser personalizado ao criar (opcional).',
+    'Corrigido: excluir um evento estava sempre falhando por permissão — as regras do Firestore bloqueavam apagar as listas de desejo recebidas.'
   ] },
   { versao: 'v98', itens: [
     '🎁 Kits mudaram de lugar: agora são montados em Estoque → Pré-encomenda, porque o kit é o que você compra da Farmasi (não o que vende ao cliente). O valor pago é rateado como custo previsto de cada produto na lista "A comprar" e vira custo médio do estoque quando o pedido chega.',

@@ -144,6 +144,12 @@ function renderGrid() {
   if (linhaAtiva !== 'todas') itens = itens.filter(p => linhasDe(p).includes(linhaAtiva));
   if (q) itens = itens.filter(p => norm(p.nome + ' ' + p.codigoFarmasi).includes(q));
 
+  // Cada evento decide o que aparece na vitrine (preço/benefícios/estoque) — configurado pela
+  // consultora ao criar/editar o evento; padrão true pra eventos criados antes desse recurso.
+  const mostrarPrecos = evento.mostrarPrecos !== false;
+  const mostrarBeneficios = evento.mostrarBeneficios !== false;
+  const mostrarEstoque = evento.mostrarEstoque !== false;
+
   $('evGrid').innerHTML = itens.length ? itens.map(p => {
     const naLista = wishlist.some(w => itemKey(w) === itemKey(p));
     const temDesconto = p.precoOriginal && p.precoComDesconto && p.precoOriginal !== p.precoComDesconto;
@@ -152,11 +158,11 @@ function renderGrid() {
       ${p.imagem ? `<img src="${esc(p.imagem)}">` : ''}
       <b>${esc(p.nome)}</b>
       <span>Código: ${esc(p.codigoFarmasi || '-')}</span>
-      ${p.beneficios ? `<span class="catalog-benef">${esc(p.beneficios)}</span>` : ''}
-      ${p.prontaEntrega != null ? `<span class="ev-estoque-tag ${pronta > 0 ? 'ev-estoque-ok' : 'ev-estoque-zero'}">${pronta > 0 ? `${pronta} em pronta entrega` : 'Sob encomenda'}</span>` : ''}
-      <div class="price-pair">${temDesconto
+      ${mostrarBeneficios && p.beneficios ? `<span class="catalog-benef">${esc(p.beneficios)}</span>` : ''}
+      ${mostrarEstoque && p.prontaEntrega != null ? `<span class="ev-estoque-tag ${pronta > 0 ? 'ev-estoque-ok' : 'ev-estoque-zero'}">${pronta > 0 ? `${pronta} em pronta entrega` : 'Sob encomenda'}</span>` : ''}
+      ${mostrarPrecos ? `<div class="price-pair">${temDesconto
         ? `<del>De: ${money(p.precoOriginal)}</del><strong>Por: ${money(p.precoComDesconto)} <span class="ev-desconto-tag">-${descontoPercent(p.precoOriginal, p.precoComDesconto)}%</span></strong>`
-        : `<strong>${money(p.precoComDesconto || p.precoOriginal)}</strong>`}</div>
+        : `<strong>${money(p.precoComDesconto || p.precoOriginal)}</strong>`}</div>` : ''}
       <button class="btn ${naLista ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}">${naLista ? '✓ Na minha lista' : '♥ Quero esse'}</button>
     </div>`;
   }).join('') : '<p class="muted">Nenhum produto encontrado.</p>';

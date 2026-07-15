@@ -1,9 +1,10 @@
 import { state, SECTIONS, db, setDoc, getDoc, getDocs, addDoc, deleteDoc, writeBatch, serverTimestamp, doc, collection, showModal, closeModal, toast } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sectionTabsHtml, formatDateBR, addDias, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sectionTabsHtml, formatDateBR, addDias, today, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero } from './utils.js';
 import { extractProdutos, dedupBatch } from './importar.js';
 
 const PLANOS = ['teste', 'gratuito', 'mensal', 'semestral', 'anual', 'vencido', 'cancelado'];
 const PLANOS_LABEL = { teste: 'Teste', gratuito: 'Gratuito', mensal: 'Mensal', semestral: 'Semestral', anual: 'Anual', vencido: 'Vencido', cancelado: 'Cancelado' };
+const PLANOS_PAGOS = ['mensal', 'semestral', 'anual'];
 let cmCache = [];
 let usersCache = [];
 
@@ -71,6 +72,24 @@ export function renderAdmin() {
         <div class="field"><label>Limite de clientes no plano gratuito</label><input id="cfgLimiteGratuito" type="number" value="${cfg.limiteGratuito ?? 10}"></div>
       </div><br>
       <button class="btn dark" onclick="App.salvarConfigPlanos()">Salvar preços</button>
+    </div>
+
+    <div class="panel">
+      <h3>Reajuste anual por IPCA</h3>
+      <p class="muted">Lembrete manual — o sistema NUNCA muda os preços sozinho. Preencha o % apurado no IBGE e a data em que o reajuste passa a valer; a consultora vê um aviso prévio em Minha Conta, e você vê o lembrete aqui até marcar como aplicado.</p>
+      <div class="grid">
+        <div class="field"><label>IPCA acumulado (%)</label><input id="cfgIpcaPercentual" placeholder="Ex: 4,5" value="${cfg.ipcaPercentual ?? ''}"></div>
+        <div class="field"><label>Reajuste válido a partir de</label><input type="date" id="cfgIpcaData" value="${cfg.ipcaData || ''}"></div>
+      </div><br>
+      <button class="btn dark" onclick="App.salvarConfigIpca()">Salvar reajuste agendado</button>
+      ${cfg.ipcaPercentual && cfg.ipcaData ? `<button class="btn small" style="margin-left:8px" onclick="App.marcarIpcaAplicado()">✓ Já apliquei — marcar como feito</button>` : ''}
+      ${cfg.ipcaPercentual && cfg.ipcaData && new Date(cfg.ipcaData) <= new Date() ? `<div class="alert-box" style="margin-top:10px">⏰ O reajuste de ${cfg.ipcaPercentual}% já venceu (válido desde ${formatDateBR(cfg.ipcaData)}) — atualize os preços na tabela acima e marque como aplicado.</div>` : ''}
+    </div>
+
+    <div class="panel">
+      <h3>Promoção de indicação</h3>
+      <p class="muted">Quando ativa, cada consultora tem um link próprio de indicação em Minha Conta. Se a pessoa indicada virar plano pago (mensal/semestral/anual) pela primeira vez, quem indicou ganha 30 dias a mais de plano automaticamente.</p>
+      ${toggleHtml('cfgPromoIndicacao', cfg.promocaoIndicacaoAtiva, 'App.togglePromocaoIndicacao(this.checked)', 'Promoção de indicação ativa')}
     </div>`;
   }
 
@@ -376,6 +395,37 @@ export async function salvarConfigPlanos() {
   } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
 }
 
+// Só agenda o lembrete — nunca muda preço sozinho. A consultora vê o aviso prévio em Minha Conta
+// (Notificação Prévia, transparência do reajuste); o admin some com o lembrete só ao confirmar
+// que já aplicou manualmente na tabela de preços acima.
+export async function salvarConfigIpca() {
+  const percentual = String($('cfgIpcaPercentual')?.value || '').replace(',', '.').trim();
+  const dataReajuste = $('cfgIpcaData')?.value || '';
+  if (!percentual || !dataReajuste) return toast('Preencha o percentual e a data do reajuste');
+  try {
+    await setDoc(doc(db, 'config', 'planos'), { ipcaPercentual: percentual, ipcaData: dataReajuste, atualizadoEm: serverTimestamp() }, { merge: true });
+    toast('Reajuste agendado — a consultora já vê o aviso em Minha Conta');
+    window.App.refresh();
+  } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
+}
+
+export async function togglePromocaoIndicacao(ativa) {
+  try {
+    await setDoc(doc(db, 'config', 'planos'), { promocaoIndicacaoAtiva: ativa, atualizadoEm: serverTimestamp() }, { merge: true });
+    toast(ativa ? 'Promoção de indicação ativada' : 'Promoção de indicação desativada');
+    window.App.refresh();
+  } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
+}
+
+export async function marcarIpcaAplicado() {
+  if (!confirm('Confirma que já atualizou os preços na tabela acima com o reajuste do IPCA? Isso limpa o lembrete e o aviso da consultora.')) return;
+  try {
+    await setDoc(doc(db, 'config', 'planos'), { ipcaPercentual: '', ipcaData: '', atualizadoEm: serverTimestamp() }, { merge: true });
+    toast('Reajuste marcado como aplicado');
+    window.App.refresh();
+  } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
+}
+
 export async function carregarConsultoras() {
   try {
     const snap = await getDocs(collection(db, 'users'));
@@ -506,6 +556,29 @@ export async function salvarConsultora(uid) {
     observacoesAdmin: $('adObs').value, atualizadoAdminEm: serverTimestamp()
   };
   if (uid !== state.user.uid && $('adRole')) d.role = $('adRole').value;
+
+  // Promoção de indicação: se essa consultora virou plano pago AGORA (não estava antes) e foi
+  // indicada por alguém que ainda não recebeu a recompensa dessa indicação, estende o plano de
+  // quem indicou em 30 dias. Só dispara uma vez por indicação (indicacaoRecompensada trava isso).
+  const antigo = usersCache.find(u => u.id === uid);
+  const virouPago = antigo && !PLANOS_PAGOS.includes(antigo.plano) && PLANOS_PAGOS.includes(d.plano);
+  if (state.config?.promocaoIndicacaoAtiva && virouPago && antigo.indicadoPorUid && !antigo.indicacaoRecompensada) {
+    try {
+      const refSnap = await getDoc(doc(db, 'users', antigo.indicadoPorUid));
+      if (refSnap.exists()) {
+        const refDados = refSnap.data();
+        const baseData = refDados.premiumAte && refDados.premiumAte > today() ? refDados.premiumAte : today();
+        const novaData = addDias(baseData, 30);
+        await setDoc(doc(db, 'users', antigo.indicadoPorUid), {
+          premiumAte: novaData,
+          ultimoMesGanhoIndicacao: { data: today(), indicadoNome: antigo.nome || antigo.email || '' }
+        }, { merge: true });
+        d.indicacaoRecompensada = true;
+        toast(`🎉 ${refDados.nome || 'Quem indicou'} ganhou 30 dias de plano por essa indicação!`);
+      }
+    } catch (e) { /* não bloqueia o salvamento da consultora por causa da recompensa */ }
+  }
+
   await setDoc(doc(db, 'users', uid), d, { merge: true });
   closeModal();
   toast('Consultora atualizada');

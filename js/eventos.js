@@ -1,4 +1,4 @@
-import { state, col, ref, db, doc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
+import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
 import { $, esc, money, norm, pill, labelLinha, toggleBareHtml } from './utils.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
@@ -129,13 +129,21 @@ function formHtmlEvento(ev) {
       <div class="field"><label>Data do evento</label><input type="date" id="evData" value="${esc(ev?.data || '')}"></div>
       <div class="field"><label>Início da vigência do link (opcional)</label><input type="datetime-local" id="evVigenciaInicio" value="${esc(ev?.vigenciaInicio || '')}"></div>
       <div class="field"><label>Fim da vigência do link (opcional)</label><input type="datetime-local" id="evVigenciaFim" value="${esc(ev?.vigenciaFim || '')}"></div>
+      ${ev ? `<div class="field full"><label>Link do evento</label><input value="${esc(linkPublico(ev.id))}" readonly></div>`
+        : `<div class="field full"><label>Link personalizado (opcional)</label><input id="evSlug" placeholder="Ex: demo-fabi (deixe em branco pra gerar automático)">
+          <small class="muted">Vira parte do endereço do link — só depois de criado não dá mais pra mudar (evita quebrar um link já compartilhado).</small></div>`}
       <div class="field full"><label>Mensagem padrão para WhatsApp (opcional)</label>
         <textarea id="evMensagemWhats" placeholder="Ex: Oi! Preparei um catálogo especial pra você 💕 Dá uma olhada nos produtos e me manda sua lista de desejos:">${esc(ev?.mensagemWhatsapp || '')}</textarea>
       </div>
     </div>
-    <div class="field full" style="margin-top:8px">${toggleBareHtml('evTodoCatalogo', !!ev?.todoCatalogo)} <label for="evTodoCatalogo" style="display:inline;font-weight:700">Mostrar todo o catálogo Farmasi no link</label>
-      <br><small class="muted">Sem marcar: só os produtos das linhas participantes aparecem no link. Marcando: todo o catálogo aparece, mas o desconto só vale pras linhas participantes escolhidas abaixo — as demais aparecem pelo preço normal.</small>
+    <div class="grid" style="margin-top:8px">
+      <div class="field"><div>${toggleBareHtml('evTodoCatalogo', !!ev?.todoCatalogo, 'App.aoMudarTodoCatalogo(this.checked)')} <label for="evTodoCatalogo" style="display:inline;font-weight:700">Mostrar todo o catálogo</label></div></div>
+      <div class="field"><div>${toggleBareHtml('evMostrarPrecos', ev ? ev.mostrarPrecos !== false : true)} <label for="evMostrarPrecos" style="display:inline;font-weight:700">Mostrar preços</label></div></div>
+      <div class="field"><div>${toggleBareHtml('evMostrarBeneficios', ev ? ev.mostrarBeneficios !== false : true)} <label for="evMostrarBeneficios" style="display:inline;font-weight:700">Mostrar benefícios</label></div></div>
+      <div class="field"><div>${toggleBareHtml('evMostrarEstoque', ev ? ev.mostrarEstoque !== false : true)} <label for="evMostrarEstoque" style="display:inline;font-weight:700">Mostrar estoque</label></div></div>
+      <div class="field"><label>% em Todos itens</label><input id="evDescontoTodos" placeholder="Ex: 10" onchange="App.aplicarDescontoTodos()"></div>
     </div>
+    <small class="muted">Sem marcar "todo o catálogo": só os produtos das linhas participantes aparecem no link. Marcando: todo o catálogo aparece, mas o desconto só vale pras linhas participantes escolhidas abaixo — as demais aparecem pelo preço normal. Preencher "% em Todos itens" aplica esse desconto em todas as linhas de uma vez — depois ainda dá pra ajustar uma linha específica na mão, o valor digitado nela é o que vale. Vazio = sem desconto.</small>
     <h4 style="margin:16px 0 8px">Linhas participantes e desconto</h4>
     <p class="muted">Marque as linhas que entram no evento e o desconto (%) sobre o preço de venda atual.</p>
     <div class="table"><table><thead><tr><th>Participa</th><th>Linha</th><th>Desconto %</th></tr></thead><tbody>
@@ -148,6 +156,20 @@ function formHtmlEvento(ev) {
         </tr>`;
       }).join('') : '<tr><td colspan="3"><p class="muted">Nenhuma linha ativa no catálogo.</p></td></tr>'}
     </tbody></table></div><br>`;
+}
+
+// "Mostrar todo o catálogo" ligado marca automaticamente todas as linhas como participantes —
+// desmarcar continua manual (a consultora pode tirar linhas específicas depois de marcar tudo).
+export function aoMudarTodoCatalogo(ligado) {
+  if (ligado) document.querySelectorAll('.evLinhaChk').forEach(c => { c.checked = true; });
+}
+
+// Preenche o desconto de TODAS as linhas de uma vez com o valor digitado em "% em Todos itens" —
+// é um "aplicar e preencher" pontual, não uma fórmula viva: depois de aplicado, editar uma linha
+// específica na mão sobrescreve só aquela linha, sem voltar a ser recalculada.
+export function aplicarDescontoTodos() {
+  const valor = ($('evDescontoTodos')?.value || '').trim();
+  document.querySelectorAll('.evLinhaDesc').forEach(inp => { inp.value = valor || '0'; });
 }
 
 // Lê o formulário (criação ou edição) e monta os dados do evento. Retorna null (e avisa) se inválido.
@@ -201,8 +223,16 @@ function coletarDadosFormEvento() {
     nome, data: $('evData').value,
     vigenciaInicio: $('evVigenciaInicio').value, vigenciaFim: $('evVigenciaFim').value,
     mensagemWhatsapp: $('evMensagemWhats').value.trim(),
+    mostrarPrecos: !!$('evMostrarPrecos')?.checked, mostrarBeneficios: !!$('evMostrarBeneficios')?.checked, mostrarEstoque: !!$('evMostrarEstoque')?.checked,
     descontosPorLinha: descontos, todoCatalogo, produtos, perfilPublico
   };
+}
+
+// Transforma o texto digitado em "Link personalizado" num slug seguro pra usar como id de
+// documento e pedaço de URL — só letras minúsculas, números e hífen.
+function sanitizarSlug(txt) {
+  return String(txt || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 }
 
 export function openNovoEvento() {
@@ -216,7 +246,16 @@ export async function confirmarNovoEvento() {
   const dados = coletarDadosFormEvento();
   if (!dados) return;
 
-  const id = doc(col('eventos')).id;
+  const slugDigitado = sanitizarSlug($('evSlug')?.value);
+  let id = slugDigitado || doc(col('eventos')).id;
+
+  if (slugDigitado) {
+    try {
+      const jaExiste = await getDoc(doc(db, 'eventosPublicos', slugDigitado));
+      if (jaExiste.exists()) return toast('Esse link já está em uso — escolha outro.');
+    } catch (e) { /* leitura pública sempre permitida por regra — se falhar, segue e deixa o setDoc decidir */ }
+  }
+
   const payload = { uid: state.user.uid, ativo: true, ...dados, criadoEm: serverTimestamp() };
 
   try {
@@ -332,9 +371,19 @@ export function gerarQrCodeEvento(id) {
 }
 
 export async function excluirEvento(id) {
+  // Só permite excluir depois que todas as listas de desejo forem marcadas como "Tratado" —
+  // evita perder um lead que ainda não virou cliente/carrinho só porque o evento foi apagado.
+  let listasSnap;
+  try {
+    listasSnap = await getDocs(collection(db, 'eventosPublicos', id, 'listasDesejo'));
+  } catch (e) { return toast('Erro ao conferir as listas de desejo: ' + e.message); }
+  const pendentes = listasSnap.docs.filter(d => !d.data().tratado).length;
+  if (pendentes > 0) {
+    return toast(`Ainda há ${pendentes} lead(s) não marcado(s) como "Tratado" — marque todos (💌 Listas de desejo) antes de excluir o evento.`);
+  }
+
   if (!confirm('Excluir este evento? O link público deixará de funcionar e as listas de desejo enviadas serão apagadas.')) return;
   try {
-    const listasSnap = await getDocs(collection(db, 'eventosPublicos', id, 'listasDesejo'));
     for (const d of listasSnap.docs) await deleteDoc(d.ref);
     await deleteDoc(doc(db, 'eventosPublicos', id));
     await deleteDoc(ref('eventos', id));
@@ -383,19 +432,30 @@ function renderListasInline(eventoId) {
   </div>`;
   if (!listas.length) { box.innerHTML = cabecalho + '<p class="muted">Ninguém enviou lista ainda.</p>'; return; }
   box.innerHTML = cabecalho + `<div class="table" style="margin-top:8px"><table><thead><tr>
-    <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Ações</th>
+    <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Tratado</th><th>Ações</th>
   </tr></thead><tbody>${listas.map(l => `<tr>
     <td data-label="Nome">${esc(l.nomeVisitante)}</td>
     <td data-label="Aniversário">${esc(l.nascimento || '-')}</td>
     <td data-label="WhatsApp">${esc(l.whatsapp || '-')}</td>
     <td data-label="Situação">${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : ''}</td>
     <td data-label="Produtos">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
+    <td data-label="Tratado">${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
       ${!l._clienteId
         ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
         : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>`}
     </td>
   </tr>`).join('')}</tbody></table></div>`;
+}
+
+// Marca/desmarca uma lista de desejo como "tratada" — libera (ou não) a exclusão do evento.
+// Precisa das regras do Firestore atualizadas (listasDesejo agora aceita update do dono).
+export async function marcarLeadTratado(eventoId, listaId, tratado) {
+  try {
+    await setDoc(doc(db, 'eventosPublicos', eventoId, 'listasDesejo', listaId), { tratado }, { merge: true });
+    const l = (listasCache[eventoId] || []).find(x => x.id === listaId);
+    if (l) l.tratado = tratado;
+  } catch (e) { toast('Erro ao marcar: verifique se as regras do Firestore foram publicadas.'); }
 }
 
 function matchCliente(lista) {

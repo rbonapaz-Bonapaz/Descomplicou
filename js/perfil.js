@@ -174,6 +174,21 @@ export function renderPerfil() {
   if (sec === 'seguranca') renderBioSecurityBox();
 }
 
+// Link de indicação: leva o próprio uid como código — simples, sem precisar de um registro
+// separado de códigos, e cada consultora só tem um link mesmo (o dela).
+function linkIndicacao() {
+  return location.origin + location.pathname.replace(/index\.html$/, '') + `?ref=${state.user.uid}`;
+}
+
+export function copiarLinkIndicacao() {
+  const input = $('perLinkIndicacao');
+  if (!input) return;
+  navigator.clipboard.writeText(input.value).then(
+    () => toast('Link de indicação copiado!'),
+    () => { input.select(); toast('Selecione e copie o link (Ctrl+C)'); }
+  );
+}
+
 function planoBox() {
   const pi = planoInfo();
   const cfg = state.config || {};
@@ -200,6 +215,16 @@ function planoBox() {
     ${usoHtml}
     ${pi.vencido ? '<div class="alert-box" style="margin-top:10px">Seu plano está vencido. Fale com a administração para renovar.</div>' : ''}
     ${pi.atingiuLimite ? '<div class="alert-box" style="margin-top:10px">Limite de clientes do plano teste atingido.</div>' : ''}
+    ${cfg.ipcaPercentual && cfg.ipcaData ? `<div class="alert-box" style="margin-top:10px;background:#FFF7E6;border-color:#F5C453;color:#8A6100">📢 Aviso de reajuste: os preços dos planos terão um ajuste de ${esc(String(cfg.ipcaPercentual))}% (IPCA) a partir de ${formatDateBR(cfg.ipcaData)}.</div>` : ''}
+    ${state.profile?.ultimoMesGanhoIndicacao ? `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">🎉 Você ganhou 30 dias de plano por indicar ${esc(state.profile.ultimoMesGanhoIndicacao.indicadoNome || 'uma nova consultora')}!</div>` : ''}
+    ${cfg.promocaoIndicacaoAtiva ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <small class="muted" style="text-transform:uppercase;font-weight:900;letter-spacing:.08em">Indique e ganhe</small>
+      <p class="muted" style="margin:4px 0 8px">Compartilhe seu link — quando a pessoa indicada virar plano pago, você ganha 30 dias a mais de graça.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="perLinkIndicacao" readonly value="${esc(linkIndicacao())}" style="flex:1;min-width:200px">
+        <button class="btn dark small" onclick="App.copiarLinkIndicacao()">📋 Copiar link</button>
+      </div>
+    </div>` : ''}
     <div style="margin-top:14px">
       <small class="muted" style="text-transform:uppercase;font-weight:900;letter-spacing:.08em">Tabela de preços (referência)</small>
       <div class="grid" style="margin-top:8px">

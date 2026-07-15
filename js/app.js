@@ -33,8 +33,8 @@ import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalo
 import { renderRelatorios } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
-  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta } from './perfil.js';
-import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos,
+  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao } from './perfil.js';
+import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
   adicionarLinhaColetiva, removerLinhaColetiva } from './admin.js';
@@ -52,7 +52,7 @@ import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, e
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
-  marcarLeadsVistos } from './eventos.js';
+  marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado } from './eventos.js';
 import { renderSobre } from './sobre.js';
 
 // --- Auth ---
@@ -164,18 +164,36 @@ function goto(p) {
   $('subtitle').textContent = titles[p]?.[1] || '';
 }
 
+// Captura o "?ref=uid" da URL de indicação assim que a página carrega (antes do login terminar)
+// e guarda em localStorage — sobrevive ao redirect/popup do Google, que troca a URL. Só é
+// consumido uma vez, na criação do perfil (ensureProfile), e depois é sempre limpo.
+(function capturarIndicacao() {
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref) localStorage.setItem('indicadoPorUid', ref);
+})();
+
 // --- Profile ---
 async function ensureProfile() {
   const r = doc(db, 'users', state.user.uid);
   const s = await getDoc(r);
   if (!s.exists()) {
+    // Indicação só conta se o código não for o da própria pessoa (evita autoindicação). Não dá
+    // pra checar aqui se o uid de quem indicou realmente existe — as regras do Firestore não
+    // deixam ler o doc de outro usuário antes do próprio doc existir. Essa checagem acontece
+    // depois, na hora da recompensa (salvarConsultora em admin.js), quando o admin já tem
+    // permissão de leitura ampla — se o uid for inválido, simplesmente nenhuma recompensa sai.
+    const indicadoPorUid = localStorage.getItem('indicadoPorUid');
+    const indicacaoValida = (indicadoPorUid && indicadoPorUid !== state.user.uid) ? indicadoPorUid : '';
+    localStorage.removeItem('indicadoPorUid');
+
     state.profile = {
       nome: state.user.displayName || '', email: state.user.email || '',
       role: ADMINS.includes((state.user.email || '').toLowerCase()) ? 'admin' : 'user',
       plano: 'teste', nomeNegocio: 'CRM de Vendas', whatsapp: '', instagram: '',
       linkLoja: '', tituloCatalogo: 'Catálogo Inteligente',
       subtituloCatalogo: 'GESTÃO DE PRODUTOS + PDF',
-      rodapeCatalogo: 'Fale comigo para fazer seu pedido', mensagemPadrao: ''
+      rodapeCatalogo: 'Fale comigo para fazer seu pedido', mensagemPadrao: '',
+      ...(indicacaoValida ? { indicadoPorUid: indicacaoValida } : {})
     };
     await setDoc(r, { ...state.profile, criadoEm: serverTimestamp() });
   } else {
@@ -324,9 +342,9 @@ window.App = {
   // Perfil
   renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
-  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta,
+  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao,
   // Admin
-  carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos,
+  carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
   adicionarLinhaColetiva, removerLinhaColetiva,
@@ -339,7 +357,7 @@ window.App = {
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
-  marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas,
+  marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado,
   // Sobre
   renderSobre
 };
