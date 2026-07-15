@@ -37,8 +37,8 @@ function productCard(x) {
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Estoque</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
     <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-      ${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red')}
-      ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue') : ''}
+      ${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red', x.est > 0 ? `${x.est} unidade(s) disponível(is) agora` : 'Nenhuma unidade disponível — venda entra como entrega futura')}
+      ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)') : ''}
       ${btnAdicionarPreEncomenda(x.p.id)}
       <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
       <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>
@@ -303,8 +303,9 @@ export function openProdutoForm(id = '') {
   const linhaFieldHtml = linhasCustom.length ? `
     <input type="hidden" id="pLinha" value="${esc(p.linha || '')}">
     <div style="display:flex;flex-wrap:wrap;gap:10px;background:#F3F6FA;border-radius:12px;padding:10px">
-      ${linhasCustom.map(l => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700">
-        <input type="checkbox" class="linha-check" value="${esc(l)}" ${linhasAtuais.includes(l) ? 'checked' : ''} onchange="App.atualizarLinhasProdutoForm()">${esc(l)}
+      ${linhasCustom.map(l => `<label class="toggle-line" style="font-size:13px;font-weight:700">
+        ${toggleBareHtml('', linhasAtuais.includes(l), 'App.atualizarLinhasProdutoForm()', `class="linha-check" value="${esc(l)}"`)}
+        ${esc(l)}
       </label>`).join('')}
     </div>
     <small class="muted">Gerencie suas linhas em Produtos → Linhas.</small>`

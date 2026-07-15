@@ -349,12 +349,25 @@ function fretePanelHtml() {
 
 // Cabeçalho que agrupa os componentes de um kit numa tabela — spanna todas as colunas e traz o
 // único botão que remove o kit (por inteiro). Os componentes abaixo dele ficam sem inputs
-// editáveis nem botão de remoção individual (ver bloco de KITs acima).
+// editáveis nem botão de remoção individual (ver bloco de KITs acima). Borda lateral rosa forte
+// (KIT_BORDA) conecta visualmente o cabeçalho às linhas dos produtos — sem ela, os produtos do
+// kit pareciam soltos na tabela, indistinguíveis de itens avulsos.
+const KIT_BORDA = '4px solid #EC4899';
 function kitHeaderRow(kitId, kitNome, qtdComponentes, colspan) {
-  return `<tr class="kit-group-header"><td colspan="${colspan}" style="background:#FDF2F7;font-weight:900;color:#A83E63">
+  return `<tr class="kit-group-header"><td colspan="${colspan}" style="background:#FDF2F7;font-weight:900;color:#A83E63;border-left:${KIT_BORDA};border-top:${KIT_BORDA.replace('4px', '2px')};border-top-color:#F5C6DE">
     🎁 Kit: ${esc(kitNome)} (${qtdComponentes} produto${qtdComponentes === 1 ? '' : 's'})
     <button class="btn small" style="float:right;color:var(--error)" onclick="App.removerKitCompleto('${kitId}')">🗑️ Remover kit inteiro</button>
   </td></tr>`;
+}
+
+// Ordena a lista pra garantir que os componentes de um mesmo kit fiquem sempre em linhas
+// contíguas na tabela — sem isso, um item avulso adicionado entre eles quebraria o agrupamento
+// visual (a ordem natural do Firestore não garante isso).
+function agruparPorKit(lista) {
+  return [...lista].sort((a, b) => {
+    const ka = a.kitId || a.id, kb = b.kitId || b.id;
+    return ka < kb ? -1 : ka > kb ? 1 : 0;
+  });
 }
 
 export function preEncomendaTabHtml() {
@@ -382,7 +395,7 @@ export function preEncomendaTabHtml() {
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
     <div class="table"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Estoque atual</th><th>Reservado (carrinhos)</th><th>Comprar</th><th>Preço unit.</th><th>Observações</th><th>Origem</th><th>Ações</th>
-    </tr></thead><tbody>${aComprar.map(it => {
+    </tr></thead><tbody>${agruparPorKit(aComprar).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
       const reservado = reservadoEmCarrinhos(it.produtoId);
       const emKit = !!it.kitId;
@@ -392,8 +405,12 @@ export function preEncomendaTabHtml() {
         const qtdNoKit = aComprar.filter(x => x.kitId === it.kitId).length;
         cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 9);
       }
-      return `${cabecalho}<tr${emKit ? ' style="background:#FFFAFC"' : ''}>
-        <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
+      // Última linha do grupo do kit (próximo item já é de outro kit/avulso) fecha a "caixa"
+      // visual com uma borda inferior mais forte — só faz sentido calcular isso pra itens de kit.
+      const ultimaDoKit = emKit && arr[idx + 1]?.kitId !== it.kitId;
+      const estiloKit = emKit ? `background:#FDF2F7;border-left:${KIT_BORDA}${ultimaDoKit ? `;border-bottom:${KIT_BORDA.replace('4px', '2px')};border-bottom-color:#F5C6DE` : ''}` : '';
+      return `${cabecalho}<tr${emKit ? ` style="${estiloKit}"` : ''}>
+        <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
         <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
         <td data-label="Estoque atual">${p ? Number(p.estoqueAtual || 0) : '-'}</td>
         <td data-label="Reservado">${reservado > 0 ? `<span style="color:var(--error);font-weight:900">${reservado}</span>` : '0'}</td>
@@ -416,7 +433,7 @@ export function preEncomendaTabHtml() {
     <p class="muted" style="margin:0 0 10px">Quando os produtos chegarem, confira a quantidade e o preço pago e confirme — isso dá entrada no estoque automaticamente.</p>
     <div class="table"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Origem</th><th>Ações</th>
-    </tr></thead><tbody>${aguardando.map(it => {
+    </tr></thead><tbody>${agruparPorKit(aguardando).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
       const emKit = !!it.kitId;
       let cabecalho = '';
@@ -425,8 +442,10 @@ export function preEncomendaTabHtml() {
         const qtdNoKit = aguardando.filter(x => x.kitId === it.kitId).length;
         cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 7);
       }
-      return `${cabecalho}<tr${emKit ? ' style="background:#FFFAFC"' : ''}>
-        <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
+      const ultimaDoKit = emKit && arr[idx + 1]?.kitId !== it.kitId;
+      const estiloKit = emKit ? `background:#FDF2F7;border-left:${KIT_BORDA}${ultimaDoKit ? `;border-bottom:${KIT_BORDA.replace('4px', '2px')};border-bottom-color:#F5C6DE` : ''}` : '';
+      return `${cabecalho}<tr${emKit ? ` style="${estiloKit}"` : ''}>
+        <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
         <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
         <td data-label="Pedido">${Number(it.quantidade || 1)}</td>
         <td data-label="Qtd recebida"><input id="chQtd_${it.id}" type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}"></td>
