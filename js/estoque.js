@@ -331,81 +331,203 @@ export async function readPedidoFile(files) {
   if (files && files[0]) { $('pedidoJson').value = await files[0].text(); previewPedidoEstoque(); }
 }
 
-// Casa o texto extraído do PDF do pedido Farmasi contra o catálogo já cadastrado.
-// O PDF do site da Farmasi usa uma fonte com glifos sem mapeamento de texto — na extração,
-// certos caracteres (ex: "a", dígitos "4"/"6"/"9") viram ESPAÇO ("1002167" sai "10021 7",
-// "Tuna" sai "Tun "). Por isso o casamento tolera curingas: um espaço no texto pode valer por
-// 1 caractere do alvo, com limite de curingas por match. Quando um mesmo trecho casa com mais
-// de um código do catálogo (ex: "100135 " casa com 1001355 E 1001356), ninguém leva por código
-// — esses produtos só entram se o NOME casar. Cada produto identificado entra com quantidade 1;
-// a consultora ajusta na tabela de conferência antes de confirmar — nada é gravado sem revisão.
-function normPdfTexto(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]/g, ' '); // NÃO colapsa espaços — cada glifo perdido é 1 curinga
+// --- Leitura do PDF "Detalhes do pedido" da Farmasi ---
+// A fonte do PDF do site da Farmasi não mapeia certos glifos (dígitos 4/6/9, letra "a" etc.)
+// pra nenhum caractere Unicode normal — eles saem como pontos de código de Área de Uso Privado
+// (Private Use Area, ex. U+E02C), que a maioria dos ambientes não desenha (parecem "sumidos",
+// mas o item de texto continua lá, só com conteúdo ilegível). Qualquer normalização de texto
+// precisa tratar esses pontos de código como "glifo desconhecido", nunca como espaço real —
+// virar espaço quebraria palavras em 2 tokens (ex.: "Calêndula" → "C" + "lendul").
+function ehCodePointPUA(cp) {
+  return (cp >= 0xE000 && cp <= 0xF8FF) || (cp >= 0xF0000 && cp <= 0xFFFFD) || (cp >= 0x100000 && cp <= 0x10FFFD);
 }
-function normPdfAlvo(s) {
-  return normPdfTexto(s).replace(/ +/g, ' ').trim();
+// Item "vazio": string realmente vazia com largura>0 (glifo apagado) ou contendo só PUA.
+function itemTemGlifoPerdido(item) {
+  const str = item.str;
+  if (!str) return (item.w || 0) > 0.5;
+  return [...str].some(ch => ehCodePointPUA(ch.codePointAt(0)));
+}
+const MARK_GLIFO = String.fromCodePoint(1); // marcador de "glifo desconhecido" (preserva a posição na palavra)
+function normFuzzyPdf(s) {
+  return [...String(s || '')].map(ch => (ehCodePointPUA(ch.codePointAt(0)) ? MARK_GLIFO : ch)).join('')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(new RegExp(`[^a-z0-9${MARK_GLIFO}]`, 'g'), ' ');
+}
+// Cada caractere da palavra-alvo pode ter sido substituído pelo marcador na extração.
+function fuzzyPalavraPdf(palavra) {
+  return palavra.toLowerCase().split('').map(c => `(?:${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${MARK_GLIFO})`).join('');
+}
+function fuzzyFrasePdf(frase) {
+  return frase.split(' ').map(fuzzyPalavraPdf).join('\\s+');
+}
+const RE_PDF_UNIDADES = new RegExp(fuzzyPalavraPdf('unidades'), 'i');
+const RE_PDF_ESCONDER_DETALHES = new RegExp(fuzzyFrasePdf('esconder detalhes'), 'i');
+const RE_PDF_QUANTIDADE_HDR = new RegExp('^\\s*' + fuzzyPalavraPdf('quantidade') + '\\s*$', 'i');
+const RE_PDF_PONTOS = new RegExp(fuzzyPalavraPdf('pontos'), 'i');
+
+// Acha o produto do catálogo cujo nome mais bate com o texto (tolerante a glifos perdidos) —
+// exige que pelo menos 70% das "palavras" do nome cadastrado apareçam no texto do PDF.
+function acharProdutoPorNomePdf(produtos, nomeBruto) {
+  const alvo = normFuzzyPdf(nomeBruto).replace(/ +/g, ' ').trim();
+  if (alvo.length < 5) return null;
+  const tokensAlvo = new Set(alvo.split(' ').filter(Boolean));
+  let melhor = null, melhorScore = 0;
+  produtos.forEach(p => {
+    const nomeP = normFuzzyPdf(p.nome).replace(/ +/g, ' ').trim();
+    const tokensP = nomeP.split(' ').filter(t => t.length > 1);
+    let bateu = 0;
+    tokensP.forEach(t => {
+      const re = new RegExp('^' + fuzzyPalavraPdf(t) + '$');
+      if ([...tokensAlvo].some(ta => re.test(ta))) bateu++;
+    });
+    const score = tokensP.length ? bateu / tokensP.length : 0;
+    if (score > melhorScore && score >= 0.7) { melhorScore = score; melhor = p; }
+  });
+  return melhor;
 }
 
-// Posições onde 'alvo' casa em 'texto': espaço do texto = curinga de 1 caractere (até
-// maxCuringas); espaço do alvo consome 0+ espaços do texto; exige fronteira não alfanumérica.
-function posicoesComCuringa(texto, alvo, maxCuringas) {
-  const n = texto.length, m = alvo.length;
-  const alnum = ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
-  const posicoes = [];
-  outer: for (let i = 0; i < n; i++) {
-    if (texto[i] !== alvo[0] && texto[i] !== ' ') continue;
-    let ti = i, curingas = 0;
-    for (let j = 0; j < m; j++) {
-      const c = alvo[j];
-      if (c === ' ') {
-        while (ti < n && texto[ti] === ' ') ti++;
-        continue;
-      }
-      if (ti >= n) continue outer;
-      const t = texto[ti];
-      if (t === c) { ti++; continue; }
-      if (t === ' ' && ++curingas <= maxCuringas) { ti++; continue; }
-      continue outer;
+// Reconstrói o texto em "linhas visuais" a partir da posição (x,y) de cada fragmento — o pdf.js
+// entrega os fragmentos na ordem interna do PDF, que NÃO segue a ordem visual das colunas
+// (nome à esquerda, quantidade/preço/pontos à direita ficam entrelaçados na leitura crua).
+async function extrairLinhasPdf(pdfjsLib, buf) {
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const linhas = [];
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const porY = new Map();
+    for (const it of content.items) {
+      const y = Math.round(it.transform[5] / 4) * 4;
+      if (!porY.has(y)) porY.set(y, []);
+      porY.get(y).push({ str: it.str, x: it.transform[4], w: it.width });
     }
-    const antes = i > 0 ? texto[i - 1] : ' ';
-    const depois = ti < n ? texto[ti] : ' ';
-    if (!alnum(antes) && !alnum(depois)) posicoes.push(i);
+    [...porY.keys()].sort((a, b) => b - a).forEach(y => {
+      const itens = porY.get(y).sort((a, b) => a.x - b.x);
+      const texto = itens.map(i => i.str).join('');
+      linhas.push({ itens, texto, norm: normFuzzyPdf(texto), x: itens[0].x, y, page: pageNum });
+    });
   }
-  return posicoes;
+  return linhas;
 }
 
-function matchPedidoPdfComCatalogo(textoBruto) {
-  const texto = normPdfTexto(textoBruto);
-  const produtos = state.data.produtos;
+function lerQtdLinhaPdf(linha) {
+  if (!RE_PDF_UNIDADES.test(linha.norm)) return null;
+  const primeiro = linha.itens[0];
+  if (!primeiro || itemTemGlifoPerdido(primeiro) || !/^\d+$/.test(primeiro.str)) return null;
+  return parseInt(primeiro.str, 10);
+}
 
-  // 1ª passada: códigos — cada posição do texto pode ser reivindicada por vários códigos
-  const reivindicacoes = {};
-  const posPorProduto = {};
-  produtos.forEach(p => {
-    const cod = normPdfAlvo(String(p.codigoFarmasi || ''));
-    if (cod.length < 5) return;
-    const pos = posicoesComCuringa(texto, cod, Math.max(1, Math.floor(cod.length * 0.35)));
-    if (pos.length) {
-      posPorProduto[p.id] = pos;
-      pos.forEach(i => (reivindicacoes[i] = reivindicacoes[i] || []).push(p.id));
+// Só confia no valor se NENHUM item a partir do "R$" tiver glifo perdido — os dígitos 4/6/9
+// podem ter sumido ali, e gravar um custo errado sem avisar é pior que não preencher nada.
+function lerPrecoLinhaPdf(linha) {
+  const idx = linha.itens.findIndex(it => it.str.includes('$'));
+  if (idx < 0) return null;
+  const resto = linha.itens.slice(idx);
+  if (resto.some(it => itemTemGlifoPerdido(it))) return null;
+  const m = resto.map(it => it.str).join('').match(/\$\s*([\d.,]+)/);
+  return m ? parseMoney('R$' + m[1]) : null;
+}
+
+function precoRefProduto(p) { return Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0); }
+
+// Linhas de "status" (quantidade/preço/pontos) ficam na coluna direita da tabela do pedido —
+// separadas do fluxo de nomes/kits (coluna esquerda) pelo CONTEÚDO (não pela posição x, já que
+// a coluna de quantidade dos componentes de um kit ocupa a mesma faixa de x que o preço normal).
+function ehLinhaStatusPdf(linha) {
+  return RE_PDF_UNIDADES.test(linha.norm) || linha.texto.includes('$') || RE_PDF_PONTOS.test(linha.norm);
+}
+
+// Extrai produtos (com quantidade/custo, quando legíveis) e kits (com componentes ratados
+// proporcionalmente ao preço de venda cadastrado, igual à montagem de kit da Pré-encomenda) a
+// partir das linhas posicionadas do PDF do pedido Farmasi.
+function extrairItensPdf(todasLinhas, produtos) {
+  const linhas = todasLinhas.filter(l => l.texto.trim() && !ehLinhaStatusPdf(l));
+  const direita = todasLinhas.filter(l => l.texto.trim() && ehLinhaStatusPdf(l));
+
+  function achaProximo(y, page, leitor, maxDist = 60) {
+    let melhor = null, melhorDist = Infinity;
+    direita.forEach(l => {
+      if (l.page !== page) return;
+      const v = leitor(l);
+      if (v == null) return;
+      const d = Math.abs(l.y - y);
+      if (d < melhorDist && d <= maxDist) { melhorDist = d; melhor = v; }
+    });
+    return melhor;
+  }
+  const precoProximo = (y, page) => achaProximo(y, page, lerPrecoLinhaPdf);
+  const qtdProxima = (y, page) => achaProximo(y, page, lerQtdLinhaPdf) ?? 1;
+
+  const resultado = [];
+  let kitSeq = 0, i = 0, guard = 0;
+  while (i < linhas.length) {
+    if (++guard > 20000) break; // segurança contra loop infinito em PDFs muito fora do padrão
+    const linha = linhas[i];
+    let nomeBruto = linha.texto;
+    let j = i + 1;
+    let ehKit = false;
+    if (j < linhas.length && RE_PDF_ESCONDER_DETALHES.test(linhas[j].norm)) {
+      ehKit = true;
+    } else if (j < linhas.length && linhas[j].x <= 160 && linhas[j].texto.trim() && !/^\d/.test(linhas[j].texto.trim())) {
+      nomeBruto += ' ' + linhas[j].texto;
+      j++;
+      if (j < linhas.length && RE_PDF_ESCONDER_DETALHES.test(linhas[j].norm)) ehKit = true;
     }
-  });
-  const encontrados = {};
-  produtos.forEach(p => {
-    const pos = posPorProduto[p.id] || [];
-    if (pos.some(i => reivindicacoes[i].length === 1)) encontrados[p.id] = p;
-  });
-  // 2ª passada: nome (pra quem não entrou por código)
-  produtos.forEach(p => {
-    if (encontrados[p.id]) return;
-    const nomeN = normPdfAlvo(p.nome);
-    if (nomeN.length > 4 &&
-        posicoesComCuringa(texto, nomeN, Math.max(2, Math.floor(nomeN.replace(/ /g, '').length * 0.4))).length) {
-      encontrados[p.id] = p;
+    if (ehKit) {
+      const linhaKit = linhas[j];
+      j++;
+      const precoKit = precoProximo(linhaKit.y, linhaKit.page);
+      let k = j, safety = 0;
+      while (k < linhas.length && !RE_PDF_QUANTIDADE_HDR.test(linhas[k].norm.trim())) {
+        if (linhas[k].x <= 160 && linhas[k].texto.trim()) break;
+        if (++safety > 20 || ++k >= linhas.length) break;
+      }
+      const componentes = [];
+      if (k < linhas.length && RE_PDF_QUANTIDADE_HDR.test(linhas[k].norm.trim())) {
+        k++;
+        while (k < linhas.length && linhas[k].x > 160 && linhas[k].x < 360) {
+          const nomeComp = linhas[k].texto.trim();
+          const ultimo = linhas[k].itens[linhas[k].itens.length - 1];
+          const qtdComp = ultimo && !itemTemGlifoPerdido(ultimo) && /^\d+$/.test(ultimo.str) ? parseInt(ultimo.str, 10) : 1;
+          if (nomeComp) componentes.push({ nomeComp, quantidade: qtdComp });
+          k++;
+        }
+      }
+      i = Math.max(k, j + 1);
+      if (componentes.length >= 2) {
+        const validos = componentes
+          .map(c => ({ ...c, produto: acharProdutoPorNomePdf(produtos, c.nomeComp) }))
+          .filter(c => c.produto);
+        if (validos.length) {
+          kitSeq++;
+          const kitId = 'pdfkit_' + kitSeq;
+          const refs = validos.map(c => precoRefProduto(c.produto) * c.quantidade);
+          const totalRef = refs.reduce((a, b) => a + b, 0);
+          let somaDist = 0;
+          validos.forEach((c, idx) => {
+            const ultimoComp = idx === validos.length - 1;
+            let valorItem = 0;
+            if (precoKit != null && precoKit > 0) {
+              valorItem = ultimoComp ? Math.round((precoKit - somaDist) * 100) / 100
+                : Math.round(precoKit * (totalRef > 0 ? refs[idx] / totalRef : 1 / validos.length) * 100) / 100;
+              somaDist += valorItem;
+            }
+            resultado.push({ nome: c.produto.nome, codigo: c.produto.codigoFarmasi || '', quantidade: c.quantidade, valorTotal: valorItem, kitId, kitNome: nomeBruto.trim() });
+          });
+        }
+      }
+      continue;
     }
-  });
-  return Object.values(encontrados).map(p => ({ nome: p.nome, codigo: p.codigoFarmasi || '', quantidade: 1 }));
+    if (j < linhas.length && /^\d{5,}/.test(linhas[j].texto.trim())) j++;
+    const produto = acharProdutoPorNomePdf(produtos, nomeBruto);
+    if (produto) {
+      const qtd = qtdProxima(linha.y, linha.page);
+      const valorUnit = precoProximo(linha.y, linha.page);
+      resultado.push({ nome: produto.nome, codigo: produto.codigoFarmasi || '', quantidade: qtd, valorTotal: valorUnit != null ? valorUnit * qtd : 0 });
+    }
+    i = j;
+  }
+  return resultado;
 }
 
 // Alguns bloqueadores de anúncios/extensões de privacidade bloqueiam CDNs específicos (o
@@ -434,20 +556,13 @@ export async function readPedidoPdf(files) {
   try {
     const pdfjsLib = await carregarPdfjs();
     const buf = await files[0].arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let texto = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      // Junta os fragmentos SEM separador (o pdf.js quebra palavras em vários itens) — só
-      // quebra de linha real (hasEOL) vira '\n'. Glifos perdidos já vêm como itens de espaço.
-      texto += content.items.map(it => it.str + (it.hasEOL ? '\n' : '')).join('') + '\n';
-    }
-    const itens = matchPedidoPdfComCatalogo(texto);
+    const linhas = await extrairLinhasPdf(pdfjsLib, buf);
+    const itens = extrairItensPdf(linhas, state.data.produtos);
     if (!itens.length) return toast('Nenhum produto do seu catálogo foi identificado neste PDF. Cadastre os produtos antes ou use o JSON.');
-    window.__pedidoEstoque = itens;
+    window.__pedidoEstoque = dedupPedido(itens);
     renderPedidoPreview();
-    toast(`${itens.length} produto(s) identificado(s) no PDF — confira as quantidades antes de confirmar`);
+    const kits = new Set(itens.filter(i => i.kitId).map(i => i.kitId)).size;
+    toast(`${itens.length} produto(s) identificado(s)${kits ? ` (${kits} kit${kits > 1 ? 's' : ''} desmontado${kits > 1 ? 's' : ''} e rateado${kits > 1 ? 's' : ''})` : ''} — confira quantidades e custos antes de confirmar`);
   } catch (e) {
     toast('Erro ao ler o PDF: ' + e.message);
   }

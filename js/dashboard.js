@@ -1,8 +1,9 @@
-import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente, planoInfo } from './state.js';
-import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero } from './utils.js';
+import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente, nomeChamado, planoInfo } from './state.js';
+import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero, addDias } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { novosLeadsResumo, verificarNovosLeads, marcarLeadsVistos } from './eventos.js';
 import { datasComemorativasResumo, carregarDatasComemorativas } from './datasComemorativas.js';
+import { btnAdicionarPreEncomenda } from './preencomenda.js';
 
 // Sub-render isolado (só o card de datas comemorativas) — mesmo padrão do renderLeadsBanner.
 export function renderDatasComemorativas() {
@@ -67,7 +68,7 @@ setInterval(() => { const el = $('dashClock'); if (el) el.textContent = relogioS
 
 export function recommendations() {
   const s = stockAgg(), out = [];
-  s.baixo.forEach(x => out.push(`<div class="list-item"><div><b>Repor ${esc(x.p.nome)}</b><small>Estoque ${x.est}, abaixo do mínimo</small></div><span class="tag orange">Repor</span></div>`));
+  s.baixo.forEach(x => out.push(`<div class="list-item"><div><b>Repor ${esc(x.p.nome)}</b><small>Estoque ${x.est}, abaixo do mínimo</small></div><div style="display:flex;align-items:center;gap:6px">${btnAdicionarPreEncomenda(x.p.id)}</div></div>`));
   s.parados.forEach(x => out.push(`<div class="list-item"><div><b>Promover ${esc(x.p.nome)}</b><small>${daysSince(lastSaleDate(x.p))} dias sem venda</small></div><span class="tag pink">Promoção</span></div>`));
   s.sem.forEach(x => out.push(`<div class="list-item"><div><b>Corrigir custo</b><small>${esc(x.p.nome)}</small></div><span class="tag orange">Sem custo</span></div>`));
 
@@ -98,6 +99,13 @@ export function renderDashboard() {
     .filter(c => c.ds >= diasContatoFrio()).sort((a, b) => a.ds - b.ds).slice(0, 5);
 
   const agenda = state.data.agendamentos.filter(a => a.data === today()).slice(0, 4);
+  const diasAgendaPainel = Number(state.profile?.diasAgendaPainel || 0);
+  const proximosDias = diasAgendaPainel > 0
+    ? state.data.agendamentos
+        .filter(a => a.data > today() && a.data <= addDias(today(), diasAgendaPainel) && (a.status || 'agendado') === 'agendado')
+        .sort((a, b) => a.data.localeCompare(b.data) || String(a.hora || '').localeCompare(b.hora || ''))
+        .slice(0, 10)
+    : [];
 
   const retornos = state.data.carrinhos.filter(c =>
     c.retornoDias > 0 && !c.retornoFeito && c.dataRetorno && c.dataRetorno <= today() &&
@@ -140,7 +148,7 @@ export function renderDashboard() {
           </div>
           <div style="display:flex;gap:4px;align-items:center">
             <span class="tag pink">${c.dias <= 1 ? 'Prioridade' : 'Em breve'}</span>
-            ${whatsAppBtn(c.whatsapp, 'aniversario', { nome: c.nome, telefone: c.whatsapp })}
+            ${whatsAppBtn(c.whatsapp, 'aniversario', { nome: c.apelido || c.nome, telefone: c.whatsapp })}
             <button class="btn small" onclick="App.openCarrinhoForCliente('${c.id}')">🛒</button>
           </div>
         </div>`;
@@ -169,11 +177,29 @@ export function renderDashboard() {
             </div>
             <div style="display:flex;gap:4px;align-items:center">
               <span class="tag blue">${esc(a.status || 'agendado')}</span>
-              ${whatsAppBtn(cli?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: cli?.whatsapp, hora: a.hora })}
+              ${whatsAppBtn(cli?.whatsapp, 'agenda', { nome: nomeChamado(a.clienteId, a.clienteNome), telefone: cli?.whatsapp, hora: a.hora })}
               ${(a.status || 'agendado') === 'agendado' ? `<button class="btn small" onclick="App.concluirAgendamento('${a.id}')">✓</button>` : ''}
             </div>
           </div>`;
         }).join('') : '<p class="muted">Nenhum atendimento hoje.</p>'}</div>
+        ${proximosDias.length ? `<details style="margin-top:8px">
+          <summary class="muted" style="cursor:pointer;font-size:12px;font-weight:700">Próximos ${diasAgendaPainel} dias (${proximosDias.length})</summary>
+          <div class="list" style="margin-top:6px">${proximosDias.map(a => {
+            const cli = state.data.clientes.find(c => c.id === a.clienteId);
+            const endereco = a.local || cli?.endereco || '';
+            return `<details class="rank-list" style="padding:4px 10px">
+              <summary style="font-size:12px">
+                <span>${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))} <span class="muted">• ${esc(a.tipo)}</span></span>
+                <small>${formatDateBR(a.data)} ${esc(a.hora || '')}</small>
+              </summary>
+              <div style="padding:4px 0 8px;font-size:12px" class="muted">
+                ${endereco ? `<div>📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}" target="_blank" rel="noopener">${esc(endereco)}</a></div>` : ''}
+                ${a.observacoes ? `<div style="margin-top:4px">${esc(a.observacoes)}</div>` : ''}
+                ${!endereco && !a.observacoes ? '<div>Sem detalhes adicionais.</div>' : ''}
+              </div>
+            </details>`;
+          }).join('')}</div>
+        </details>` : ''}
       </div>
 
       <div class="panel">
@@ -185,7 +211,7 @@ export function renderDashboard() {
           </div>
           <div style="display:flex;gap:4px;align-items:center">
             <span class="tag orange">${c.ds} dias</span>
-            ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.nome, telefone: c.whatsapp })}
+            ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.apelido || c.nome, telefone: c.whatsapp })}
             <button class="btn small" onclick="App.marcarContatado('${c.id}')">✓</button>
             <button class="btn small" onclick="App.openCarrinhoForCliente('${c.id}')">🛒</button>
           </div>
@@ -215,7 +241,7 @@ export function renderDashboard() {
               <small>${esc(itensNomes)} • ${atraso <= 0 ? 'previsto para hoje' : atraso + ' dia(s) de atraso'}</small>
             </div>
             <div style="display:flex;gap:4px;align-items:center">
-              ${whatsAppBtn(cli?.whatsapp, 'retorno', { nome: nomeAtualDoCliente(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
+              ${whatsAppBtn(cli?.whatsapp, 'retorno', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
               <button class="btn small" onclick="App.marcarRetornoFeito('${c.id}')">✓ Feito</button>
             </div>
           </div>`;

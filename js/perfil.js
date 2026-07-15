@@ -43,6 +43,14 @@ export function renderPerfil() {
         <div class="field"><label>Subtítulo</label><input id="perSub" value="${esc(p.subtituloCatalogo || 'GESTÃO DE PRODUTOS + PDF')}"></div>
         <div class="field full"><label>Rodapé</label><input id="perRodape" value="${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}"></div>
         <div class="field"><label>Dias sem contato para virar "cliente frio"</label><input id="perDiasFrio" type="number" min="1" value="${p.diasContatoFrio || 30}"></div>
+        <div class="field"><label>Mostrar próximos dias na Agenda do Painel Inicial</label>
+          <select id="perDiasAgenda">
+            <option value="0" ${!p.diasAgendaPainel ? 'selected' : ''}>Não mostrar (só hoje)</option>
+            <option value="3" ${p.diasAgendaPainel === 3 ? 'selected' : ''}>Próximos 3 dias</option>
+            <option value="7" ${p.diasAgendaPainel === 7 ? 'selected' : ''}>Próximos 7 dias</option>
+            <option value="15" ${p.diasAgendaPainel === 15 ? 'selected' : ''}>Próximos 15 dias</option>
+          </select>
+        </div>
         <div class="field full"><label>Mensagem padrão</label><textarea id="perMsg">${esc(p.mensagemPadrao || '')}</textarea></div>
       </div><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
@@ -293,6 +301,7 @@ export async function savePerfil() {
     subtituloCatalogo: $('perSub')?.value ?? p.subtituloCatalogo ?? 'GESTÃO DE PRODUTOS + PDF',
     rodapeCatalogo: $('perRodape')?.value ?? p.rodapeCatalogo ?? 'Fale comigo para fazer seu pedido',
     diasContatoFrio: $('perDiasFrio') ? Number($('perDiasFrio').value || 30) : (p.diasContatoFrio || 30),
+    diasAgendaPainel: $('perDiasAgenda') ? Number($('perDiasAgenda').value || 0) : (p.diasAgendaPainel || 0),
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
     linkPagamento: $('perLinkPag')?.value ?? p.linkPagamento ?? '',
     maxParcelas: $('perMaxParcelas') ? Number($('perMaxParcelas').value || 12) : (p.maxParcelas || 12),

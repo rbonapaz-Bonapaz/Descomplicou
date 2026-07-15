@@ -93,6 +93,12 @@ export function restaurarModal() {
 export function prodById(id) { return state.data.produtos.find(p => p.id === id); }
 export function cliById(id) { return state.data.clientes.find(c => c.id === id); }
 export function nomeAtualDoCliente(clienteId, fallback) { return cliById(clienteId)?.nome || fallback || 'Cliente'; }
+// Como a consultora deve chamar o cliente nas mensagens de WhatsApp: o apelido cadastrado
+// ("Fabiula de Oliveira – Fabi") soa mais próximo que o nome completo formal.
+export function nomeChamado(clienteId, fallback) {
+  const c = cliById(clienteId);
+  return (c?.apelido || c?.nome || fallback || 'Cliente').trim();
+}
 export function carrinhoById(id) { return state.data.carrinhos.find(c => c.id === id); }
 
 // Configurável por consultora em Minha Conta (padrão 30 dias caso ela nunca tenha ajustado).
@@ -143,9 +149,19 @@ export function salesAgg(days = 30) {
     // assume-se lucro real = lucro bruto (sem custo de cartão conhecido) em vez de zerar o histórico.
     const lr = v.lucroReal != null ? Number(v.lucroReal) : l;
     fat += r; luc += l; custo += c; itens += q; lucReal += lr; custoCartaoTotal += Number(v.custoCartao || 0);
-    const pk = v.produtoId || v.produtoNome || 'Pedido';
-    prod[pk] = prod[pk] || { nome: v.produtoNome || 'Pedido', q: 0, rec: 0, luc: 0 };
-    prod[pk].q += q; prod[pk].rec += r; prod[pk].luc += l;
+    // Um doc de "venda" representa o PEDIDO inteiro (pode ter vários produtos diferentes), não um
+    // produto só — por isso o ranking por produto usa os itens do carrinho original, não o próprio
+    // doc da venda (que nunca teve produtoId/produtoNome; sem isso todo pedido virava um "Pedido"
+    // genérico no ranking, escondendo qual produto de fato vendeu/lucrou mais).
+    const carr = state.data.carrinhos.find(cc => cc.id === v.carrinhoId);
+    (carr?.itens || []).forEach(it => {
+      const pk = it.produtoId || it.produtoNome;
+      if (!pk) return;
+      prod[pk] = prod[pk] || { nome: it.produtoNome || 'Produto removido', q: 0, rec: 0, luc: 0 };
+      prod[pk].q += Number(it.quantidade || 0);
+      prod[pk].rec += Number(it.totalItem || 0);
+      prod[pk].luc += Number(it.lucroTotal || 0);
+    });
     const ck = v.clienteId || v.clienteNome;
     cli[ck] = cli[ck] || { nome: v.clienteNome, q: 0, rec: 0, luc: 0 };
     cli[ck].q++; cli[ck].rec += r; cli[ck].luc += l;

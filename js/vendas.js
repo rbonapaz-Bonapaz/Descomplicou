@@ -1,4 +1,4 @@
-import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente } from './state.js';
+import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente, nomeChamado } from './state.js';
 import { $, esc, money, pill, normStatusPag, norm, thSort, withFocusPreserved } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
@@ -136,7 +136,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
             ${!isAberto && normStatusPag(c.statusPagamento) !== 'pago' ? `<button class="btn small" style="color:var(--success)" onclick="App.registrarPagamento('${c.id}')">💰 Registrar pagamento</button>` : ''}
             ${!isAberto && c.status !== 'cancelado' ? `<button class="btn small" onclick="App.reabrirCarrinho('${c.id}')">↩️ Reabrir</button>` : ''}
             ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}
-            ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeAtualDoCliente(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
+            ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
           </div>
         </td>
       </tr>${expandida ? `<tr><td colspan="7" data-label="Itens da venda" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;

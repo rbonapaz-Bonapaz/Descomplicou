@@ -110,7 +110,13 @@ function renderHeaderFooter() {
   const pp = evento.perfilPublico || {};
   const nome = pp.nomeNegocio || pp.nome || '';
   if (nome) $('evTitulo').textContent = evento.nome ? `${evento.nome}` : nome;
-  if ($('evLogo')) $('evLogo').textContent = iniciais(nome);
+  if ($('evLogo')) {
+    if (pp.foto) {
+      $('evLogo').innerHTML = `<img src="${esc(pp.foto)}" alt="${esc(nome)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      $('evLogo').textContent = iniciais(nome);
+    }
+  }
 
   const links = [];
   if (pp.instagram) {
@@ -212,6 +218,7 @@ $('evBtnEnviar').onclick = () => {
     <p class="muted">${wishlist.length} produto(s) selecionado(s): ${esc(wishlist.map(w => w.nome).join(', '))}</p>
     <div class="grid">
       <div class="field full"><label>Nome completo</label><input id="wNome" placeholder="Seu nome completo"></div>
+      <div class="field full"><label>Como você gosta de ser chamado(a)?</label><input id="wApelido" placeholder="Ex: Fabiula de Oliveira – Fabi"></div>
       <div class="field"><label>Data de aniversário (dia/mês/ano)</label><input id="wNascimento" placeholder="Ex: 15/05/1990"></div>
       <div class="field"><label>WhatsApp (opcional)</label><input id="wWhats" placeholder="(11) 99999-9999"></div>
       <div class="field full"><label>Você já é cliente de ${esc(nomeInfluencer())}?</label>
@@ -228,6 +235,7 @@ $('evBtnEnviar').onclick = () => {
 
 async function enviarLista() {
   const nome = $('wNome').value.trim();
+  const apelido = $('wApelido').value.trim();
   const whats = $('wWhats').value.trim();
   const nascimento = $('wNascimento').value.trim();
   if (!nome) return toast('Informe seu nome completo');
@@ -235,7 +243,7 @@ async function enviarLista() {
   btn.disabled = true;
   try {
     await addDoc(collection(db, 'eventosPublicos', eventoId, 'listasDesejo'), {
-      nomeVisitante: nome, whatsapp: whats, nascimento,
+      nomeVisitante: nome, apelido, whatsapp: whats, nascimento,
       jaCliente: $('wJaCliente').value === 'sim',
       produtosDesejados: wishlist,
       criadoEm: serverTimestamp()

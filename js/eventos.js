@@ -80,8 +80,20 @@ function linkPublico(id) {
   return location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '') + '/evento.html?id=' + id;
 }
 
+// Status real do link, calculado pela data (não apenas o toggle manual "ativo"): aguardando
+// (ainda não chegou o início da vigência), expirado (a vigência já passou) ou ativo (dentro
+// da janela, ou sem vigência definida — sempre válido nesse caso).
+function statusVigencia(ev) {
+  const agora = new Date();
+  const inicio = ev.vigenciaInicio ? new Date(ev.vigenciaInicio) : null;
+  const fim = ev.vigenciaFim ? new Date(ev.vigenciaFim) : null;
+  if (inicio && !isNaN(inicio) && agora < inicio) return { label: 'Aguardando início', cor: 'orange' };
+  if (fim && !isNaN(fim) && agora > fim) return { label: 'Expirado', cor: 'red' };
+  return { label: 'Ativo', cor: 'green' };
+}
+
 export function renderEventos() {
-  const eventos = [...state.data.eventos].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  const eventos = [...state.data.eventos].sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
   $('eventos').innerHTML = `
     <div class="panel">
       <div class="panel-head">
@@ -94,10 +106,11 @@ export function renderEventos() {
 }
 
 function eventoCard(ev) {
+  const status = ev.ativo === false ? { label: 'Inativo', cor: 'gray' } : statusVigencia(ev);
   return `<div class="panel">
     <div class="panel-head">
       <h3>${esc(ev.nome)}</h3>
-      ${pill(ev.ativo !== false ? 'Ativo' : 'Inativo', ev.ativo !== false ? 'green' : 'gray')}
+      ${pill(status.label, status.cor)}
     </div>
     <p class="muted">${ev.data ? 'Evento em ' + formatDate(ev.data) : ''}${vigenciaLabel(ev)} • ${(ev.produtos || []).length} produtos</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -217,7 +230,8 @@ function coletarDadosFormEvento() {
   const p = state.profile || {};
   const perfilPublico = {
     nome: p.nome || '', nomeNegocio: p.nomeNegocio || '', genero: p.genero || '',
-    instagram: p.instagram || '', linkLoja: p.linkLoja || '', whatsapp: p.whatsapp || ''
+    instagram: p.instagram || '', linkLoja: p.linkLoja || '', whatsapp: p.whatsapp || '',
+    foto: p.fotoPerfil || state.user?.photoURL || ''
   };
 
   return {
@@ -442,6 +456,7 @@ function renderListasInline(eventoId) {
     <td data-label="Produtos">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
     <td data-label="Tratado">${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
+      ${l.whatsapp ? `<a class="btn small" style="background:#25D366;color:#fff" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">💬</a>` : ''}
       ${!l._clienteId
         ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
         : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>`}
@@ -525,7 +540,7 @@ export function abrirNovoClienteDeLista(eventoId, listaId) {
   closeModal();
   const nascimentoISO = parseDataDigitada(lista?.nascimento);
   if (lista?.nascimento && !nascimentoISO) toast(`Confira a data de aniversário digitada: "${lista.nascimento}"`);
-  window.App.openClienteForm('', { eventoId, listaId, nome: lista?.nomeVisitante || '', whatsapp: lista?.whatsapp || '', nascimento: nascimentoISO, origem: 'Evento' });
+  window.App.openClienteForm('', { eventoId, listaId, nome: lista?.nomeVisitante || '', apelido: lista?.apelido || '', whatsapp: lista?.whatsapp || '', nascimento: nascimentoISO, origem: 'Evento' });
 }
 
 export async function transformarEmCarrinho(eventoId, listaId) {

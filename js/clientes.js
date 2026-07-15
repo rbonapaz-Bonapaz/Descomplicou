@@ -51,7 +51,7 @@ function tableClientes() {
       <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn small" onclick="App.openCliente360('${c.id}')">Ver</button>
         <button class="btn small" onclick="App.openClienteForm('${c.id}')">Editar</button>
-        ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.nome, telefone: c.whatsapp })}
+        ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.apelido || c.nome, telefone: c.whatsapp })}
         <button class="btn small" style="color:var(--error)" onclick="App.excluirCliente('${c.id}')" title="Excluir">🗑️</button>
       </td>
     </tr>`;
@@ -75,11 +75,12 @@ export function openClienteForm(id = '', prefill = null) {
     }
   }
   leadPrefill = !id && prefill ? prefill : null;
-  const c = id ? cliById(id) : (prefill ? { nome: prefill.nome, whatsapp: prefill.whatsapp, nascimento: prefill.nascimento, origem: prefill.origem } : {});
+  const c = id ? cliById(id) : (prefill ? { nome: prefill.nome, apelido: prefill.apelido, whatsapp: prefill.whatsapp, nascimento: prefill.nascimento, origem: prefill.origem } : {});
   showModal(`<h3>${id ? 'Editar' : 'Novo'} Cliente</h3>
     ${leadPrefill ? '<p class="muted">Pré-preenchido a partir de uma lista de desejos de evento.</p>' : ''}
     <div class="grid">
       <div class="field"><label>Nome</label><input id="cNome" value="${esc(c.nome || '')}"></div>
+      <div class="field"><label>Como deseja ser chamado(a)?</label><input id="cApelido" placeholder="Ex: Fabiula de Oliveira – Fabi" value="${esc(c.apelido || '')}"></div>
       <div class="field"><label>WhatsApp</label><input id="cWhats" value="${esc(c.whatsapp || '')}"></div>
       <div class="field"><label>E-mail</label><input id="cEmail" value="${esc(c.email || '')}"></div>
       <div class="field"><label>Nascimento</label><input type="date" id="cNasc" value="${esc(c.nascimento || '')}"></div>
@@ -123,7 +124,7 @@ export async function saveCliente(id = '') {
     return toast('Limite de clientes do plano atingido');
   }
   const d = {
-    nome: $('cNome').value, whatsapp: $('cWhats').value, email: $('cEmail').value,
+    nome: $('cNome').value, apelido: $('cApelido').value.trim(), whatsapp: $('cWhats').value, email: $('cEmail').value,
     nascimento: $('cNasc').value, cidade: $('cCidade').value, endereco: $('cEndereco').value,
     genero: $('cGenero').value, origem: $('cOrigem').value,
     ultimoContato: $('cUlt').value, preferenciaContato: $('cPrefContato').value,
@@ -227,7 +228,7 @@ export function openCliente360(id) {
         ${c.nascimento ? `<p class="muted" style="margin:2px 0">🎂 ${formatDateBR(c.nascimento)} ${diasAniv <= 30 ? '• ' + (diasAniv === 0 ? 'Hoje!' : 'Faltam ' + diasAniv + ' dias') : ''}</p>` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${c.whatsapp ? `<button class="btn small green-btn" onclick="App.sendWhatsApp('contatoFrio',${onclickArg({ nome: c.nome, telefone: c.whatsapp })})">${WA_ICON} WhatsApp</button>` : ''}
+        ${c.whatsapp ? `<button class="btn small green-btn" onclick="App.sendWhatsApp('contatoFrio',${onclickArg({ nome: c.apelido || c.nome, telefone: c.whatsapp })})">${WA_ICON} WhatsApp</button>` : ''}
         ${state.profile?.geminiApiKey ? `<button class="btn small" onclick="App.gerarSugestaoAbordagemCliente('${id}')">🤖 Gerar Sugestão de Abordagem</button>` : ''}
         <button class="btn small dark" onclick="App.closeModal();App.openCarrinhoForCliente('${id}')">🛒 Carrinho</button>
         <button class="btn small" onclick="App.closeModal();App.openAgendamentoForm('${id}')">📅 Agendar</button>

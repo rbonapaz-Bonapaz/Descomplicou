@@ -1,4 +1,4 @@
-import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, cliById, nomeAtualDoCliente, agendaAgg } from './state.js';
+import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, cliById, nomeAtualDoCliente, nomeChamado, agendaAgg } from './state.js';
 import { $, esc, today, pill, formatDateBR, toggleHtml } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { sincronizarAgendamento, removerEventoGoogle, googleAgendaConectada, listarEventosGoogle } from './googleAgenda.js';
@@ -172,7 +172,7 @@ function tableAgenda() {
           <button class="btn small" onclick="App.editarAgendamento('${a.id}')" title="Editar">✏️</button>
           <button class="btn small" onclick="App.removerAgendamento('${a.id}')" title="Excluir">🗑️</button>
           ${a.local ? `<button class="btn small" onclick="App.abrirMapaAgendamento('${a.id}')" title="Ver local no mapa">📍</button>` : ''}
-          ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
+          ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeChamado(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
         </div>
       </td>
     </tr>`;

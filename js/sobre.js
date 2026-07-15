@@ -3,10 +3,19 @@ import { $, esc, sectionTabsHtml, formatDateBR } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v99';
+export const APP_VERSION = 'v100';
 
 // Changelog manual — cada entrada é uma rodada de melhorias já concluída.
 const NOVIDADES = [
+  { versao: 'v100', itens: [
+    '📦 Importar PDF do pedido Farmasi agora reconhece KITs automaticamente: monta os componentes e rateia o valor total do kit entre eles (mesma lógica da montagem manual de kit), além de preencher o custo unitário dos produtos avulsos quando o valor está legível no PDF. Também ficou mais resistente a bloqueadores de anúncios (tenta 3 CDNs antes de desistir).',
+    '🧠 Corrigido na raiz: os cards "Mais vendido/lucrativo/faturamento" em Relatórios → Produtos mostravam a palavra genérica "Pedido" em vez do nome do produto — uma venda representa o pedido inteiro (pode ter vários produtos), então o ranking agora usa os itens reais do carrinho de cada venda.',
+    'Catálogo de Eventos: status do link agora é calculado pela data ("Aguardando início" / "Ativo" / "Expirado"), e a lista sempre ordena por data do evento.',
+    'Catálogo de Eventos: botão de WhatsApp na lista de desejos, abre conversa direto com o número que a pessoa cadastrou. Link público do evento agora mostra a foto de perfil da consultora (maior) em vez das iniciais genéricas.',
+    'Novo campo "Como deseja ser chamado(a)?" no cadastro de cliente e no link de evento — todas as mensagens de WhatsApp do sistema passam a usar esse apelido quando cadastrado (ex: "Fabiula de Oliveira – Fabi" vira só "Fabi" na mensagem); sem apelido, usa o nome completo como sempre.',
+    'Painel Inicial → Recomendações: o item "Repor produto" agora tem o botão de pré-encomenda direto, mostrando quantos já estão na lista ou a caminho.',
+    'Painel Inicial → Agenda de hoje: nova seção (opcional, configurável em Minha Conta) mostrando os próximos dias além de hoje, recolhida por padrão — clique para expandir cada compromisso e ver endereço (com link de mapa) e observações.'
+  ] },
   { versao: 'v99', itens: [
     '⚠️ Reabrir uma venda com pagamento registrado deixou de apagar o pagamento — agora ele é mantido e aparece um aviso bem visível no topo do carrinho reaberto com o valor já pago. Ao finalizar de novo, o status (pendente/parcial/pago) é recalculado sozinho contra o total atual; se o valor pago passar do novo total, o sistema avisa o excedente para você decidir (crédito ou estorno).',
     '🎁 Kits da Pré-encomenda blindados: agora um kit é tratado como produto único de verdade — não dá mais pra editar ou remover um componente sozinho (isso descaracterizava o kit e perdia os valores rateados). Um novo botão "🗑️ Remover kit inteiro" tira todos os produtos do kit de uma vez, com confirmação listando o que será removido.',

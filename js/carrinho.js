@@ -890,7 +890,7 @@ export function enviarResumoWhatsApp(carrinhoId) {
   if (!carr) return;
   const cli = cliById(carr.clienteId);
   if (!cli?.whatsapp) return toast('Cliente sem WhatsApp');
-  window.App.sendWhatsApp('resumoPedido', { nome: carr.clienteNome, telefone: cli.whatsapp, carrinho: carr });
+  window.App.sendWhatsApp('resumoPedido', { nome: cli.apelido || carr.clienteNome, telefone: cli.whatsapp, carrinho: carr });
 }
 
 // Envia o link de pagamento configurado em Minha Conta → Pagamento, junto do valor que falta
@@ -903,7 +903,7 @@ export function enviarLinkPagamento(carrinhoId) {
   const cli = cliById(carr.clienteId);
   if (!cli?.whatsapp) return toast('Cliente sem WhatsApp');
   const valor = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));
-  window.App.sendWhatsApp('linkPagamento', { nome: carr.clienteNome, telefone: cli.whatsapp, link, valor });
+  window.App.sendWhatsApp('linkPagamento', { nome: cli.apelido || carr.clienteNome, telefone: cli.whatsapp, link, valor });
 }
 
 export function openCarrinhoDoCliente(clienteId) {
