@@ -62,8 +62,8 @@ export function renderPerfil() {
     </div>
 
     <div class="panel">
-      <h3>✨ Gerar benefícios com IA (Gemini)</h3>
-      <p class="muted">Cole sua própria chave de API do Gemini para usar o botão "✨ Gerar com IA" no cadastro de produtos, que sugere um texto de benefícios a partir do nome do produto. A chave fica salva só na sua conta.</p>
+      <h3>✨ Assistente de IA (Gemini)</h3>
+      <p class="muted">Cole sua própria chave de API do Gemini para usar o botão "✨ Gerar com IA" no cadastro de produtos (sugere benefícios a partir do nome) e o botão "🤖 Gerar Sugestão de Abordagem" no Cliente 360 (sugere uma mensagem de WhatsApp personalizada com base no histórico da cliente). A chave fica salva só na sua conta e a chamada é feita direto do seu navegador para o Google — não passa por nenhum servidor nosso.</p>
       <div class="grid">
         <div class="field full"><label>Chave de API do Gemini</label><input type="password" id="perGeminiKey" placeholder="Cole aqui sua chave" value="${esc(p.geminiApiKey || '')}"></div>
       </div>

@@ -241,6 +241,10 @@ function renderEstoqueInner() {
         <label class="btn pink">Selecionar JSON pedido<input type="file" accept=".json" style="display:none" onchange="App.readPedidoFile(this.files)"></label>
         <br><br><textarea id="pedidoJson" placeholder="Ou cole o JSON do pedido..."></textarea>
         <br><br><button class="btn dark" onclick="App.previewPedidoEstoque()">Analisar pedido</button>
+        <hr style="margin:20px 0;border:0;border-top:1px solid var(--line)">
+        <h3>Ou importar PDF do pedido Farmasi</h3>
+        <p class="muted">Selecione o PDF de "Detalhes do pedido" baixado do site da Farmasi. O sistema identifica os produtos do seu catálogo que aparecem no PDF (por código ou nome) — a quantidade de cada um entra como 1 e pode ser ajustada na conferência abaixo antes de confirmar.</p>
+        <label class="btn pink">Selecionar PDF do pedido<input type="file" accept=".pdf" style="display:none" onchange="App.readPedidoPdf(this.files)"></label>
       </div>
       <div id="pedidoPreview"></div>`;
     }
@@ -325,6 +329,58 @@ export async function saveSaidaManual() {
 
 export async function readPedidoFile(files) {
   if (files && files[0]) { $('pedidoJson').value = await files[0].text(); previewPedidoEstoque(); }
+}
+
+// Casa o texto extraído do PDF do pedido Farmasi contra o catálogo já cadastrado (por código
+// Farmasi, quando aparece isolado numa linha, e por nome normalizado presente no texto corrido).
+// O layout do PDF do site da Farmasi é irregular (colunas se misturam na extração de texto) —
+// tentar deduzir a quantidade pela posição do texto não é confiável. Em vez disso, cada produto
+// identificado entra com quantidade 1 e a consultora ajusta na tabela de conferência (mesma tela
+// de revisão do import por JSON) antes de confirmar — nada é gravado sem essa revisão.
+function matchPedidoPdfComCatalogo(texto) {
+  const linhasBrutas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  const fimIdx = linhasBrutas.findIndex(l => /^Endereços de entrega/i.test(l));
+  const linhas = fimIdx >= 0 ? linhasBrutas.slice(0, fimIdx) : linhasBrutas;
+  const textoJunto = norm(linhas.join(' '));
+  const reCodigoPuro = /^[A-Za-z]{0,4}(\d{4,})$/;
+
+  const encontrados = {};
+  linhas.forEach(l => {
+    const m = reCodigoPuro.exec(l);
+    if (!m) return;
+    const p = state.data.produtos.find(x => x.codigoFarmasi && String(x.codigoFarmasi) === m[1]);
+    if (p) encontrados[p.id] = p;
+  });
+  state.data.produtos.forEach(p => {
+    if (encontrados[p.id]) return;
+    const n = norm(p.nome);
+    if (n.length > 4 && textoJunto.includes(n)) encontrados[p.id] = p;
+  });
+  return Object.values(encontrados).map(p => ({ nome: p.nome, codigo: p.codigoFarmasi || '', quantidade: 1 }));
+}
+
+export async function readPedidoPdf(files) {
+  if (!files || !files[0]) return;
+  toast('Lendo PDF...');
+  try {
+    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs';
+    const buf = await files[0].arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let texto = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      texto += content.items.map(it => it.str).join('\n') + '\n';
+    }
+    const itens = matchPedidoPdfComCatalogo(texto);
+    if (!itens.length) return toast('Nenhum produto do seu catálogo foi identificado neste PDF. Cadastre os produtos antes ou use o JSON.');
+    window.__pedidoEstoque = itens;
+    renderPedidoPreview();
+    toast(`${itens.length} produto(s) identificado(s) no PDF — confira as quantidades antes de confirmar`);
+  } catch (e) {
+    toast('Erro ao ler o PDF: ' + e.message);
+  }
 }
 
 // Um item de pedido, vindo em vários formatos possíveis, para {nome, codigo, quantidade, valorTotal, imagem}

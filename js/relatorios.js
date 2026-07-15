@@ -106,11 +106,12 @@ function chips(tipo, vals) {
 }
 
 // Lista compacta "top 5" recolhível: título com o #1 em destaque + <details> com o restante do ranking.
-function rankList(titulo, arr, valFn) {
-  if (!arr.length) return `<div class="list-item"><div><b>${titulo}</b><small>-</small></div><span class="tag gray">-</span></div>`;
+function rankList(titulo, arr, valFn, title = '') {
+  const tituloHtml = title ? `<b title="${esc(title)}">${titulo}</b>` : `<b>${titulo}</b>`;
+  if (!arr.length) return `<div class="list-item"><div>${tituloHtml}<small>-</small></div><span class="tag gray">-</span></div>`;
   const [primeiro, ...resto] = arr;
   return `<details class="rank-list">
-    <summary><b>${titulo}</b><small>${esc(primeiro.nome)}</small><span class="tag green">${valFn(primeiro)}</span></summary>
+    <summary>${tituloHtml}<small>${esc(primeiro.nome)}</small><span class="tag green">${valFn(primeiro)}</span></summary>
     ${resto.length ? `<ol>${resto.map(x => `<li>${esc(x.nome)}<span>${valFn(x)}</span></li>`).join('')}</ol>` : ''}
   </details>`;
 }
@@ -173,7 +174,11 @@ export function renderRelatorios() {
   const freteFarmasi = (state.data.despesas || [])
     .filter(x => x.tipo === 'frete_farmasi' && inPeriod(x.data, d))
     .reduce((s, x) => s + Number(x.valor || 0), 0);
-  const lucroLiquido = r.lucReal - custoSaidasNaoVenda - freteFarmasi;
+  // Despesas operacionais (sacolas, espelhos, embalagens etc.) — mesma lógica do frete.
+  const despesasOperacionais = (state.data.despesas || [])
+    .filter(x => x.tipo === 'operacional' && inPeriod(x.data, d))
+    .reduce((s, x) => s + Number(x.valor || 0), 0);
+  const lucroLiquido = r.lucReal - custoSaidasNaoVenda - freteFarmasi - despesasOperacionais;
 
   // Saídas de estoque que não são venda, agrupadas por motivo (Brinde, Parceria, Consumo próprio,
   // Perda, Ajuste) — trocas ficam de fora daqui porque já têm o próprio painel "Trocas" acima.
@@ -218,11 +223,12 @@ export function renderRelatorios() {
 
     <div class="panel">
       <h3>Lucro líquido consolidado</h3>
-      <p class="muted">Lucro real das vendas, já descontando taxa de cartão, o custo de brindes/parcerias/consumo/perdas e o frete pago à Farmasi — o número mais próximo do que realmente sobra no bolso.</p>
+      <p class="muted">Lucro real das vendas, já descontando taxa de cartão, o custo de brindes/parcerias/consumo/perdas, o frete pago à Farmasi e as despesas operacionais — o número mais próximo do que realmente sobra no bolso.</p>
       <div class="pedido-totais" style="width:100%;margin:10px 0 0">
         <div class="pedido-total-line"><span>Lucro real das vendas</span><b>${money(r.lucReal)}</b></div>
         <div class="pedido-total-line"><span>Custo de brindes/perdas/consumo</span><b style="color:var(--error)">- ${money(custoSaidasNaoVenda)}</b></div>
         ${freteFarmasi > 0 ? `<div class="pedido-total-line"><span>Frete pago à Farmasi</span><b style="color:var(--error)">- ${money(freteFarmasi)}</b></div>` : ''}
+        ${despesasOperacionais > 0 ? `<div class="pedido-total-line"><span>Despesas operacionais</span><b style="color:var(--error)">- ${money(despesasOperacionais)}</b></div>` : ''}
         <div class="pedido-total-line" style="font-size:11pt;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span><b>Lucro líquido</b></span><b>${money(lucroLiquido)}</b></div>
       </div>
       ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}
@@ -272,10 +278,10 @@ export function renderRelatorios() {
       <div class="panel">
         <h3>Produtos</h3>
         <div class="list">
-          ${rankList('Mais vendido', r.top5Vend, x => x.q + ' un.')}
-          ${rankList('Mais lucrativo', r.top5LucProd, x => money(x.luc))}
-          ${rankList('Maior faturamento', r.top5FatProd, x => money(x.rec))}
-          ${rankList('Maior valor em estoque', prodPorEstoque, x => money(x.valor))}
+          ${rankList('Mais vendido', r.top5Vend, x => x.q + ' un.', 'Produto com mais unidades vendidas no período (não considera valor em R$)')}
+          ${rankList('Mais lucrativo', r.top5LucProd, x => money(x.luc), 'Produto com maior lucro no período (valor vendido menos o custo)')}
+          ${rankList('Maior faturamento', r.top5FatProd, x => money(x.rec), 'Produto com maior valor total vendido no período (receita bruta, antes de descontar o custo)')}
+          ${rankList('Maior valor em estoque', prodPorEstoque, x => money(x.valor), 'Produto com maior valor parado em estoque hoje (quantidade × custo)')}
           <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Estoque baixo</b><small>Produtos para repor</small></div><span class="tag orange">${s.baixo.length}</span></div>
           <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','parados')"><div><b>Parados (90+ dias)</b><small>Sem venda</small></div><span class="tag pink">${s.parados.length}</span></div>
         </div>
@@ -295,9 +301,9 @@ export function renderRelatorios() {
       <div class="panel">
         <h3>Clientes</h3>
         <div class="list">
-          ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras')}
-          ${rankList('Mais lucrativa', r.top5CliLuc, x => money(x.luc))}
-          ${rankList('Maior faturamento', r.top5CliRec, x => money(x.rec))}
+          ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras', 'Cliente com mais compras no período (não considera valor em R$)')}
+          ${rankList('Mais lucrativa', r.top5CliLuc, x => money(x.luc), 'Cliente que gerou mais lucro no período (valor comprado menos o custo)')}
+          ${rankList('Maior faturamento', r.top5CliRec, x => money(x.rec), 'Cliente com maior valor total comprado no período (receita bruta, antes de descontar o custo)')}
           <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes VIP</b><small>Top 10% por faturamento</small></div><span class="tag green">${vips.length}</span></div>
           <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes frios</b><small>${diasContatoFrio()}+ dias sem contato</small></div><span class="tag orange">${clientesFrios.length}</span></div>
           <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Sem compra</b><small>Nunca compraram</small></div><span class="tag pink">${clientesSemCompra.length}</span></div>

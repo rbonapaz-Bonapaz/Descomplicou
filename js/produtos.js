@@ -181,7 +181,7 @@ let linhaSelecionadaAtribuir = '';
 let qLinhaAssoc = '';
 
 function linhasTabHtml() {
-  const linhas = state.profile?.linhasCustom || [];
+  const linhas = [...(state.profile?.linhasCustom || [])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   let html = `<div class="panel">
     <h3>Suas linhas de produto</h3>
     <p class="muted">Defina os nomes das linhas que você quer usar. Elas não vêm mais automáticas do arquivo importado — você escolhe quais existem e atribui aos produtos aqui.</p>
@@ -210,7 +210,7 @@ function linhasTabHtml() {
           <td>${toggleBareHtml('toggle_' + p.id, linhasDe(p).includes(linhaSelecionadaAtribuir), `App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)`)}</td>
           <td data-label="Produto">${esc(p.nome)}</td>
           <td data-label="Código">${esc(p.codigoFarmasi || '-')}</td>
-          <td data-label="Linhas">${esc(linhasDe(p).map(labelLinha).join(', ') || '-')}</td>
+          <td data-label="Linhas">${esc([...linhasDe(p)].sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') || '-')}</td>
         </tr>`).join('')}
       </tbody></table></div>
     </div>`;

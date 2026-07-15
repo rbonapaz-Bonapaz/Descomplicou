@@ -42,7 +42,12 @@ export function labelLinha(l) {
   const raw = String(l || 'Sem linha').trim();
   const friendly = LINHA_LABELS[norm(raw)];
   if (friendly) return friendly;
-  return raw.replace(/-/g, ' ').split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
+  // Só converte hífen→espaço e capitaliza quando é um slug cru (ex: vindo de importação antiga,
+  // "cuidados-cabelo"). Linhas cadastradas normalmente (sem hífen) mantêm a grafia exata digitada.
+  if (raw.includes('-')) {
+    return raw.replace(/-/g, ' ').split(' ').map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
+  }
+  return raw;
 }
 
 // Lê um File de imagem, redimensiona/comprime e retorna um data URL (JPEG) para

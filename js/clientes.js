@@ -1,8 +1,9 @@
 import { state, col, ref, db, deleteDoc, showModal, closeModal, toast, setDoc, addDoc, serverTimestamp,
-  cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo } from './state.js';
+  cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo, estoqueDisponivel } from './state.js';
 import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR } from './utils.js';
-import { whatsAppBtn, onclickArg } from './whatsapp.js';
+import { whatsAppBtn, onclickArg, WA_ICON, openWhatsApp, formatPhone } from './whatsapp.js';
 import { detalheVendaHtml } from './vendas.js';
+import { gerarSugestaoAbordagem } from './gemini.js';
 
 // Vendas expandidas no histórico do Cliente 360 (mesmo padrão do accordion de Vendas — B.2) —
 // só estado de tela, não persiste. Chave é a venda (v.id), não o carrinho.
@@ -31,7 +32,7 @@ export function renderClientes() {
 
 function tableClientes() {
   const q = norm($('qcli')?.value || '');
-  const l = state.data.clientes.filter(c => !q || norm(c.nome + ' ' + c.whatsapp + ' ' + c.cidade).includes(q));
+  const l = state.data.clientes.filter(c => !q || norm(c.nome + ' ' + c.whatsapp + ' ' + c.cidade + ' ' + (c.tags || []).join(' ')).includes(q));
   if (!l.length) return '<p class="muted">Nenhum cliente.</p>';
   return `<div class="table"><table><thead><tr>
     <th>Cliente</th><th>Contato</th><th>Última compra</th><th>Status</th><th>Ações</th>
@@ -42,6 +43,7 @@ function tableClientes() {
       <td data-label="Cliente">
         <b class="cli-link" onclick="App.openCliente360('${c.id}')">${esc(c.nome)}</b>
         ${carrinhoAberto ? '<span class="pill blue" style="cursor:pointer" onclick="App.openCarrinhoDoCliente(\'' + c.id + '\')">🛒 aberto</span>' : ''}
+        ${(c.tags || []).length ? `<div style="margin-top:4px">${c.tags.map(t => pill(t, 'pink')).join(' ')}</div>` : ''}
       </td>
       <td data-label="Contato">${esc(c.whatsapp || '')}</td>
       <td data-label="Compra">${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds} dias)</small>` : '-'}</td>
@@ -108,6 +110,7 @@ export function openClienteForm(id = '', prefill = null) {
           <option ${c.preferenciaContato === 'Presencial' ? 'selected' : ''}>Presencial</option>
         </select>
       </div>
+      <div class="field full"><label>Tags (separadas por vírgula)</label><input id="cTags" placeholder="Ex: VIP, Skincare" value="${esc((c.tags || []).join(', '))}"></div>
       <div class="field full"><label>Observações</label><textarea id="cObs">${esc(c.observacoes || '')}</textarea></div>
     </div><br>
     <button class="btn dark" onclick="App.saveCliente('${id}')">Salvar</button>
@@ -124,6 +127,7 @@ export async function saveCliente(id = '') {
     nascimento: $('cNasc').value, cidade: $('cCidade').value, endereco: $('cEndereco').value,
     genero: $('cGenero').value, origem: $('cOrigem').value,
     ultimoContato: $('cUlt').value, preferenciaContato: $('cPrefContato').value,
+    tags: $('cTags').value.split(',').map(t => t.trim()).filter(Boolean),
     observacoes: $('cObs').value, atualizadoEm: serverTimestamp()
   };
   if (id) {
@@ -137,6 +141,67 @@ export async function saveCliente(id = '') {
   }
   closeModal();
   window.App.refresh('Cliente salvo');
+}
+
+// --- Copiloto de vendas (Gemini) — "Gerar Sugestão de Abordagem" no Cliente 360 ---
+// Compila o histórico real da cliente num contexto textual e pede ao Gemini uma mensagem de
+// WhatsApp personalizada. Nunca envia nada sozinho — abre um modal com o texto pra revisar/editar
+// e só então copiar ou abrir o WhatsApp com o texto pronto.
+function compilarContextoCliente(c) {
+  const linhas = [];
+  const vendas = state.data.vendas.filter(v => v.clienteId === c.id).sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const ultima = vendas[0];
+  if (ultima) {
+    const dias = daysSince(ultima.data);
+    const itens = (ultima.itens || []).map(i => i.produtoNome).join(', ') || 'produtos não especificados';
+    linhas.push(`Última compra há ${dias} dias: ${itens}.`);
+  } else {
+    linhas.push('Ainda não fez nenhuma compra registrada.');
+  }
+  if ((c.tags || []).length) linhas.push(`Tags/preferências: ${c.tags.join(', ')}.`);
+  const diasAniv = daysToBirthday(c.nascimento);
+  if (diasAniv === 0) linhas.push('Hoje é o dia do aniversário do cliente.');
+  else if (diasAniv > 0 && diasAniv <= 7) linhas.push(`Aniversário do cliente em ${diasAniv} dia(s).`);
+  // Produtos que ela já comprou antes e que acabaram de repor no estoque (gatilho de reposição).
+  const produtosComprados = new Set();
+  vendas.forEach(v => (v.itens || []).forEach(i => { if (i.produtoId) produtosComprados.add(i.produtoId); }));
+  const repostos = [...produtosComprados]
+    .map(id => state.data.produtos.find(p => p.id === id))
+    .filter(p => p && estoqueDisponivel(p.id) > 0)
+    .slice(0, 2);
+  if (repostos.length) linhas.push(`Produto(s) que ela já comprou e você tem em estoque agora: ${repostos.map(p => p.nome).join(', ')}.`);
+  if (Number(c.credito || 0) > 0.004) linhas.push(`Cliente tem ${money(c.credito)} de crédito disponível.`);
+  return linhas.join('\n');
+}
+
+export async function gerarSugestaoAbordagemCliente(id) {
+  const c = cliById(id);
+  if (!c) return toast('Cliente não encontrado');
+  showModal(`<h3>🤖 Gerando sugestão...</h3><p class="muted">Consultando o Gemini com o histórico de ${esc(c.nome)}.</p>`);
+  try {
+    const contexto = compilarContextoCliente(c);
+    const texto = await gerarSugestaoAbordagem(contexto);
+    showModal(`<h3>🤖 Sugestão de abordagem — ${esc(c.nome)}</h3>
+      <p class="muted">Revise ou edite antes de enviar. Nada é enviado automaticamente.</p>
+      <textarea id="sugestaoTexto" rows="6">${esc(texto)}</textarea>
+      <br><br>
+      <button class="btn dark" onclick="App.copiarSugestaoAbordagem()">📋 Copiar</button>
+      ${c.whatsapp ? `<button class="btn small green-btn" onclick="App.enviarSugestaoAbordagem('${esc(c.whatsapp)}')">${WA_ICON} Abrir WhatsApp</button>` : ''}
+      <button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
+  } catch (e) {
+    showModal(`<h3>Não foi possível gerar a sugestão</h3><p>${esc(e.message)}</p><br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
+  }
+}
+
+export function copiarSugestaoAbordagem() {
+  const texto = $('sugestaoTexto')?.value || '';
+  navigator.clipboard?.writeText(texto);
+  toast('Texto copiado');
+}
+
+export function enviarSugestaoAbordagem(whatsapp) {
+  const texto = $('sugestaoTexto')?.value || '';
+  openWhatsApp(whatsapp, texto);
 }
 
 export function openCliente360(id) {
@@ -157,11 +222,13 @@ export function openCliente360(id) {
         <h3 style="margin:0">${esc(c.nome)}</h3>
         <p class="muted" style="margin:4px 0">${esc(c.whatsapp || '')} • ${esc(c.cidade || '')} • ${esc(c.email || '')}</p>
         ${c.origem ? pill('Origem: ' + c.origem, 'blue') : ''}
+        ${(c.tags || []).length ? `<span style="margin-left:6px">${c.tags.map(t => pill(t, 'pink')).join(' ')}</span>` : ''}
         ${c.endereco ? `<p class="muted" style="margin:2px 0">${esc(c.endereco)}</p>` : ''}
         ${c.nascimento ? `<p class="muted" style="margin:2px 0">🎂 ${formatDateBR(c.nascimento)} ${diasAniv <= 30 ? '• ' + (diasAniv === 0 ? 'Hoje!' : 'Faltam ' + diasAniv + ' dias') : ''}</p>` : ''}
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${c.whatsapp ? `<button class="btn small green-btn" onclick="App.sendWhatsApp('contatoFrio',${onclickArg({ nome: c.nome, telefone: c.whatsapp })})">💬 WhatsApp</button>` : ''}
+        ${c.whatsapp ? `<button class="btn small green-btn" onclick="App.sendWhatsApp('contatoFrio',${onclickArg({ nome: c.nome, telefone: c.whatsapp })})">${WA_ICON} WhatsApp</button>` : ''}
+        ${state.profile?.geminiApiKey ? `<button class="btn small" onclick="App.gerarSugestaoAbordagemCliente('${id}')">🤖 Gerar Sugestão de Abordagem</button>` : ''}
         <button class="btn small dark" onclick="App.closeModal();App.openCarrinhoForCliente('${id}')">🛒 Carrinho</button>
         <button class="btn small" onclick="App.closeModal();App.openAgendamentoForm('${id}')">📅 Agendar</button>
         <button class="btn small" onclick="App.marcarContatado('${id}')">✓ Contatado</button>

@@ -15,7 +15,7 @@ function datasComemorativasHtml() {
   if (lista === null) return '<p class="muted">Carregando...</p>';
   if (!lista.length) return '<p class="muted">Nenhuma data comemorativa nos próximos 30 dias.</p>';
   return lista.map(d => `<div class="list-item">
-    <div><b>${esc(d.nome)}</b><small>${d.dataStr} • ${d.dias === 0 ? 'Hoje!' : d.dias === 1 ? 'Amanhã' : d.dias + ' dias'}</small></div>
+    <div><b>${esc(d.nome)}</b> <small>${d.dataStr} • ${d.dias === 0 ? 'Hoje!' : d.dias === 1 ? 'Amanhã' : d.dias + ' dias'}</small></div>
     <span class="tag pink">🎁 Boa pra presente</span>
   </div>`).join('');
 }

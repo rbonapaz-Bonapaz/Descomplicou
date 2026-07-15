@@ -319,6 +319,58 @@ export async function removerFreteFarmasi(id) {
   window.App.refresh('Registro de frete removido');
 }
 
+// --- Despesas operacionais (sacolas, espelhos, embalagens etc.) ---
+// Mesma coleção "despesas" do frete Farmasi, com tipo 'operacional' e uma categoria livre —
+// entra descontado do lucro líquido nos Relatórios junto com o frete.
+export async function registrarDespesa() {
+  const valor = parseMoney($('despValor')?.value);
+  if (valor <= 0) return toast('Informe o valor da despesa');
+  const categoria = ($('despCategoria')?.value || '').trim();
+  if (!categoria) return toast('Informe a categoria da despesa (ex: Sacolas, Espelhos)');
+  const data = $('despData')?.value || today();
+  await setDoc(ref('despesas', 'desp_' + Date.now()), {
+    tipo: 'operacional', categoria, valor, data,
+    observacoes: $('despObs')?.value || '', criadoEm: serverTimestamp()
+  });
+  window.App.refresh(`Despesa de ${money(valor)} registrada`);
+}
+
+export async function removerDespesa(id) {
+  if (!confirm('Remover este registro de despesa?')) return;
+  await deleteDoc(ref('despesas', id));
+  window.App.refresh('Registro de despesa removido');
+}
+
+function despesasPanelHtml() {
+  const despesas = (state.data.despesas || [])
+    .filter(x => x.tipo === 'operacional')
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const total = despesas.reduce((s, x) => s + Number(x.valor || 0), 0);
+  return `<div class="panel">
+    <div class="panel-head">
+      <h3>💰 Despesas operacionais</h3>
+      ${despesas.length ? `<span class="muted">Total registrado: <b>${money(total)}</b></span>` : ''}
+    </div>
+    <p class="muted">Registre gastos que não são custo de produto (sacolas, espelhos, embalagens, etc.) — entra como despesa e é descontado do lucro líquido nos Relatórios.</p>
+    <div class="toolbar">
+      <input id="despCategoria" placeholder="Categoria (ex: Sacolas)" style="max-width:180px">
+      <input id="despValor" placeholder="Valor (ex: 25,90)" style="max-width:160px">
+      <input id="despData" type="date" value="${today()}" style="max-width:170px">
+      <input id="despObs" placeholder="Observação (opcional)">
+      <button class="btn dark small" onclick="App.registrarDespesa()">+ Registrar</button>
+    </div>
+    ${despesas.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+      ${despesas.map(d => `<tr>
+        <td data-label="Data">${formatDateBR(d.data)}</td>
+        <td data-label="Categoria">${esc(d.categoria || '-')}</td>
+        <td data-label="Valor">${money(d.valor)}</td>
+        <td data-label="Observação">${esc(d.observacoes || '-')}</td>
+        <td><button class="btn small" style="color:var(--error)" onclick="App.removerDespesa('${d.id}')" title="Remover registro de despesa">🗑️</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>` : ''}
+  </div>`;
+}
+
 function fretePanelHtml() {
   const fretes = (state.data.despesas || [])
     .filter(x => x.tipo === 'frete_farmasi')
@@ -459,7 +511,7 @@ export function preEncomendaTabHtml() {
       </tr>`;
     }).join('')}</tbody></table></div>`}
     `}
-  </div>${fretePanelHtml()}`;
+  </div>${fretePanelHtml()}${despesasPanelHtml()}`;
 }
 
 function pillOrigem(o) {

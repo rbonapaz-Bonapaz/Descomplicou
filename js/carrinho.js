@@ -3,6 +3,7 @@ import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, dele
 import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
+import { WA_ICON } from './whatsapp.js';
 
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
@@ -266,7 +267,7 @@ export function openCarrinho(id) {
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn dark" onclick="App.finalizarCarrinho('${id}')">✓ Finalizar venda</button>
       <button class="btn small" onclick="App.salvarCarrinhoOpt('${id}');App.closeModal();App.refresh('Carrinho salvo')">💾 Salvar</button>
-      <button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${id}')">💬 Enviar pedido</button>
+      <button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${id}')">${WA_ICON} Enviar pedido</button>
       ${state.profile?.linkPagamento ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${id}')">💳 Enviar link de pagamento</button>` : ''}
       <button class="btn small" style="color:var(--error)" onclick="App.cancelarCarrinho('${id}')">✗ Cancelar</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>

@@ -12,6 +12,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const money = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const today = () => new Date().toISOString().slice(0, 10);
+const WA_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;flex:0 0 auto"><circle cx="12" cy="12" r="12" fill="#25D366"/><path fill="#fff" d="M12.004 4.6c-4.087 0-7.4 3.313-7.4 7.4 0 1.301.34 2.577.986 3.7L4.6 19.4l3.8-.997a7.37 7.37 0 0 0 3.604.94h.003c4.087 0 7.4-3.313 7.4-7.4s-3.313-7.343-7.403-7.343zm0 13.53a6.1 6.1 0 0 1-3.113-.85l-.223-.132-2.318.608.619-2.26-.146-.232a6.12 6.12 0 0 1-.94-3.264c0-3.38 2.75-6.13 6.13-6.13 3.38 0 6.13 2.75 6.13 6.13 0 3.38-2.75 6.13-6.14 6.13z"/><path fill="#fff" d="M15.188 13.746c-.163-.082-.965-.476-1.115-.53-.15-.055-.259-.082-.368.082-.109.163-.42.53-.516.639-.095.109-.19.123-.353.041-.163-.082-.688-.254-1.311-.809-.485-.432-.812-.966-.907-1.129-.095-.163-.01-.251.072-.333.074-.073.163-.19.245-.285.082-.096.109-.164.163-.273.055-.109.027-.204-.014-.286-.041-.082-.368-.885-.504-1.212-.133-.319-.269-.276-.368-.28h-.313c-.109 0-.286.041-.436.204-.15.163-.572.559-.572 1.363 0 .803.586 1.579.667 1.688.082.109 1.153 1.76 2.793 2.467.39.168.694.269.931.344.391.124.747.107 1.03.065.314-.047.965-.395 1.101-.777.136-.382.136-.708.095-.777-.041-.068-.15-.109-.313-.191z"/></svg>`;
 // Produto pode pertencer a mais de uma linha ("Linha A, Linha B" quando mesclado na importação) —
 // trata como tags em vez de valor único, senão cada combinação vira um filtro próprio e polui a tela.
 const linhasDe = p => String(p.linha || 'Sem linha').split(',').map(s => s.trim()).filter(Boolean);
@@ -117,7 +118,7 @@ function renderHeaderFooter() {
     links.push(`<a href="https://instagram.com/${esc(handle)}" target="_blank" rel="noopener">📷 @${esc(handle)}</a>`);
   }
   if (pp.linkLoja) links.push(`<a href="${esc(pp.linkLoja)}" target="_blank" rel="noopener">🔗 Nosso site</a>`);
-  if (pp.whatsapp) links.push(`<a href="https://wa.me/55${esc(String(pp.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener">💬 WhatsApp</a>`);
+  if (pp.whatsapp) links.push(`<a href="https://wa.me/55${esc(String(pp.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener">${WA_ICON} WhatsApp</a>`);
   $('evHeaderLinks').innerHTML = links.join('');
 
   $('evFooter').innerHTML = nome

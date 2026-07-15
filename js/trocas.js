@@ -339,20 +339,53 @@ export async function cancelarTroca(trocaId) {
   window.App.refresh('Troca cancelada');
 }
 
+// Trocas com a lista de itens expandida (mesmo padrão do toggleVendaDetalhe em vendas.js) —
+// só estado de tela, não persiste.
+const trocasExpandidas = new Set();
+
+export function toggleTrocaDetalhe(id) {
+  if (trocasExpandidas.has(id)) trocasExpandidas.delete(id);
+  else trocasExpandidas.add(id);
+  window.App.renderEstoque();
+}
+
+// Sub-lista com os produtos que saem/entram de uma troca, sem precisar abrir o modal inteiro.
+function detalheTrocaHtml(t) {
+  const linha = (it, lado) => {
+    const pendente = it.tipoEntrega === 'entrega_futura' && !it.processado;
+    const entregaLabel = it.tipoEntrega === 'entrega_futura' ? (it.processado ? (lado === 'saida' ? 'Entregue' : 'Recebido') : 'Futura') : 'Pronta';
+    const entregaCor = it.tipoEntrega === 'entrega_futura' ? (it.processado ? 'green' : 'orange') : 'green';
+    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
+      <span>${it.quantidade}× ${esc(it.produtoNome)} ${pill(entregaLabel, entregaCor)}</span>
+      <span style="white-space:nowrap">${money(it.valorUnitario)} un. • <b>${money(it.valorTotal)}</b></span>
+    </div>`;
+  };
+  const saida = t.itensSaida || [], entrada = t.itensEntrada || [];
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div><small class="muted"><b>Saem (seus produtos)</b></small>${saida.length ? saida.map(it => linha(it, 'saida')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+    <div><small class="muted"><b>Entram (recebidos)</b></small>${entrada.length ? entrada.map(it => linha(it, 'entrada')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+  </div>`;
+}
+
 function trocaCardHtml(t) {
   const statusLabel = { aberta: 'Em andamento', parcial: 'Parcial (pendências)', finalizada: 'Finalizada', cancelada: 'Cancelada' }[t.status] || t.status;
   const statusCor = t.status === 'finalizada' ? 'green' : t.status === 'cancelada' ? 'red' : t.status === 'parcial' ? 'orange' : 'blue';
-  return `<div class="list-item">
-    <div>
-      <b>${t.parceira ? esc(t.parceira) : 'Troca sem nome'}</b>
-      <small>${(t.itensSaida || []).length} produto(s) saem · ${(t.itensEntrada || []).length} produto(s) entram</small>
+  const expandida = trocasExpandidas.has(t.id);
+  return `<div class="list-item" style="flex-direction:column;align-items:stretch">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <div>
+        <button class="btn small" style="padding:3px 8px;margin-right:6px" onclick="App.toggleTrocaDetalhe('${t.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da troca'}">${expandida ? '▾' : '▸'}</button>
+        <b class="cli-link" onclick="App.toggleTrocaDetalhe('${t.id}')">${t.parceira ? esc(t.parceira) : 'Troca sem nome'}</b>
+        <small>${(t.itensSaida || []).length} produto(s) saem · ${(t.itensEntrada || []).length} produto(s) entram</small>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${pill(statusLabel, statusCor)}
+        <button class="btn small" onclick="App.openTroca('${t.id}')">Abrir</button>
+        <button class="btn small" onclick="App.editarParceiraTroca('${t.id}')" title="Editar parceira">✏️</button>
+        <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${t.id}')" title="Excluir">🗑️</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      ${pill(statusLabel, statusCor)}
-      <button class="btn small" onclick="App.openTroca('${t.id}')">Abrir</button>
-      <button class="btn small" onclick="App.editarParceiraTroca('${t.id}')" title="Editar parceira">✏️</button>
-      <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${t.id}')" title="Excluir">🗑️</button>
-    </div>
+    ${expandida ? `<div style="background:#F7FAFC;border-radius:8px;padding:10px;margin-top:8px">${detalheTrocaHtml(t)}</div>` : ''}
   </div>`;
 }
 

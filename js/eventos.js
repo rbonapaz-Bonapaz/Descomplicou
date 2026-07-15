@@ -1,5 +1,6 @@
 import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
 import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml } from './utils.js';
+import { WA_ICON } from './whatsapp.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
 
@@ -101,7 +102,7 @@ function eventoCard(ev) {
     <p class="muted">${ev.data ? 'Evento em ' + formatDate(ev.data) : ''}${vigenciaLabel(ev)} • ${(ev.produtos || []).length} produtos</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn small" onclick="App.copiarLinkEvento('${ev.id}')">🔗 Copiar link</button>
-      <button class="btn small green-btn" onclick="App.enviarWhatsappEvento('${ev.id}')">💬 WhatsApp</button>
+      <button class="btn small green-btn" onclick="App.enviarWhatsappEvento('${ev.id}')">${WA_ICON} WhatsApp</button>
       <button class="btn small" onclick="App.gerarQrCodeEvento('${ev.id}')">📱 QR Code</button>
       <button class="btn small" onclick="App.abrirEditarEvento('${ev.id}')">✏️ Editar</button>
       <button class="btn small dark" onclick="App.toggleListasEvento('${ev.id}')">💌 Listas de desejo</button>
@@ -299,7 +300,7 @@ function mostrarLinkEvento(id) {
     <p class="muted">Compartilhe este link com suas clientes e leads:</p>
     <input value="${esc(link)}" readonly onclick="this.select()" style="margin:10px 0"><br>
     <button class="btn dark" onclick="App.copiarLinkEvento('${id}')">🔗 Copiar link</button>
-    <button class="btn small green-btn" onclick="App.closeModal();App.enviarWhatsappEvento('${id}')">💬 WhatsApp</button>
+    <button class="btn small green-btn" onclick="App.closeModal();App.enviarWhatsappEvento('${id}')">${WA_ICON} WhatsApp</button>
     <button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
 }
 
@@ -315,7 +316,7 @@ export function enviarWhatsappEvento(id) {
   showModal(`<h3>Enviar por WhatsApp</h3>
     <p class="muted">Edite a mensagem se quiser antes de enviar. Ela fica salva como padrão deste evento para as próximas vezes.</p>
     <textarea id="evWhatsMsg" style="min-height:140px">${esc(texto)}</textarea><br><br>
-    <button class="btn dark" onclick="App.confirmarEnvioWhatsapp('${id}')">💬 Abrir WhatsApp</button>
+    <button class="btn dark" onclick="App.confirmarEnvioWhatsapp('${id}')">${WA_ICON} Abrir WhatsApp</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
 }
 

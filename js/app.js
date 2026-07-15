@@ -5,19 +5,20 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
 import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
-import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda } from './clientes.js';
+import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
+  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
   confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
   abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo } from './agenda.js';
 import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
-  readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
+  readPedidoFile, readPedidoPdf, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos } from './estoque.js';
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca } from './trocas.js';
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe } from './trocas.js';
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,
@@ -27,7 +28,7 @@ import { readProductFiles, previewImportProdutos, confirmImportProdutos, editarI
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
-  registrarFreteFarmasi, removerFreteFarmasi } from './preencomenda.js';
+  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf, readCatalogoFiles, importarCatalogoTexto } from './catalogo.js';
 import { renderRelatorios } from './relatorios.js';
@@ -300,6 +301,7 @@ window.App = {
   biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria,
   // Clientes
   renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
+  gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem,
   // Agenda
   openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
@@ -316,18 +318,18 @@ window.App = {
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
   // Estoque
   renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
-  readPedidoFile, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
+  readPedidoFile, readPedidoPdf, previewPedidoEstoque, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos,
   // Pré-encomenda
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
-  registrarFreteFarmasi, removerFreteFarmasi,
+  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca,
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe,
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, filtrarLinhaBaseColetiva,

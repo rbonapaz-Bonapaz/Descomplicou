@@ -1,5 +1,8 @@
 import { state } from './state.js';
 
+// Ícone oficial do WhatsApp (bolha + fone), inline SVG — substitui o emoji 💬 em todos os botões.
+export const WA_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;flex:0 0 auto"><circle cx="12" cy="12" r="12" fill="#25D366"/><path fill="#fff" d="M12.004 4.6c-4.087 0-7.4 3.313-7.4 7.4 0 1.301.34 2.577.986 3.7L4.6 19.4l3.8-.997a7.37 7.37 0 0 0 3.604.94h.003c4.087 0 7.4-3.313 7.4-7.4s-3.313-7.343-7.403-7.343zm0 13.53a6.1 6.1 0 0 1-3.113-.85l-.223-.132-2.318.608.619-2.26-.146-.232a6.12 6.12 0 0 1-.94-3.264c0-3.38 2.75-6.13 6.13-6.13 3.38 0 6.13 2.75 6.13 6.13 0 3.38-2.75 6.13-6.14 6.13z"/><path fill="#fff" d="M15.188 13.746c-.163-.082-.965-.476-1.115-.53-.15-.055-.259-.082-.368.082-.109.163-.42.53-.516.639-.095.109-.19.123-.353.041-.163-.082-.688-.254-1.311-.809-.485-.432-.812-.966-.907-1.129-.095-.163-.01-.251.072-.333.074-.073.163-.19.245-.285.082-.096.109-.164.163-.273.055-.109.027-.204-.014-.286-.041-.082-.368-.885-.504-1.212-.133-.319-.269-.276-.368-.28h-.313c-.109 0-.286.041-.436.204-.15.163-.572.559-.572 1.363 0 .803.586 1.579.667 1.688.082.109 1.153 1.76 2.793 2.467.39.168.694.269.931.344.391.124.747.107 1.03.065.314-.047.965-.395 1.101-.777.136-.382.136-.708.095-.777-.041-.068-.15-.109-.313-.191z"/></svg>`;
+
 const templates = {
   aniversario: (nome) =>
     `Olá, ${nome}! Passando para te desejar um feliz aniversário! 🎉\nQue seu dia seja muito especial.\n\nSeparei uma condição especial de presente pra você comemorar — quer que eu te mostre? 🎁`,
@@ -63,7 +66,7 @@ export function onclickArg(data) {
 export function whatsAppBtn(telefone, context, data = {}) {
   if (!telefone) return '';
   const onclick = `App.sendWhatsApp('${context}',${onclickArg(data)})`;
-  return `<button class="btn small green-btn" onclick="${onclick}" title="WhatsApp">💬</button>`;
+  return `<button class="btn small green-btn" onclick="${onclick}" title="WhatsApp">${WA_ICON}</button>`;
 }
 
 export function sendWhatsApp(context, data) {
