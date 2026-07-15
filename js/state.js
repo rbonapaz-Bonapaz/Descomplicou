@@ -280,5 +280,9 @@ export function planoInfo() {
   const hoje = new Date().toISOString().slice(0, 10);
   // Teste e gratuito nunca "vencem" por data — só os planos pagos, e só o campo 'vencido' explícito os marca de vez.
   const vencido = plano === 'vencido' || (p.premiumAte && p.premiumAte < hoje && !isTeste && !isGratuito);
-  return { plano, isTeste, isGratuito, ilimitado, limiteTeste, limiteGratuito, limite, clientesUsados, atingiuLimite, vencido, premiumAte: p.premiumAte || '' };
+  // Dias até o vencimento (só faz sentido pra plano pago com data e ainda não vencido) — usado
+  // pro alerta de "faltam X dias" no Painel Inicial.
+  const diasParaVencer = (!isTeste && !isGratuito && !vencido && p.premiumAte)
+    ? Math.ceil((new Date(p.premiumAte) - new Date(hoje)) / 86400000) : null;
+  return { plano, isTeste, isGratuito, ilimitado, limiteTeste, limiteGratuito, limite, clientesUsados, atingiuLimite, vencido, premiumAte: p.premiumAte || '', diasParaVencer };
 }

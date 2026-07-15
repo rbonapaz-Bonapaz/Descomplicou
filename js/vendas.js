@@ -4,8 +4,10 @@ import { whatsAppBtn } from './whatsapp.js';
 
 const LABEL_STATUS_PAG = { pendente: 'Pendente', pago: 'Pago', parcial: 'Parcial' };
 const COR_STATUS_PAG = { pendente: 'red', pago: 'green', parcial: 'orange' };
+const TIP_STATUS_PAG = { pendente: 'Nenhum valor recebido ainda', pago: 'Valor recebido cobre o total do pedido', parcial: 'Só parte do valor foi recebida — falta receber o restante' };
 function corStatusPag(v) { return COR_STATUS_PAG[normStatusPag(v)]; }
 function labelStatusPag(v) { return LABEL_STATUS_PAG[normStatusPag(v)]; }
+function tipStatusPag(v) { return TIP_STATUS_PAG[normStatusPag(v)]; }
 
 function chips(tipo, vals) {
   return `<div class="chips">${vals.map(v =>
@@ -23,7 +25,8 @@ export function toggleVendaDetalhe(id) {
 }
 
 // Sub-linha com os produtos e valores de uma venda, sem precisar abrir o carrinho inteiro.
-function detalheVendaHtml(c) {
+// Exportada porque o Cliente 360 (clientes.js) reaproveita o mesmo detalhamento.
+export function detalheVendaHtml(c) {
   const itens = c.itens || [];
   if (!itens.length) return '<small class="muted">Sem itens registrados.</small>';
   return itens.map(it => {
@@ -121,7 +124,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
         <td data-label="Itens" style="cursor:pointer" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${(c.itens || []).length}</td>
         <td data-label="Total">${money(c.totalPedido)}</td>
         <td data-label="Lucro">${money(c.lucroTotal)}</td>
-        <td data-label="Pgto">${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
+        <td data-label="Pgto">${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
         <td data-label="Status">${pill(c.status, c.status === 'aberto' ? 'blue' : c.status === 'finalizado' || c.status === 'entregue' ? 'green' : c.status === 'parcial' ? 'orange' : 'red')}</td>
         <td data-label="Ações">
           <div style="display:flex;gap:4px;flex-wrap:wrap">

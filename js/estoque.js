@@ -158,7 +158,9 @@ function stockCard(x) {
     <div class="metric"><small>Investido</small><b>${money(x.investido)}</b></div>
     <div class="metric"><small>Lucro potencial</small><b>${money(x.lucroPot)} <span class="muted" style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
     <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-      ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK', x.semCusto || x.baixo ? 'red' : 'green')}
+      ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
+        x.semCusto || x.baixo ? 'red' : 'green',
+        x.semCusto ? 'Produto sem custo médio cadastrado — o lucro dele não entra certo nos relatórios' : x.baixo ? 'Estoque abaixo do mínimo configurado pra esse produto' : 'Estoque normal, acima do mínimo')}
       ${btnAdicionarPreEncomenda(x.p.id)}
       <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
       <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>
@@ -166,8 +168,22 @@ function stockCard(x) {
   </div>`;
 }
 
+// A busca principal do Estoque (qestoque) e a busca da Pré-encomenda (qPreEnc) convivem na mesma
+// função de render, em abas diferentes — preserva foco/cursor de qualquer uma das duas que estiver
+// ativa (mesmo padrão de FOCUS_IDS_PRODUTOS em produtos.js, que resolve o mesmo problema lá).
+const FOCUS_IDS_ESTOQUE = ['qestoque', 'qPreEnc'];
 export function renderEstoque() {
-  withFocusPreserved('qestoque', () => {
+  const idAtivo = FOCUS_IDS_ESTOQUE.find(id => document.activeElement?.id === id);
+  const elAtivo = idAtivo ? document.getElementById(idAtivo) : null;
+  const cursorPos = elAtivo ? elAtivo.selectionStart : null;
+  renderEstoqueInner();
+  if (idAtivo) {
+    const el = document.getElementById(idAtivo);
+    if (el) { el.focus(); el.setSelectionRange(cursorPos, cursorPos); }
+  }
+}
+
+function renderEstoqueInner() {
     const s = stockAgg(), f = state.filters.estoque;
     let items = s.em;
     if (f === 'baixo') items = s.baixo;
@@ -233,7 +249,6 @@ export function renderEstoque() {
     if (sec === 'preEncomenda') html += preEncomendaTabHtml();
 
     $('estoque').innerHTML = html;
-  });
 }
 
 // Ativa "pronta entrega" de uma vez para todos os produtos que têm estoque > 0 — evita ter que

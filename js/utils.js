@@ -162,8 +162,8 @@ export function filtrarSearchPicker(selectId) {
   }
 }
 
-export function pill(t, c = 'gray') {
-  return `<span class="pill ${c}">${esc(t)}</span>`;
+export function pill(t, c = 'gray', title = '') {
+  return `<span class="pill ${c}"${title ? ` title="${esc(title)}"` : ''}>${esc(t)}</span>`;
 }
 
 // Campo de senha com ícone de olho para mostrar/ocultar o valor digitado.

@@ -90,7 +90,7 @@ function itemRowHtml(trocaId, lado, item, idx) {
     <td data-label="Total">${money(item.valorTotal)}</td>
     <td data-label="Entrega">${pill(entregaLabel, entregaCor)}</td>
     <td data-label="">${pendente ? `<button class="btn small" onclick="App.marcarItemTrocaProcessado('${trocaId}','${lado}',${idx})">✓ ${lado === 'saida' ? 'Dar baixa' : 'Deu entrada'}</button>` : ''}
-      <button class="btn small" style="color:var(--error)" onclick="App.removerItemTroca('${trocaId}','${lado}',${idx})">✗</button></td>
+      <button class="btn small" style="color:var(--error)" onclick="App.removerItemTroca('${trocaId}','${lado}',${idx})" title="Remover item da troca">✗</button></td>
   </tr>`;
 }
 

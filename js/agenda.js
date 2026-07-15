@@ -24,15 +24,16 @@ export async function importarDoGoogleAgenda() {
     const dataISO = ev.start?.date || ev.start?.dateTime?.slice(0, 10);
     if (!dataISO) continue;
     const hora = ev.start?.dateTime ? ev.start.dateTime.slice(11, 16) : '';
+    const horaFim = ev.end?.dateTime ? ev.end.dateTime.slice(11, 16) : '';
     const titulo = ev.summary || 'Evento do Google Agenda';
     const [tipoParte, clienteParte] = titulo.includes(' — ') ? titulo.split(' — ') : ['Atendimento', titulo];
     const existente = state.data.agendamentos.find(a => a.googleEventId === ev.id);
 
     if (existente) {
-      const mudou = existente.data !== dataISO || existente.hora !== hora || (existente.observacoes || '') !== (ev.description || '') || (existente.local || '') !== (ev.location || '');
+      const mudou = existente.data !== dataISO || existente.hora !== hora || (existente.horaFim || '') !== horaFim || (existente.observacoes || '') !== (ev.description || '') || (existente.local || '') !== (ev.location || '');
       if (mudou) {
         await setDoc(ref('agendamentos', existente.id), {
-          data: dataISO, hora, observacoes: ev.description || existente.observacoes || '',
+          data: dataISO, hora, horaFim, observacoes: ev.description || existente.observacoes || '',
           local: ev.location || existente.local || '', atualizadoEm: serverTimestamp()
         }, { merge: true });
         atualizados++;
@@ -41,7 +42,7 @@ export async function importarDoGoogleAgenda() {
       await addDoc(col('agendamentos'), {
         clienteId: '', clienteNome: clienteParte || titulo,
         tipo: TIPOS.includes(tipoParte) ? tipoParte : 'Atendimento',
-        data: dataISO, hora, local: ev.location || '', observacoes: ev.description || '', status: 'agendado',
+        data: dataISO, hora, horaFim, local: ev.location || '', observacoes: ev.description || '', status: 'agendado',
         googleEventId: ev.id, origemGoogle: true, criadoEm: serverTimestamp()
       });
       criados++;
@@ -168,8 +169,8 @@ function tableAgenda() {
             <button class="btn small" onclick="App.reagendarAgendamento('${a.id}')">↻ Reagendar</button>
             <button class="btn small" onclick="App.cancelarAgendamento('${a.id}')">✗ Cancelar</button>
           ` : ''}
-          <button class="btn small" onclick="App.editarAgendamento('${a.id}')">✏️</button>
-          <button class="btn small" onclick="App.removerAgendamento('${a.id}')">🗑️</button>
+          <button class="btn small" onclick="App.editarAgendamento('${a.id}')" title="Editar">✏️</button>
+          <button class="btn small" onclick="App.removerAgendamento('${a.id}')" title="Excluir">🗑️</button>
           ${a.local ? `<button class="btn small" onclick="App.abrirMapaAgendamento('${a.id}')" title="Ver local no mapa">📍</button>` : ''}
           ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeAtualDoCliente(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
         </div>
@@ -197,6 +198,7 @@ export function openAgendamentoForm(clienteId = '') {
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${today()}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora"></div>
+      <div class="field"><label>Hora final (opcional)</label><input type="time" id="aHoraFim"></div>
       ${localFieldHtml(cliInicial?.endereco)}
       <div class="field full"><label>Observações</label><textarea id="aObs"></textarea></div>
     </div><br>
@@ -211,7 +213,7 @@ export async function saveAgendamento() {
   if (!clienteId && !titulo) return toast('Escolha um cliente ou informe um título para o compromisso');
   const dados = {
     clienteId: clienteId || '', clienteNome: c ? c.nome : titulo,
-    tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
+    tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value, horaFim: $('aHoraFim')?.value || '',
     local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, status: 'agendado', criadoEm: serverTimestamp()
   };
@@ -232,6 +234,7 @@ export function editarAgendamento(id) {
       <div class="field"><label>Tipo</label><select id="aTipo">${tipoOpts}</select></div>
       <div class="field"><label>Data</label><input type="date" id="aData" value="${a.data}"></div>
       <div class="field"><label>Hora</label><input type="time" id="aHora" value="${a.hora || ''}"></div>
+      <div class="field"><label>Hora final (opcional)</label><input type="time" id="aHoraFim" value="${a.horaFim || ''}"></div>
       ${localFieldHtml(a.local)}
       <div class="field full"><label>Observações</label><textarea id="aObs">${esc(a.observacoes || '')}</textarea></div>
     </div><br>
@@ -247,7 +250,7 @@ export async function updateAgendamento(id) {
   const a = state.data.agendamentos.find(x => x.id === id);
   const dados = {
     clienteId: clienteId || '', clienteNome: c ? c.nome : titulo,
-    tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value,
+    tipo: $('aTipo').value, data: $('aData').value, hora: $('aHora').value, horaFim: $('aHoraFim')?.value || '',
     local: $('aLocal').value.trim(),
     observacoes: $('aObs').value, atualizadoEm: serverTimestamp()
   };
@@ -311,6 +314,7 @@ export function reagendarAgendamento(id) {
     <div class="grid">
       <div class="field"><label>Nova data</label><input type="date" id="aNovaData" value="${today()}"></div>
       <div class="field"><label>Nova hora</label><input type="time" id="aNovaHora" value="${a.hora || ''}"></div>
+      <div class="field"><label>Nova hora final (opcional)</label><input type="time" id="aNovaHoraFim" value="${a.horaFim || ''}"></div>
     </div><br>
     <button class="btn dark" onclick="App.confirmarReagendamento('${id}')">Confirmar</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
@@ -325,7 +329,7 @@ export async function confirmarReagendamento(id) {
     await removerEventoGoogle(a);
     const dados = {
       clienteId: a.clienteId, clienteNome: a.clienteNome,
-      tipo: a.tipo, data: $('aNovaData').value, hora: $('aNovaHora').value,
+      tipo: a.tipo, data: $('aNovaData').value, hora: $('aNovaHora').value, horaFim: $('aNovaHoraFim')?.value || '',
       local: a.local || '', observacoes: a.observacoes || '', status: 'agendado',
       reagendadoDe: id, criadoEm: serverTimestamp()
     };

@@ -3,6 +3,45 @@ import { $, esc, money, norm, pill, labelLinha, toggleBareHtml } from './utils.j
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
 
+// --- Alerta de novos leads (dashboard) ---
+// null = ainda não verificado nesta sessão; array = resultado da última verificação (pode ser
+// vazio). Verificação é sob demanda (chamada pelo dashboard), não em todo refresh — evita ficar
+// lendo a subcoleção de leads de cada evento o tempo todo.
+let novosLeadsCache = null;
+
+export function novosLeadsResumo() {
+  return novosLeadsCache;
+}
+
+// Compara o total de leads de cada evento ativo com o que a consultora já viu (ev.leadsVisto,
+// salvo no próprio doc do evento) — o dashboard chama isso uma vez por sessão e se atualiza
+// sozinho quando o resultado chega, sem precisar recarregar todos os dados do app.
+export async function verificarNovosLeads() {
+  const eventosAtivos = (state.data.eventos || []).filter(e => e.ativo !== false);
+  const resultados = [];
+  for (const ev of eventosAtivos) {
+    try {
+      const snap = await getDocs(collection(db, 'eventosPublicos', ev.id, 'listasDesejo'));
+      const total = snap.size;
+      const visto = Number(ev.leadsVisto || 0);
+      if (total > visto) resultados.push({ eventoId: ev.id, eventoNome: ev.nome, novos: total - visto, total });
+    } catch (e) { /* regras públicas podem não estar publicadas ainda — ignora silenciosamente */ }
+  }
+  novosLeadsCache = resultados;
+  window.App.renderLeadsBanner?.();
+}
+
+// Marca os leads de um evento como vistos (registra o total atual) — some do alerta até
+// aparecerem leads NOVOS de verdade.
+export async function marcarLeadsVistos(eventoId) {
+  const snap = await getDocs(collection(db, 'eventosPublicos', eventoId, 'listasDesejo'));
+  await setDoc(doc(db, 'users', state.user.uid, 'eventos', eventoId), { leadsVisto: snap.size }, { merge: true });
+  if (novosLeadsCache) novosLeadsCache = novosLeadsCache.filter(r => r.eventoId !== eventoId);
+  window.App.renderLeadsBanner?.();
+  window.App.goto('eventos');
+  toggleListasEvento(eventoId);
+}
+
 // Liga a criação de cliente feita a partir de uma lista de desejo (ver clientes.js) de volta à lista.
 window.addEventListener('lead-cliente-criado', e => {
   const l = (listasCache[e.detail.eventoId] || []).find(x => x.id === e.detail.listaId);
@@ -94,6 +133,9 @@ function formHtmlEvento(ev) {
         <textarea id="evMensagemWhats" placeholder="Ex: Oi! Preparei um catálogo especial pra você 💕 Dá uma olhada nos produtos e me manda sua lista de desejos:">${esc(ev?.mensagemWhatsapp || '')}</textarea>
       </div>
     </div>
+    <div class="field full" style="margin-top:8px">${toggleBareHtml('evTodoCatalogo', !!ev?.todoCatalogo)} <label for="evTodoCatalogo" style="display:inline;font-weight:700">Mostrar todo o catálogo Farmasi no link</label>
+      <br><small class="muted">Sem marcar: só os produtos das linhas participantes aparecem no link. Marcando: todo o catálogo aparece, mas o desconto só vale pras linhas participantes escolhidas abaixo — as demais aparecem pelo preço normal.</small>
+    </div>
     <h4 style="margin:16px 0 8px">Linhas participantes e desconto</h4>
     <p class="muted">Marque as linhas que entram no evento e o desconto (%) sobre o preço de venda atual.</p>
     <div class="table"><table><thead><tr><th>Participa</th><th>Linha</th><th>Desconto %</th></tr></thead><tbody>
@@ -121,8 +163,13 @@ function coletarDadosFormEvento() {
     descontos[inp.dataset.linha] = Number(String(inp.value).replace(',', '.')) || 0;
   });
 
+  // Com "todo o catálogo" marcado, o link mostra QUALQUER produto ativo — não só os das linhas
+  // participantes; o desconto continua restrito às linhas escolhidas (as demais aparecem pelo
+  // preço normal, descontoMax vira 0 pra elas).
+  const todoCatalogo = !!$('evTodoCatalogo')?.checked;
   const produtos = state.data.produtos.filter(p => {
     if (p.ativoCatalogo === false) return false;
+    if (todoCatalogo) return true;
     const linhasProd = String(p.linha || 'Sem linha').split(',').map(s => s.trim());
     return linhasProd.some(l => linhasSelecionadas.includes(l));
   }).map(p => {
@@ -133,11 +180,14 @@ function coletarDadosFormEvento() {
     return {
       id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: p.linha || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
-      precoOriginal, precoComDesconto
+      precoOriginal, precoComDesconto,
+      // Quantidade em pronta entrega no momento da publicação — snapshot, não atualiza sozinho
+      // depois (mesmo padrão dos preços: o link congela o estado do catálogo na hora de criar/editar).
+      prontaEntrega: Number(p.estoqueAtual || 0)
     };
   });
 
-  if (!produtos.length) { toast('Nenhum produto ativo no catálogo para essas linhas'); return null; }
+  if (!produtos.length) { toast(todoCatalogo ? 'Nenhum produto ativo no catálogo' : 'Nenhum produto ativo no catálogo para essas linhas'); return null; }
 
   // Snapshot do perfil público — a página do evento não tem login, então precisa desses
   // dados salvos junto (nome, Instagram, site) para montar um cabeçalho/rodapé decentes.
@@ -151,7 +201,7 @@ function coletarDadosFormEvento() {
     nome, data: $('evData').value,
     vigenciaInicio: $('evVigenciaInicio').value, vigenciaFim: $('evVigenciaFim').value,
     mensagemWhatsapp: $('evMensagemWhats').value.trim(),
-    descontosPorLinha: descontos, produtos, perfilPublico
+    descontosPorLinha: descontos, todoCatalogo, produtos, perfilPublico
   };
 }
 

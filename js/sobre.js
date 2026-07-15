@@ -3,10 +3,27 @@ import { $, esc, sectionTabsHtml, formatDateBR } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v98';
+export const APP_VERSION = 'v99';
 
 // Changelog manual — cada entrada é uma rodada de melhorias já concluída.
 const NOVIDADES = [
+  { versao: 'v99', itens: [
+    '⚠️ Reabrir uma venda com pagamento registrado deixou de apagar o pagamento — agora ele é mantido e aparece um aviso bem visível no topo do carrinho reaberto com o valor já pago. Ao finalizar de novo, o status (pendente/parcial/pago) é recalculado sozinho contra o total atual; se o valor pago passar do novo total, o sistema avisa o excedente para você decidir (crédito ou estorno).',
+    '🎁 Kits da Pré-encomenda blindados: agora um kit é tratado como produto único de verdade — não dá mais pra editar ou remover um componente sozinho (isso descaracterizava o kit e perdia os valores rateados). Um novo botão "🗑️ Remover kit inteiro" tira todos os produtos do kit de uma vez, com confirmação listando o que será removido.',
+    'Produtos: novo botão "+ Novo produto" pra cadastrar manualmente, sem precisar de importação ou sincronização.',
+    'Carrinho: botão "WhatsApp" virou "Enviar pedido" (mesmo ícone) — deixa claro o que o botão faz.',
+    'Agenda: novo campo "Hora final" (opcional) — melhora a duração do evento espelhado no Google Agenda.',
+    'Cliente 360: histórico de vendas agora expande (▸) e mostra os itens da compra, igual à tela de Vendas.',
+    'Estoque → Pré-encomenda: novo campo de busca, filtra "A comprar" e "Aguardando chegada" ao mesmo tempo.',
+    'Clientes: novo card "Total de clientes" no topo da tela.',
+    'Tooltips explicando "OK", "Sem custo", "Baixo" e status de pagamento — passe o mouse por cima. Vários ícones de ação que só tinham símbolo ganharam texto explicativo também.',
+    'Catálogo de Eventos: novo toggle "Mostrar todo o catálogo Farmasi no link" (desconto continua só nas linhas participantes) e tag de "X em pronta entrega" / "Sob encomenda" em cada produto da vitrine pública.',
+    'Painel Inicial: aviso quando um link de evento capta um lead novo (lista de desejos), com atalho pra ver e atender.',
+    'Carrinho: novo botão "💳 Enviar link de pagamento" (aparece quando há link cadastrado em Minha Conta e saldo pendente) — manda o link certo com o valor que falta receber.',
+    'Painel Inicial: alerta quando o plano está a 7 dias ou menos do vencimento, com atalho pra renovar.',
+    'Mensagem de aniversário no WhatsApp agora convida pra uma condição especial de presente, não só os parabéns.',
+    'Painel Inicial: novo card "🎁 Datas comemorativas" — feriados nacionais (buscados automaticamente) + datas comerciais (Dia das Mães, Namorados, Pais, Crianças, Black Friday, Páscoa, Natal, Dia da Mulher) nos próximos 30 dias. Ótimas datas pra oferecer presente.'
+  ] },
   { versao: 'v98', itens: [
     '🎁 Kits mudaram de lugar: agora são montados em Estoque → Pré-encomenda, porque o kit é o que você compra da Farmasi (não o que vende ao cliente). O valor pago é rateado como custo previsto de cada produto na lista "A comprar" e vira custo médio do estoque quando o pedido chega.',
     '🚚 Frete também mudou: registrado na Pré-encomenda (frete pago à Farmasi no pedido de compra), como despesa simples — aparece descontado no lucro líquido dos Relatórios. O campo de frete saiu do carrinho do cliente.',
@@ -15,7 +32,7 @@ const NOVIDADES = [
     'Base coletiva: a administração agora publica também as LINHAS de produto (Admin → Catálogo mestre). Em Produtos → Linhas, o botão "🔄 Sincronizar linhas da base coletiva" acrescenta as linhas do admin às suas — as que você já tem permanecem.',
     '📄 PDF do pedido (cliente e interno) refeito: resumo compacto no topo (pedido, pagamento e totais lado a lado), cada produto em uma linha com foto, quantidade e valores, e os benefícios e o desconto logo abaixo do nome — bem menos espaço desperdiçado.',
     '📄 PDF do catálogo: a descrição do produto agora preenche todo o espaço do quadro (não corta mais com "..." em 3 linhas) e o cabeçalho ficou num tom suave, combinando com o restante do sistema.',
-    'Carrinho: cada item ganhou um seletor de entrega "Agora / Depois" — mesmo com estoque, dá pra marcar que o item será entregue em outro momento (o pedido finaliza como parcial e a entrega é confirmada depois pelo botão 📦 em Vendas). Ligar "Agora" exige estoque disponível.'
+    'Carrinho: coluna "Entrega" (status do produto no estoque: Pronta/Futura) e nova coluna "Quando", com seletor "Agora / Depois" — decisão do consultor, independente do estoque. Mesmo com o produto em pronta entrega, dá pra desativar e deixar pendente pra entregar em outro momento (o pedido finaliza como parcial; a entrega é confirmada depois pelo botão 📦 em Vendas). Ligar "Agora" exige estoque disponível.'
   ] },
   { versao: 'v97', itens: [
     'Sincronização em tempo real: lançamentos feitos em outro aparelho/aba aparecem sozinhos, sem precisar atualizar o navegador.',

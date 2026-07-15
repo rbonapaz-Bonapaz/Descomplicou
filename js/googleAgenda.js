@@ -71,12 +71,17 @@ export async function desconectarGoogleAgenda() {
 function eventoBody(a) {
   const inicio = a.hora ? `${a.data}T${a.hora}:00` : a.data;
   const usaHora = !!a.hora;
+  // Duração real quando a consultora informou hora final (>= hora inicial); senão mantém o
+  // padrão de 1h que já era usado antes de existir esse campo.
+  const fim = a.horaFim && a.horaFim > a.hora ? `${a.data}T${a.horaFim}:00` : null;
   return {
     summary: `${a.tipo} — ${a.clienteNome}`,
     description: a.observacoes || '',
     location: a.local || '',
     start: usaHora ? { dateTime: new Date(inicio).toISOString() } : { date: a.data },
-    end: usaHora ? { dateTime: new Date(new Date(inicio).getTime() + 60 * 60000).toISOString() } : { date: a.data }
+    end: usaHora
+      ? { dateTime: fim ? new Date(fim).toISOString() : new Date(new Date(inicio).getTime() + 60 * 60000).toISOString() }
+      : { date: a.data }
   };
 }
 

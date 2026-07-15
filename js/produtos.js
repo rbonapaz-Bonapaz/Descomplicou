@@ -95,11 +95,15 @@ function renderProdutosInner() {
       html += `${state.profile?.usaBaseColetiva ? `<div class="panel" style="background:#F7FAFC">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
           <div><b>Base coletiva ativa</b><br><small class="muted">Puxe as novidades publicadas pela administração para seus produtos.</small></div>
-          <button class="btn dark small" onclick="App.sincronizarBaseColetiva()">🔄 Sincronizar com base coletiva</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn dark small" onclick="App.sincronizarBaseColetiva()">🔄 Sincronizar com base coletiva</button>
+            <button class="btn small" onclick="App.openProdutoForm()">+ Novo produto</button>
+          </div>
         </div>
       </div>` : ''}
       <div class="panel">
         <div class="toolbar">
+          ${state.profile?.usaBaseColetiva ? '' : '<button class="btn dark" onclick="App.openProdutoForm()">+ Novo produto</button>'}
           <input id="qprod" placeholder="Buscar produto..." oninput="App.renderProdutos()" value="${esc($('qprod')?.value || '')}">
           <select onchange="App.setFilter('prodLinha',this.value)" style="max-width:220px">
             <option value="">Todas as linhas</option>

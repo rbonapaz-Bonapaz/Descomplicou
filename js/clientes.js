@@ -2,10 +2,24 @@ import { state, col, ref, db, deleteDoc, showModal, closeModal, toast, setDoc, a
   cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo } from './state.js';
 import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR } from './utils.js';
 import { whatsAppBtn, onclickArg } from './whatsapp.js';
+import { detalheVendaHtml } from './vendas.js';
+
+// Vendas expandidas no histórico do Cliente 360 (mesmo padrão do accordion de Vendas — B.2) —
+// só estado de tela, não persiste. Chave é a venda (v.id), não o carrinho.
+const historicoExpandido = new Set();
+
+export function toggleHistoricoVenda(clienteId, vendaId) {
+  if (historicoExpandido.has(vendaId)) historicoExpandido.delete(vendaId);
+  else historicoExpandido.add(vendaId);
+  openCliente360(clienteId);
+}
 
 export function renderClientes() {
   withFocusPreserved('qcli', () => {
-    $('clientes').innerHTML = `<div class="panel">
+    $('clientes').innerHTML = `<div class="cards">
+      <div class="card"><span>Total de clientes</span><b>${state.data.clientes.length}</b></div>
+    </div>
+    <div class="panel">
       <div class="toolbar">
         <button class="btn dark" onclick="App.openClienteForm()">+ Cadastrar Cliente</button>
         <input id="qcli" placeholder="Buscar..." oninput="App.renderClientes()" value="${esc($('qcli')?.value || '')}">
@@ -171,13 +185,18 @@ export function openCliente360(id) {
 
     <div class="panel" style="margin-top:12px">
       <h3>Histórico de vendas</h3>
-      ${vendas.length ? `<div class="table"><table><thead><tr><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
-        <tbody>${vendas.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10).map(v => `<tr>
-          <td data-label="Data">${formatDateBR(v.data)}</td>
+      ${vendas.length ? `<div class="table"><table><thead><tr><th></th><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
+        <tbody>${vendas.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10).map(v => {
+          const expandida = historicoExpandido.has(v.id);
+          const carr = state.data.carrinhos.find(cr => cr.id === v.carrinhoId);
+          return `<tr>
+          <td data-label=""><button class="btn small" style="padding:3px 8px" onclick="App.toggleHistoricoVenda('${id}','${v.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button></td>
+          <td data-label="Data" style="cursor:pointer" onclick="App.toggleHistoricoVenda('${id}','${v.id}')">${formatDateBR(v.data)}</td>
           <td data-label="Valor">${money(v.receita || v.totalPedido)}</td>
           <td data-label="Lucro">${money(v.lucroTotal)}</td>
           <td data-label="Pgto">${esc(v.pagamento || '-')}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma venda registrada.</p>'}
+        </tr>${expandida ? `<tr><td colspan="5" style="background:#F7FAFC">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</td></tr>` : ''}`;
+        }).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma venda registrada.</p>'}
     </div>
 
     <div class="panel" style="margin-top:12px">

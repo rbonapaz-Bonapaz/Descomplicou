@@ -4,8 +4,8 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
 } from './state.js';
 import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
 
-import { renderDashboard } from './dashboard.js';
-import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente } from './clientes.js';
+import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
+import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
   confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
@@ -26,7 +26,7 @@ import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTo
 import { readProductFiles, previewImportProdutos, confirmImportProdutos, editarItemImportProduto } from './importar.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
-  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf, readCatalogoFiles, importarCatalogoTexto } from './catalogo.js';
@@ -41,7 +41,7 @@ import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, s
 import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
-  marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
+  marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento } from './carrinho.js';
 import { sendWhatsApp } from './whatsapp.js';
@@ -51,7 +51,8 @@ import { biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiome
 import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, excluirEvento,
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
-  enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento } from './eventos.js';
+  enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
+  marcarLeadsVistos } from './eventos.js';
 import { renderSobre } from './sobre.js';
 
 // --- Auth ---
@@ -280,7 +281,7 @@ window.App = {
   tentarDesbloqueio, logoutFromLock,
   biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria,
   // Clientes
-  renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente,
+  renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
   // Agenda
   openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
@@ -290,7 +291,7 @@ window.App = {
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
-  marcarItemEntregue, enviarResumoWhatsApp, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
+  marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento,
   // Vendas
@@ -302,7 +303,7 @@ window.App = {
   // Pré-encomenda
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
-  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit,
+  openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
@@ -338,6 +339,7 @@ window.App = {
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
+  marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas,
   // Sobre
   renderSobre
 };

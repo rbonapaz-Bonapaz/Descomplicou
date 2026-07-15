@@ -1,6 +1,59 @@
-import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente } from './state.js';
+import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente, planoInfo } from './state.js';
 import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
+import { novosLeadsResumo, verificarNovosLeads, marcarLeadsVistos } from './eventos.js';
+import { datasComemorativasResumo, carregarDatasComemorativas } from './datasComemorativas.js';
+
+// Sub-render isolado (só o card de datas comemorativas) — mesmo padrão do renderLeadsBanner.
+export function renderDatasComemorativas() {
+  const box = $('datasComemorativas');
+  if (box) box.innerHTML = datasComemorativasHtml();
+}
+
+function datasComemorativasHtml() {
+  const lista = datasComemorativasResumo();
+  if (lista === null) return '<p class="muted">Carregando...</p>';
+  if (!lista.length) return '<p class="muted">Nenhuma data comemorativa nos próximos 30 dias.</p>';
+  return lista.map(d => `<div class="list-item">
+    <div><b>${esc(d.nome)}</b><small>${d.dataStr} • ${d.dias === 0 ? 'Hoje!' : d.dias === 1 ? 'Amanhã' : d.dias + ' dias'}</small></div>
+    <span class="tag pink">🎁 Boa pra presente</span>
+  </div>`).join('');
+}
+
+// Sub-render isolado (só o banner de leads) — chamado depois que verificarNovosLeads() termina,
+// sem precisar recarregar o dashboard inteiro nem os dados do app.
+export function renderLeadsBanner() {
+  const box = $('leadsBanner');
+  if (!box) return;
+  box.innerHTML = leadsBannerHtml();
+}
+
+// Alerta de vencimento do plano: banner quando faltam 7 dias ou menos, com link direto pra
+// renovar. Planos teste/gratuito nunca "vencem" por data (ver planoInfo em state.js), então nunca
+// disparam esse aviso — só plano pago com premiumAte configurado.
+function vencimentoBannerHtml() {
+  const pi = planoInfo();
+  if (pi.diasParaVencer == null || pi.diasParaVencer > 7) return '';
+  const dias = pi.diasParaVencer;
+  const texto = dias <= 0 ? 'Seu plano vence hoje!' : dias === 1 ? 'Seu plano vence amanhã!' : `Seu plano vence em ${dias} dias.`;
+  return `<div class="panel" style="background:#FFF0F0;border:1px solid #F5A3A3;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>⏰ <b>${texto}</b> Renove pra não perder o acesso.</div>
+      <button class="btn dark small" onclick="App.goto('perfil');App.setSection('perfil','plano')">Ir para Meu Plano</button>
+    </div>
+  </div>`;
+}
+
+function leadsBannerHtml() {
+  const resumo = novosLeadsResumo();
+  if (!resumo || !resumo.length) return '';
+  return resumo.map(r => `<div class="panel" style="background:#FFF7E6;border:1px solid #F5C453;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>🎉 <b>${r.novos} novo${r.novos === 1 ? '' : 's'} lead${r.novos === 1 ? '' : 's'}</b> no evento "${esc(r.eventoNome)}" — alguém montou uma lista de desejos e ainda não foi atendido.</div>
+      <button class="btn dark small" onclick="App.marcarLeadsVistos('${r.eventoId}')">Ver lista</button>
+    </div>
+  </div>`).join('');
+}
 
 const DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 function relogioStr() {
@@ -52,6 +105,8 @@ export function renderDashboard() {
   ).sort((a, b) => String(a.dataRetorno).localeCompare(String(b.dataRetorno)));
 
   $('dashboard').innerHTML = `
+    ${vencimentoBannerHtml()}
+    <div id="leadsBanner">${leadsBannerHtml()}</div>
     <div class="hero">
       <p class="eyebrow">Seu dia hoje</p>
       <h2>Olá, ${esc((state.profile.nome || state.user.displayName || porGenero(state.profile?.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' })).split(' ')[0])}!</h2>
@@ -90,6 +145,11 @@ export function renderDashboard() {
           </div>
         </div>`;
         }).join('') : '<p class="muted">Nenhum aniversário nos próximos 30 dias.</p>'}</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>🎁 Datas comemorativas</h3></div>
+        <div class="list" id="datasComemorativas">${datasComemorativasHtml()}</div>
       </div>
 
       <div class="panel">
@@ -167,4 +227,13 @@ export function renderDashboard() {
         <div class="list">${recommendations().slice(0, 6).join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>
       </div>
     </div>`;
+
+  // Verifica leads novos só uma vez por sessão (novosLeadsResumo null = ainda não checado) — o
+  // banner acima já ocupou o espaço vazio; quando o resultado chegar, renderLeadsBanner() atualiza
+  // só essa div, sem recarregar o resto do dashboard.
+  if (novosLeadsResumo() === null) verificarNovosLeads();
+
+  // Mesmo padrão pro card de datas comemorativas — carrega uma vez por sessão (a BrasilAPI
+  // precisa de rede) e só atualiza a div própria quando o resultado chega.
+  if (datasComemorativasResumo() === null) carregarDatasComemorativas();
 }

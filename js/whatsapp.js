@@ -2,7 +2,7 @@ import { state } from './state.js';
 
 const templates = {
   aniversario: (nome) =>
-    `Olá, ${nome}! Passando para te desejar um feliz aniversário! 🎉\nQue seu dia seja muito especial.`,
+    `Olá, ${nome}! Passando para te desejar um feliz aniversário! 🎉\nQue seu dia seja muito especial.\n\nSeparei uma condição especial de presente pra você comemorar — quer que eu te mostre? 🎁`,
   contatoFrio: (nome) =>
     `Oi, ${nome}! Tudo bem?\nFaz um tempinho que não conversamos e lembrei de você.\nChegaram algumas novidades Farmasi. Quer que eu te envie?`,
   agenda: (nome, hora) =>
@@ -35,6 +35,10 @@ const templates = {
   retorno: (nome, carrinho) => {
     const itens = (carrinho.itens || []).map(i => i.produtoNome).join(', ');
     return `Oi, ${nome}! Passando para saber como você está e se posso te ajudar com mais alguma coisa 💕\n${itens ? `Na sua última compra você levou: ${itens}.\n` : ''}Posso te mostrar novidades ou repor algo?`;
+  },
+  linkPagamento: (nome, data) => {
+    const money = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    return `Oi, ${nome}! Segue o link para pagamento do seu pedido${data.valor > 0.004 ? ` — valor de ${money(data.valor)}` : ''}:\n${data.link}`;
   }
 };
 
@@ -73,6 +77,7 @@ export function sendWhatsApp(context, data) {
     case 'posVenda': msg = templates.posVenda(nome); break;
     case 'resumoPedido': msg = templates.resumoPedido(nome, data.carrinho || {}); break;
     case 'retorno': msg = templates.retorno(nome, data.carrinho || {}); break;
+    case 'linkPagamento': msg = templates.linkPagamento(nome, data); break;
     default: msg = `Oi, ${nome}!`;
   }
   openWhatsApp(telefone, msg);

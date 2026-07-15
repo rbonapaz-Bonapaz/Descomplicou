@@ -159,6 +159,14 @@ export function openCarrinho(id) {
   showModal(`<div class="carrinho-modal">
     <h3>🛒 Carrinho — ${esc(carr.clienteNome)}</h3>
 
+    ${Number(carr.valorPago || 0) > 0.004 ? `<div class="panel" style="background:#FFF7E6;border:1px solid #F5C453;margin-bottom:12px">
+      <b>⚠️ Este pedido já teve ${money(carr.valorPago)} pago anteriormente</b> (carrinho reaberto).
+      O pagamento foi preservado — ao finalizar de novo, o status é recalculado sozinho contra o total atual.
+      ${Number(carr.valorPago || 0) - Number(carr.totalPedido || 0) > 0.004
+        ? `<br><span style="color:var(--error);font-weight:900">Valor pago é maior que o total atual em ${money(Number(carr.valorPago) - Number(carr.totalPedido || 0))} — considere guardar o excedente como crédito do cliente ou estornar.</span>`
+        : ''}
+    </div>` : ''}
+
     <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px">
       ${toggleHtml('cMostrarSem', mostrarSem, `App.toggleCarrinhoOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque')}
       ${toggleHtml('cFutura', futuraAtivo, `App.toggleCarrinhoOpt('${id}','permitirEntregaFutura',this.checked)`, 'Permitir entrega futura',
@@ -184,11 +192,14 @@ export function openCarrinho(id) {
     <div class="panel" style="margin-top:12px">
       <h4>Itens do carrinho (${itens.length})</h4>
       ${itens.length ? `<div class="table"><table><thead><tr>
-        <th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço Unit.</th><th>Desconto</th><th>Total</th><th>Entrega</th><th></th>
+        <th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço Unit.</th><th>Desconto</th><th>Total</th><th>Entrega</th><th>Quando</th><th></th>
       </tr></thead><tbody>${itens.map((it, idx) => {
         const original = Number(it.precoOriginal || it.precoUnitario || 0);
         const temDesconto = original > it.precoUnitario;
         const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
+        // Status do estoque (Pronta/Futura) é sobre o produto — independe da decisão do consultor.
+        // Exclui as reservas deste próprio carrinho pra não contar o item contra ele mesmo.
+        const temEstoqueAgora = estoqueDisponivel(it.produtoId, id) >= it.quantidade;
         return `<tr>
         <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
         <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
@@ -197,11 +208,12 @@ export function openCarrinho(id) {
         <td data-label="Preço">${money(it.precoUnitario)}</td>
         <td data-label="Desconto">${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
         <td data-label="Total">${money(it.totalItem)}</td>
-        <td data-label="Entrega"><div style="display:flex;align-items:center;gap:6px" title="Ligado = entrega na finalização; desligado = fica pendente pra entregar em outro momento">
+        <td data-label="Entrega" title="Status do produto no estoque">${pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')}</td>
+        <td data-label="Quando"><div style="display:flex;align-items:center;gap:6px" title="Decisão do consultor: mesmo com estoque, pode ficar pendente de entrega pra outro momento">
           ${toggleBareHtml('entrItem_' + idx, it.tipoEntrega !== 'entrega_futura', `App.toggleEntregaItem('${id}',${idx},this.checked)`)}
           <small class="muted" style="white-space:nowrap">${it.tipoEntrega === 'entrega_futura' ? 'Depois' : 'Agora'}</small>
         </div></td>
-        <td><button class="btn small" onclick="App.removerItemCarrinho('${id}',${idx})">✗</button></td>
+        <td><button class="btn small" onclick="App.removerItemCarrinho('${id}',${idx})" title="Remover item">✗</button></td>
       </tr>`;
       }).join('')}</tbody></table></div>` : '<p class="muted">Carrinho vazio.</p>'}
     </div>
@@ -254,7 +266,8 @@ export function openCarrinho(id) {
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn dark" onclick="App.finalizarCarrinho('${id}')">✓ Finalizar venda</button>
       <button class="btn small" onclick="App.salvarCarrinhoOpt('${id}');App.closeModal();App.refresh('Carrinho salvo')">💾 Salvar</button>
-      <button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${id}')">💬 WhatsApp</button>
+      <button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${id}')">💬 Enviar pedido</button>
+      ${state.profile?.linkPagamento ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${id}')">💳 Enviar link de pagamento</button>` : ''}
       <button class="btn small" style="color:var(--error)" onclick="App.cancelarCarrinho('${id}')">✗ Cancelar</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>
@@ -315,7 +328,7 @@ function pagamentoResumoHtml(carr) {
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
     <div class="panel-head">
       <h4 style="margin:0">Gestão de pagamento</h4>
-      ${pill(labelStatusPagLocal(statusPagamentoAuto(total, pago)), corStatusPagLocal(statusPagamentoAuto(total, pago)))}
+      ${pill(labelStatusPagLocal(statusPagamentoAuto(total, pago)), corStatusPagLocal(statusPagamentoAuto(total, pago)), tipStatusPagLocal(statusPagamentoAuto(total, pago)))}
     </div>
     <div class="cards">
       <div class="card"><span>Recebido</span><b>${money(pago)}</b></div>
@@ -325,14 +338,19 @@ function pagamentoResumoHtml(carr) {
     ${pagamentos.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th></tr></thead><tbody>
       ${pagamentos.map(p => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td></tr>`).join('')}
     </tbody></table></div>` : ''}
-    ${restante > 0.004 ? `<button class="btn dark small" style="margin-top:10px" onclick="App.registrarPagamento('${carr.id}')">💰 Registrar pagamento recebido</button>` : ''}
+    ${restante > 0.004 ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn dark small" onclick="App.registrarPagamento('${carr.id}')">💰 Registrar pagamento recebido</button>
+      ${state.profile?.linkPagamento ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${carr.id}')">💳 Enviar link de pagamento</button>` : ''}
+    </div>` : ''}
   </div>`;
 }
 
 const LABEL_STATUS_PAG_LOCAL = { pendente: 'Pendente', pago: 'Pago', parcial: 'Parcial' };
 const COR_STATUS_PAG_LOCAL = { pendente: 'red', pago: 'green', parcial: 'orange' };
+const TIP_STATUS_PAG_LOCAL = { pendente: 'Nenhum valor recebido ainda', pago: 'Valor recebido cobre o total do pedido', parcial: 'Só parte do valor foi recebida — falta receber o restante' };
 function labelStatusPagLocal(v) { return LABEL_STATUS_PAG_LOCAL[v]; }
 function corStatusPagLocal(v) { return COR_STATUS_PAG_LOCAL[v]; }
+function tipStatusPagLocal(v) { return TIP_STATUS_PAG_LOCAL[v]; }
 
 // --- Créditos do cliente ---
 // Excedente de pagamento pode virar crédito guardado no cadastro do cliente (campo "credito"),
@@ -568,8 +586,11 @@ export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   const it = carr?.itens?.[idx];
   if (!it) return;
-  if (entregarAgora && estoqueDisponivel(it.produtoId) < it.quantidade) {
-    toast(`Sem estoque disponível pra entregar "${it.produtoNome}" agora (disponível: ${estoqueDisponivel(it.produtoId)} de ${it.quantidade}).`);
+  // Exclui as reservas do próprio carrinho da conta — senão o item, já reservado por ele mesmo
+  // quando "pronta_entrega", contaria contra si na hora de tentar religar.
+  const disp = estoqueDisponivel(it.produtoId, carrinhoId);
+  if (entregarAgora && disp < it.quantidade) {
+    toast(`Sem estoque disponível pra entregar "${it.produtoNome}" agora (disponível: ${disp} de ${it.quantidade}).`);
     openCarrinho(carrinhoId);
     return;
   }
@@ -704,12 +725,25 @@ export async function finalizarCarrinho(id) {
   // marcou um valor recebido menor que o total ali (deixou parte pendente), isso inicializa o
   // valor pago — daí em diante quem controla o valor pago/restante é o registro de pagamentos
   // (gestão de pagamento parcial). Só inicializa na PRIMEIRA finalização: se o carrinho já tem
-  // pagamentos registrados (ex: foi reaberto e está sendo finalizado de novo), preserva o que já
-  // foi recebido, não zera.
+  // pagamentos registrados (ex: foi reaberto e está sendo finalizado de novo), o valor pago não é
+  // zerado nem reiniciado — só o status é recalculado contra o total atual (ver bloco abaixo).
   const jaTinhaPagamento = (carr.pagamentos && carr.pagamentos.length) || Number(carr.valorPago || 0) > 0.004;
   let updatesPagamento = {};
   let statusFinal = normStatusPag(carr.statusPagamento);
-  if (!jaTinhaPagamento) {
+  if (jaTinhaPagamento) {
+    // Carrinho reaberto com pagamento preservado: o status não fica "congelado" no valor antigo —
+    // recalcula contra o total atual (itens podem ter mudado entre a reabertura e agora). Se o
+    // valor já pago passar do novo total, avisa o excedente pra tratativa manual (crédito/estorno)
+    // em vez de decidir sozinho.
+    const totalP = Number(carr.totalPedido || 0);
+    const valorPago = Number(carr.valorPago || 0);
+    statusFinal = statusPagamentoAuto(totalP, valorPago);
+    updatesPagamento = { statusPagamento: statusFinal };
+    const excedente = Math.round((valorPago - totalP) * 100) / 100;
+    if (excedente > 0.004) {
+      toast(`⚠️ Valor já pago (${money(valorPago)}) é maior que o novo total (${money(totalP)}) — excedente de ${money(excedente)}. Guarde como crédito do cliente ou registre um estorno.`);
+    }
+  } else {
     const totalP = Number(carr.totalPedido || 0);
     let dinheiro = $('cValorRecebido') ? parseMoney($('cValorRecebido').value) : totalP;
 
@@ -779,15 +813,19 @@ export async function cancelarCarrinho(id) {
   window.App.refresh('Carrinho cancelado');
 }
 
-// Reverte um carrinho finalizado/parcial de volta para "aberto": devolve ao estoque
-// qualquer item que já tenha sido baixado e apaga o registro de venda gerado, para
-// permitir corrigir um pedido finalizado por engano.
+// Reverte um carrinho finalizado/parcial de volta para "aberto": devolve ao estoque qualquer
+// item que já tenha sido baixado e apaga o registro de venda gerado (recriado do zero ao
+// refinalizar, com números atualizados), para permitir corrigir um pedido finalizado por engano.
+// O pagamento (valorPago/pagamentos) é PRESERVADO — nunca apagado — pra manter a confiabilidade
+// dos relatórios e do histórico de crédito do cliente; o banner no topo do carrinho aberto avisa
+// o valor já pago, e finalizarCarrinho recalcula o status contra o total atual ao refinalizar.
 export async function reabrirCarrinho(id) {
   const carr = state.data.carrinhos.find(c => c.id === id);
   if (!carr) return;
+  const temPagamento = Number(carr.valorPago || 0) > 0.004;
   let aviso = 'Reabrir este carrinho? Os itens já baixados voltam ao estoque e a venda registrada será removida.';
-  if (normStatusPag(carr.statusPagamento) !== 'pendente' && carr.valorPago > 0) {
-    aviso += `\n\n⚠️ Este carrinho tem pagamento registrado (${money(carr.valorPago)}). Reabrir também apagará o registro de pagamento.`;
+  if (temPagamento) {
+    aviso += `\n\nEste pedido já tem ${money(carr.valorPago)} pago — isso é MANTIDO (não é apagado). Ao finalizar de novo, o status de pagamento é recalculado sozinho contra o total atual.`;
   }
   if (!confirm(aviso)) return;
 
@@ -810,7 +848,7 @@ export async function reabrirCarrinho(id) {
     atualizadoEm: serverTimestamp()
   }, { merge: true });
 
-  window.App.refresh('Carrinho reaberto');
+  window.App.refresh(temPagamento ? `Carrinho reaberto — pagamento de ${money(carr.valorPago)} preservado` : 'Carrinho reaberto');
 }
 
 export async function excluirCarrinho(id) {
@@ -852,6 +890,19 @@ export function enviarResumoWhatsApp(carrinhoId) {
   const cli = cliById(carr.clienteId);
   if (!cli?.whatsapp) return toast('Cliente sem WhatsApp');
   window.App.sendWhatsApp('resumoPedido', { nome: carr.clienteNome, telefone: cli.whatsapp, carrinho: carr });
+}
+
+// Envia o link de pagamento configurado em Minha Conta → Pagamento, junto do valor que falta
+// receber (ou o total, se ainda nada foi pago) — só aparece quando a consultora cadastrou um link.
+export function enviarLinkPagamento(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+  const link = state.profile?.linkPagamento;
+  if (!link) return toast('Cadastre um link de pagamento em Minha Conta → Pagamento primeiro.');
+  const cli = cliById(carr.clienteId);
+  if (!cli?.whatsapp) return toast('Cliente sem WhatsApp');
+  const valor = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));
+  window.App.sendWhatsApp('linkPagamento', { nome: carr.clienteNome, telefone: cli.whatsapp, link, valor });
 }
 
 export function openCarrinhoDoCliente(clienteId) {
