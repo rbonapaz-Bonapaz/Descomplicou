@@ -101,6 +101,21 @@ export function nomeChamado(clienteId, fallback) {
 }
 export function carrinhoById(id) { return state.data.carrinhos.find(c => c.id === id); }
 
+// --- Numeração de pedido: número sequencial global + sufixo -01/-02 exclusivo do cliente ---
+// (ex: "1042-01" na 1ª compra dela, "1043-02" seria de outro cliente, "1050-02" seria a 2ª
+// compra da mesma cliente do 1042). Só a consultora vê o sufixo — é pra ela acompanhar quantas
+// vezes aquele cliente já comprou, sem precisar contar manualmente.
+export function proximoNumeroPedido() {
+  return state.data.carrinhos.reduce((max, c) => Math.max(max, Number(c.numeroPedido || 0)), 0) + 1;
+}
+export function proximaSequenciaCliente(clienteId) {
+  return state.data.carrinhos.filter(c => c.clienteId === clienteId && c.numeroPedido).length + 1;
+}
+export function numeroPedidoLabel(carr) {
+  if (!carr?.numeroPedido) return '-';
+  return `${carr.numeroPedido}-${String(carr.sequenciaCliente || 1).padStart(2, '0')}`;
+}
+
 // Configurável por consultora em Minha Conta (padrão 30 dias caso ela nunca tenha ajustado).
 export function diasContatoFrio() {
   return Number(state.profile?.diasContatoFrio || 30);

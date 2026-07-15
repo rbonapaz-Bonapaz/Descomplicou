@@ -1,5 +1,6 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
-  serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto } from './state.js';
+  serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
+  proximoNumeroPedido, proximaSequenciaCliente } from './state.js';
 import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
@@ -108,6 +109,7 @@ async function criarCarrinho(clienteId) {
   if (!c) return toast('Cliente não encontrado');
   const r = await addDoc(col('carrinhos'), {
     clienteId: c.id, clienteNome: c.nome,
+    numeroPedido: proximoNumeroPedido(), sequenciaCliente: proximaSequenciaCliente(c.id),
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
     permitirEntregaFutura: false, mostrarSemEstoque: false,
     itens: [], totalPedido: 0, custoTotal: 0, lucroTotal: 0,

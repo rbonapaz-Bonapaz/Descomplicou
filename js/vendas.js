@@ -1,4 +1,4 @@
-import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente, nomeChamado } from './state.js';
+import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente, nomeChamado, numeroPedidoLabel, toast } from './state.js';
 import { $, esc, money, pill, normStatusPag, norm, thSort, withFocusPreserved } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
@@ -112,11 +112,12 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
 
   return `<div style="margin-top:16px"><h4>${titulo}</h4>
     <div class="table"><table><thead><tr>
-      ${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
+      <th>Nº</th>${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
     </tr></thead><tbody>${ordenarVendas(items).map(c => {
       const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
       const expandida = vendasExpandidas.has(c.id);
       return `<tr>
+        <td data-label="Nº"><small class="muted">${numeroPedidoLabel(c)}</small></td>
         <td data-label="Cliente">
           <button class="btn small" style="padding:3px 8px;margin-right:6px" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button>
           <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
@@ -139,8 +140,30 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
             ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
           </div>
         </td>
-      </tr>${expandida ? `<tr><td colspan="7" data-label="Itens da venda" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
+      </tr>${expandida ? `<tr><td colspan="8" data-label="Itens da venda" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
     }).join('')}</tbody></table></div></div>`;
+}
+
+// Renumera TODOS os pedidos (não só os sem número) em ordem cronológica — idempotente, então pode
+// rodar de novo sem problema. Renumerar tudo (em vez de só preencher os que faltam) evita um caso
+// real de inconsistência: um pedido antigo sem número pode ter sido feito ANTES de um pedido novo
+// que já ganhou número na hora da criação, o que bagunçaria a ordem/sequência por cliente se só
+// completássemos os buracos.
+export async function migrarNumeracaoPedidos() {
+  const todos = [...state.data.carrinhos].sort((a, b) => (a.criadoEm?.seconds ?? 0) - (b.criadoEm?.seconds ?? 0));
+  if (!todos.length) return toast('Nenhum pedido para numerar.');
+  if (!confirm(`Numerar/renumerar todos os ${todos.length} pedido(s) em ordem cronológica? Números já existentes podem mudar para manter a ordem certa.`)) return;
+
+  const porCliente = {};
+  let feitos = 0;
+  for (let i = 0; i < todos.length; i++) {
+    const c = todos[i];
+    const seq = (porCliente[c.clienteId] = (porCliente[c.clienteId] || 0) + 1);
+    if (c.numeroPedido === i + 1 && c.sequenciaCliente === seq) continue;
+    await setDoc(ref('carrinhos', c.id), { numeroPedido: i + 1, sequenciaCliente: seq }, { merge: true });
+    feitos++;
+  }
+  window.App.refresh(feitos ? `${feitos} pedido(s) numerado(s)/atualizado(s)` : 'Numeração já estava correta para todos os pedidos.');
 }
 
 function renderBtnEntregaFutura(carr) {

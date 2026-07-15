@@ -1,5 +1,5 @@
 import { state, col, ref, db, deleteDoc, showModal, closeModal, toast, setDoc, addDoc, serverTimestamp,
-  cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo, estoqueDisponivel } from './state.js';
+  cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo, estoqueDisponivel, numeroPedidoLabel } from './state.js';
 import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR } from './utils.js';
 import { whatsAppBtn, onclickArg, WA_ICON, openWhatsApp, formatPhone } from './whatsapp.js';
 import { detalheVendaHtml } from './vendas.js';
@@ -253,17 +253,18 @@ export function openCliente360(id) {
 
     <div class="panel" style="margin-top:12px">
       <h3>Histórico de vendas</h3>
-      ${vendas.length ? `<div class="table"><table><thead><tr><th></th><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
+      ${vendas.length ? `<div class="table"><table><thead><tr><th></th><th>Nº</th><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
         <tbody>${vendas.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10).map(v => {
           const expandida = historicoExpandido.has(v.id);
           const carr = state.data.carrinhos.find(cr => cr.id === v.carrinhoId);
           return `<tr>
           <td data-label=""><button class="btn small" style="padding:3px 8px" onclick="App.toggleHistoricoVenda('${id}','${v.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button></td>
+          <td data-label="Nº"><small class="muted">${carr ? numeroPedidoLabel(carr) : '-'}</small></td>
           <td data-label="Data" style="cursor:pointer" onclick="App.toggleHistoricoVenda('${id}','${v.id}')">${formatDateBR(v.data)}</td>
           <td data-label="Valor">${money(v.receita || v.totalPedido)}</td>
           <td data-label="Lucro">${money(v.lucroTotal)}</td>
           <td data-label="Pgto">${esc(v.pagamento || '-')}</td>
-        </tr>${expandida ? `<tr><td colspan="5" style="background:#F7FAFC">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</td></tr>` : ''}`;
+        </tr>${expandida ? `<tr><td colspan="6" style="background:#F7FAFC">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</td></tr>` : ''}`;
         }).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma venda registrada.</p>'}
     </div>
 

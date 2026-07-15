@@ -11,7 +11,7 @@ import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, 
   concluirAgendamento, confirmarConclusao, cancelarAgendamento, reagendarAgendamento,
   confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
   abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo } from './agenda.js';
-import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe } from './vendas.js';
+import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos } from './estoque.js';
@@ -314,7 +314,7 @@ window.App = {
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento,
   // Vendas
-  renderVendas, marcarPedidoEntregue, toggleVendaDetalhe,
+  renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos,
   // Estoque
   renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,

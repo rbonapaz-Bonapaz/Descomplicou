@@ -175,6 +175,12 @@ export function renderPerfil() {
       <div id="bioSecBox"><p class="muted">Verificando disponibilidade...</p></div>
     </div>
 
+    <div class="panel">
+      <h3>🔢 Numeração de pedidos</h3>
+      <p class="muted">Cada pedido novo já recebe um número sequencial + um sufixo exclusivo do cliente (ex: "1042-01" na 1ª compra dela, "-02" na 2ª). Pedidos antigos, feitos antes desse recurso, ainda não têm número — rode uma vez para numerá-los retroativamente em ordem cronológica. Ação segura, pode rodar mais de uma vez (só numera quem ainda não tem número).</p>
+      <button class="btn" onclick="App.migrarNumeracaoPedidos()">Numerar pedidos antigos</button>
+    </div>
+
     <div class="panel" style="border:1px solid #FBE4E4">
       <h3 style="color:var(--error)">Zona de risco</h3>
       <p class="muted">Ações irreversíveis. Cada botão pede confirmação por digitação antes de executar. Seu login e plano nunca são afetados.</p>

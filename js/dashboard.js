@@ -68,9 +68,9 @@ setInterval(() => { const el = $('dashClock'); if (el) el.textContent = relogioS
 
 export function recommendations() {
   const s = stockAgg(), out = [];
-  s.baixo.forEach(x => out.push(`<div class="list-item"><div><b>Repor ${esc(x.p.nome)}</b><small>Estoque ${x.est}, abaixo do mínimo</small></div><div style="display:flex;align-items:center;gap:6px">${btnAdicionarPreEncomenda(x.p.id)}</div></div>`));
-  s.parados.forEach(x => out.push(`<div class="list-item"><div><b>Promover ${esc(x.p.nome)}</b><small>${daysSince(lastSaleDate(x.p))} dias sem venda</small></div><span class="tag pink">Promoção</span></div>`));
-  s.sem.forEach(x => out.push(`<div class="list-item"><div><b>Corrigir custo</b><small>${esc(x.p.nome)}</small></div><span class="tag orange">Sem custo</span></div>`));
+  s.baixo.forEach(x => out.push(`<div class="list-item"><div><b>Repor ${esc(x.p.nome)}</b> <small>Estoque ${x.est}, abaixo do mínimo</small></div><div style="display:flex;align-items:center;gap:6px">${btnAdicionarPreEncomenda(x.p.id)}</div></div>`));
+  s.parados.forEach(x => out.push(`<div class="list-item"><div><b>Promover ${esc(x.p.nome)}</b> <small>${daysSince(lastSaleDate(x.p))} dias sem venda</small></div><span class="tag pink">Promoção</span></div>`));
+  s.sem.forEach(x => out.push(`<div class="list-item"><div><b>Corrigir custo</b> <small>${esc(x.p.nome)}</small></div><span class="tag orange">Sem custo</span></div>`));
 
   const diasFrio = diasContatoFrio();
   const cold = state.data.clientes.filter(c => daysSince(lastBuy(c) || c.ultimoContato) >= diasFrio);

@@ -96,7 +96,8 @@ function itemRowHtml(trocaId, lado, item, idx) {
 
 function ladoTableHtml(trocaId, lado, itens) {
   if (!itens.length) return '<p class="muted">Nenhum item ainda.</p>';
-  return `<div class="table"><table><thead><tr>
+  const cor = lado === 'saida' ? '#EAF0F5' : '#EAF7EC';
+  return `<div class="table" style="background:${cor}"><table><thead><tr>
     <th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Entrega</th><th></th>
   </tr></thead><tbody>${itens.map((it, idx) => itemRowHtml(trocaId, lado, it, idx)).join('')}</tbody></table></div>`;
 }
@@ -121,7 +122,7 @@ export function openTroca(id) {
     <h3>🔁 Troca ${t.parceira ? 'com ' + esc(t.parceira) : ''}</h3>
     ${pill(statusLabel, statusCor)}
 
-    <h4 style="margin:14px 0 8px">📤 Produtos que saem (seu estoque)</h4>
+    <h4 style="margin:14px 0 8px;color:var(--gold)">📤 Produtos que saem (seu estoque)</h4>
     ${ladoTableHtml(id, 'saida', itensSaida)}
     ${podeAdicionar ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
       <div style="margin-bottom:10px">${toggleHtml('trMostrarSem', mostrarSem, `App.toggleTrocaOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque',
@@ -140,7 +141,7 @@ export function openTroca(id) {
       <button class="btn dark small" style="margin-top:8px" onclick="App.adicionarItemTroca('${id}','saida')">+ Adicionar</button>
     </div>` : ''}
 
-    <h4 style="margin:18px 0 8px">📥 Produtos que entram (recebidos)</h4>
+    <h4 style="margin:18px 0 8px;color:var(--success)">📥 Produtos que entram (recebidos)</h4>
     ${ladoTableHtml(id, 'entrada', itensEntrada)}
     ${podeAdicionar ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
       <div class="grid">
@@ -159,11 +160,17 @@ export function openTroca(id) {
       <button class="btn dark small" style="margin-top:8px" onclick="App.adicionarItemTroca('${id}','entrada')">+ Adicionar</button>
     </div>` : ''}
 
-    <div class="cards" style="margin-top:16px">
-      <div class="card"><span>Total saída</span><b>${money(t.valorSaida || 0)}</b></div>
-      <div class="card"><span>Total entrada</span><b>${money(t.valorEntrada || 0)}</b></div>
-      <div class="card"><span>Diferença</span><b>${money((t.valorEntrada || 0) - (t.valorSaida || 0))}</b></div>
-    </div>
+    ${(() => {
+      const vSaida = Number(t.valorSaida || 0), vEntrada = Number(t.valorEntrada || 0);
+      const diff = vEntrada - vSaida;
+      const pct = vSaida > 0.004 ? (diff / vSaida) * 100 : (diff > 0.004 ? 100 : 0);
+      const cor = diff > 0.004 ? 'var(--success)' : diff < -0.004 ? 'var(--error)' : 'var(--text)';
+      return `<div class="cards" style="margin-top:16px">
+        <div class="card" style="background:#EAF0F5"><span>Total saída</span><b>${money(vSaida)}</b></div>
+        <div class="card" style="background:#EAF7EC"><span>Total entrada</span><b>${money(vEntrada)}</b></div>
+        <div class="card"><span>${diff > 0.004 ? 'Lucro' : diff < -0.004 ? 'Prejuízo' : 'Diferença'}</span><b style="color:${cor}">${money(Math.abs(diff))}${Math.abs(diff) > 0.004 ? ` (${diff > 0 ? '+' : '-'}${Math.abs(pct).toFixed(0)}%)` : ''}</b></div>
+      </div>`;
+    })()}
 
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       ${t.status === 'aberta' ? `<button class="btn dark" onclick="App.finalizarTroca('${id}')">✓ Finalizar troca</button>
@@ -400,10 +407,19 @@ function detalheTrocaHtml(t) {
     </div>`;
   };
   const saida = t.itensSaida || [], entrada = t.itensEntrada || [];
+  const totalSaida = saida.reduce((s, it) => s + Number(it.valorTotal || 0), 0);
+  const totalEntrada = entrada.reduce((s, it) => s + Number(it.valorTotal || 0), 0);
+  const diferenca = totalEntrada - totalSaida;
+  // % em cima do que saiu (referência: o que você abriu mão) — positivo = lucro (recebeu mais
+  // valor do que deu), negativo = prejuízo (deu mais valor do que recebeu).
+  const percentual = totalSaida > 0.004 ? (diferenca / totalSaida) * 100 : (diferenca > 0.004 ? 100 : 0);
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div><small class="muted"><b>Saem (seus produtos)</b></small>${saida.length ? saida.map(it => linha(it, 'saida')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
-    <div><small class="muted"><b>Entram (recebidos)</b></small>${entrada.length ? entrada.map(it => linha(it, 'entrada')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
-  </div>`;
+    <div style="background:#EAF0F5;border-radius:10px;padding:10px"><small class="muted"><b>Saem (seus produtos)</b></small>${saida.length ? saida.map(it => linha(it, 'saida')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+    <div style="background:#EAF7EC;border-radius:10px;padding:10px"><small class="muted"><b>Entram (recebidos)</b></small>${entrada.length ? entrada.map(it => linha(it, 'entrada')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+  </div>
+  ${(saida.length || entrada.length) && Math.abs(diferenca) > 0.004 ? `<div style="margin-top:10px;display:flex;justify-content:flex-end">
+    ${pill(`${diferenca > 0 ? 'Lucro' : 'Prejuízo'} na troca: ${money(Math.abs(diferenca))} (${diferenca > 0 ? '+' : '-'}${Math.abs(percentual).toFixed(0)}%)`, diferenca > 0 ? 'green' : 'red')}
+  </div>` : ''}`;
 }
 
 function trocaCardHtml(t) {

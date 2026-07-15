@@ -1,4 +1,4 @@
-import { state, carrinhoById, cliById } from './state.js';
+import { state, carrinhoById, cliById, numeroPedidoLabel } from './state.js';
 import { $, esc, money, normStatusPag, descontoPercent } from './utils.js';
 import { calcCustoCartao, jurosAutomatico } from './carrinho.js';
 
@@ -82,7 +82,7 @@ function gerarPdf(carr, interno) {
     <main class="pdf-content" style="top:35mm;bottom:26mm;left:8mm;right:8mm">
       <div class="pedido-info-grid">
         <div class="pedido-info-col">
-          <h4>Pedido</h4>
+          <h4>Pedido${carr.numeroPedido ? ` Nº ${numeroPedidoLabel(carr)}` : ''}</h4>
           <p><b>${esc(carr.clienteNome)}</b></p>
           <p>Data: ${esc(dataStr)}</p>
           <p>${totalItens} item${totalItens === 1 ? '' : 'ns'}</p>
