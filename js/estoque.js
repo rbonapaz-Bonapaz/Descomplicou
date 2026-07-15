@@ -359,12 +359,31 @@ function matchPedidoPdfComCatalogo(texto) {
   return Object.values(encontrados).map(p => ({ nome: p.nome, codigo: p.codigoFarmasi || '', quantidade: 1 }));
 }
 
+// Alguns bloqueadores de anúncios/extensões de privacidade bloqueiam CDNs específicos (o
+// jsdelivr é um alvo comum). Tenta 3 CDNs em sequência antes de desistir.
+const PDFJS_CDNS = [
+  { lib: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs', worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs' },
+  { lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.mjs', worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.mjs' },
+  { lib: 'https://unpkg.com/pdfjs-dist@4.6.82/build/pdf.min.mjs', worker: 'https://unpkg.com/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs' }
+];
+
+async function carregarPdfjs() {
+  let ultimoErro;
+  for (const cdn of PDFJS_CDNS) {
+    try {
+      const pdfjsLib = await import(cdn.lib);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = cdn.worker;
+      return pdfjsLib;
+    } catch (e) { ultimoErro = e; }
+  }
+  throw new Error('Não foi possível carregar o leitor de PDF (bloqueador de anúncios/rede pode estar bloqueando os CDNs). Tente desativar extensões de bloqueio para este site, ou use o JSON.');
+}
+
 export async function readPedidoPdf(files) {
   if (!files || !files[0]) return;
   toast('Lendo PDF...');
   try {
-    const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs';
+    const pdfjsLib = await carregarPdfjs();
     const buf = await files[0].arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     let texto = '';
