@@ -4,7 +4,7 @@
 // criado sem a consultora conferir e confirmar a tela de preview — evita erro silencioso de
 // interpretação (cliente errada, produto trocado, quantidade errada).
 import { state, showModal, closeModal, toast, addDoc, col, cliById, prodById, serverTimestamp, estoqueDisponivel } from './state.js';
-import { $, esc, norm, searchPickerHtml } from './utils.js';
+import { $, esc, norm, searchPickerHtml, iniciarCooldownBotao } from './utils.js';
 import { interpretarPedidoDeVenda } from './gemini.js';
 
 let reconhecimento = null;
@@ -96,6 +96,7 @@ export async function interpretarPedidoVoz() {
   const btn = $('pvInterpretarBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Interpretando...'; }
   toast('Interpretando com IA...');
+  let cooldown = false;
   try {
     const resultado = await interpretarPedidoDeVenda(texto);
     if (!resultado.itens.length) return toast('Não identifiquei nenhum produto nesse texto — tente reformular.');
@@ -104,11 +105,15 @@ export async function interpretarPedidoVoz() {
     renderPreviewPedidoVoz(texto, resultado.cliente, clienteMatch, itensResolvidos);
   } catch (e) {
     toast(e.message);
+    cooldown = e.tipoGemini === 'limite_por_minuto';
   } finally {
     interpretando = false;
     // O botão pode não existir mais se a interpretação deu certo e o modal já trocou de tela.
     const btnAtual = $('pvInterpretarBtn');
-    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '✨ Interpretar'; }
+    if (btnAtual) {
+      if (cooldown) iniciarCooldownBotao(btnAtual, 60, '✨ Interpretar');
+      else { btnAtual.disabled = false; btnAtual.textContent = '✨ Interpretar'; }
+    }
   }
 }
 

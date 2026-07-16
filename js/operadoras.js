@@ -4,7 +4,7 @@
 // linear genérica (taxaBaseTransacao/taxaJurosCartao do perfil) — que continua sendo o padrão
 // pra quem não cadastrar nenhuma operadora, sem quebrar ninguém.
 import { state, col, ref, addDoc, setDoc, deleteDoc, serverTimestamp, showModal, closeModal, toast } from './state.js';
-import { $, esc } from './utils.js';
+import { $, esc, iniciarCooldownBotao } from './utils.js';
 import { interpretarTaxasOperadora } from './gemini.js';
 
 const PARCELAS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -128,6 +128,7 @@ export async function atualizarOperadoraComIA() {
   atualizandoComIA = true;
   const btn = $('opIaBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Atualizando...'; }
+  let cooldown = false;
   try {
     const dados = await interpretarTaxasOperadora(texto);
     if (dados.prazoRecebimentoDias != null && $('opPrazo')) $('opPrazo').value = dados.prazoRecebimentoDias;
@@ -141,10 +142,14 @@ export async function atualizarOperadoraComIA() {
     toast(preenchidos ? 'Campos preenchidos pela IA — confira e clique "Salvar" para confirmar' : 'Não encontrei nenhuma taxa reconhecível nesse texto — tente colar de outra forma');
   } catch (e) {
     toast(e.message);
+    cooldown = e.tipoGemini === 'limite_por_minuto';
   } finally {
     atualizandoComIA = false;
     const btnAtual = $('opIaBtn');
-    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '✨ Atualizar campos com IA'; }
+    if (btnAtual) {
+      if (cooldown) iniciarCooldownBotao(btnAtual, 60, '✨ Atualizar campos com IA');
+      else { btnAtual.disabled = false; btnAtual.textContent = '✨ Atualizar campos com IA'; }
+    }
   }
 }
 

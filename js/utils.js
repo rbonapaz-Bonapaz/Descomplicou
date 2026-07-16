@@ -5,6 +5,26 @@ export const parseMoney = v => Number(String(v || '0').replace(/R\$|\s|\./g, '')
 export const today = () => new Date().toISOString().slice(0, 10);
 export const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
+// Trava um botão por N segundos com contagem regressiva visível — usado depois de um erro de
+// limite de requisições por minuto (Gemini), pra deixar claro que é só esperar (não a chave errada)
+// e impedir clique repetido que só prolongaria a espera (cada tentativa nova soma na mesma cota).
+export function iniciarCooldownBotao(btn, segundos, textoNormal) {
+  if (!btn) return;
+  btn.disabled = true;
+  let restante = segundos;
+  btn.textContent = `⏳ Aguarde ${restante}s...`;
+  const interval = setInterval(() => {
+    restante--;
+    if (restante <= 0) {
+      clearInterval(interval);
+      btn.disabled = false;
+      btn.textContent = textoNormal;
+    } else {
+      btn.textContent = `⏳ Aguarde ${restante}s...`;
+    }
+  }, 1000);
+}
+
 // Escolhe a forma correta de um rótulo de papel/cargo conforme o gênero cadastrado da pessoa
 // (campo "genero" do perfil/cliente: Feminino/Masculino/Outro/vazio). Sem gênero definido, usa
 // a forma neutra "x" (ex: "Consultor(a)") em vez de assumir feminino.

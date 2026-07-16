@@ -18,7 +18,14 @@ function erroGemini(status, body) {
   if (status === 400 && /API key/i.test(msg)) return new Error('Chave do Gemini inválida — confira se copiou certinho em aistudio.google.com/apikey.');
   if (status === 403) return new Error('A chave do Gemini não tem permissão para essa API — confira se a "Generative Language API" está ativada no projeto dessa chave em aistudio.google.com/apikey.');
   if (status === 429) {
-    if (/PerMinute/i.test(raw)) return new Error('Limite de requisições por minuto do Gemini atingido (plano gratuito permite poucas por minuto) — espere cerca de 1 minuto e tente de novo, não precisa trocar de chave.');
+    if (/PerMinute/i.test(raw)) {
+      // Marcador que as telas usam pra travar o botão com contagem regressiva em vez de deixar
+      // clicar de novo na hora — cada clique repetido durante o minuto de espera é mais uma
+      // requisição que soma na mesma cota e só atrasa ainda mais (não é a chave que está errada).
+      const e = new Error('Limite de requisições por minuto do Gemini atingido (plano gratuito permite poucas por minuto) — a chave está certa, é só esperar cerca de 1 minuto.');
+      e.tipoGemini = 'limite_por_minuto';
+      return e;
+    }
     return new Error('Sua chave do Gemini está sem cota disponível (limite diário ou do plano esgotado). Aguarde a renovação (geralmente 24h) ou crie uma chave em um projeto novo em aistudio.google.com/apikey.');
   }
   if (status >= 500) return new Error('O Gemini está indisponível no momento (erro no servidor do Google) — tente novamente em instantes.');
