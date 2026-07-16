@@ -18,7 +18,7 @@ export function abrirPedidoPorTexto() {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="btn" id="pvMicBtn" onclick="App.alternarGravacaoPedidoVoz()">🎤 Falar</button>
-      <button class="btn dark" onclick="App.interpretarPedidoVoz()">✨ Interpretar</button>
+      <button class="btn dark" id="pvInterpretarBtn" onclick="App.interpretarPedidoVoz()">✨ Interpretar</button>
       <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>
     </div>
     <p class="muted" id="pvAvisoVoz" style="margin-top:8px"></p>`);
@@ -82,19 +82,34 @@ function melhorMatchCliente(textoOuvido) {
   return state.data.clientes.find(c => norm(c.nome).includes(alvo) || alvo.includes(norm(c.nome))) || null;
 }
 
+// `interpretando` trava novos cliques (e o Enter/duplo toque no botão) enquanto a chamada ao
+// Gemini está em andamento — sem essa trava, cada clique extra soma outra requisição no mesmo
+// minuto e ajuda a estourar o limite do plano gratuito (15/min) por engano.
+let interpretando = false;
+
 export async function interpretarPedidoVoz() {
+  if (interpretando) return;
   const texto = $('pvTexto')?.value.trim();
   if (!texto) return toast('Digite ou fale o pedido antes de interpretar.');
-  toast('Interpretando com IA...');
-  let resultado;
-  try {
-    resultado = await interpretarPedidoDeVenda(texto);
-  } catch (e) { return toast(e.message); }
-  if (!resultado.itens.length) return toast('Não identifiquei nenhum produto nesse texto — tente reformular.');
 
-  const clienteMatch = resultado.cliente ? melhorMatchCliente(resultado.cliente) : null;
-  const itensResolvidos = resultado.itens.map(i => ({ ...i, produtoMatch: melhorMatchProduto(i.produto) }));
-  renderPreviewPedidoVoz(texto, resultado.cliente, clienteMatch, itensResolvidos);
+  interpretando = true;
+  const btn = $('pvInterpretarBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Interpretando...'; }
+  toast('Interpretando com IA...');
+  try {
+    const resultado = await interpretarPedidoDeVenda(texto);
+    if (!resultado.itens.length) return toast('Não identifiquei nenhum produto nesse texto — tente reformular.');
+    const clienteMatch = resultado.cliente ? melhorMatchCliente(resultado.cliente) : null;
+    const itensResolvidos = resultado.itens.map(i => ({ ...i, produtoMatch: melhorMatchProduto(i.produto) }));
+    renderPreviewPedidoVoz(texto, resultado.cliente, clienteMatch, itensResolvidos);
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    interpretando = false;
+    // O botão pode não existir mais se a interpretação deu certo e o modal já trocou de tela.
+    const btnAtual = $('pvInterpretarBtn');
+    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '✨ Interpretar'; }
+  }
 }
 
 function renderPreviewPedidoVoz(textoOriginal, clienteTexto, clienteMatch, itens) {
