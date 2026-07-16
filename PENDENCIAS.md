@@ -121,7 +121,7 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 
 ## 📋 Checklist de Publicação para Produção
 
-- [ ] **Publicar Firestore rules** (bloqueia sugestão de descrição) — 🔴 CRÍTICA
+- [x] **Publicar Firestore rules** (bloqueia sugestão de descrição) — ✅ PUBLICADO
 - [ ] **Validar sugestão de descrição** em staging/produção
 - [x] **Validar sync de preço** em staging/produção (✅ Testado e funcionando)
 - [x] **Validar restauração de estoque** (✅ Testado e funcionando)
