@@ -150,9 +150,14 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
 // que já ganhou número na hora da criação, o que bagunçaria a ordem/sequência por cliente se só
 // completássemos os buracos.
 export async function migrarNumeracaoPedidos() {
-  const todos = [...state.data.carrinhos].sort((a, b) => (a.criadoEm?.seconds ?? 0) - (b.criadoEm?.seconds ?? 0));
-  if (!todos.length) return toast('Nenhum pedido para numerar.');
-  if (!confirm(`Numerar/renumerar todos os ${todos.length} pedido(s) em ordem cronológica? Números já existentes podem mudar para manter a ordem certa.`)) return;
+  // Ordem de FINALIZAÇÃO (fechamento da venda), não de criação do carrinho — um carrinho pode ficar
+  // aberto dias antes de fechar, então criadoEm não reflete a ordem real das vendas. Carrinhos ainda
+  // abertos (sem finalizadoEm) não têm venda concluída, então não entram na numeração.
+  const todos = state.data.carrinhos
+    .filter(c => c.finalizadoEm)
+    .sort((a, b) => (a.finalizadoEm?.seconds ?? 0) - (b.finalizadoEm?.seconds ?? 0));
+  if (!todos.length) return toast('Nenhum pedido finalizado para numerar.');
+  if (!confirm(`Numerar/renumerar todos os ${todos.length} pedido(s) finalizado(s) em ordem de fechamento da venda? Números já existentes podem mudar para manter a ordem certa.`)) return;
 
   const porCliente = {};
   let feitos = 0;

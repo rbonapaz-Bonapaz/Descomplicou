@@ -116,6 +116,7 @@ function renderProdutosInner() {
         </div>
         ${state.data.produtos.length ? `<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
           ${state.data.produtos.some(p => norm(p.linha || '').includes('importado pedido')) ? `<button class="btn small" onclick="App.corrigirLinhaImportadoPedido()">🔧 Corrigir linha "Importado pedido"</button>` : ''}
+          ${state.data.produtos.some(p => mesclarLinhas('', p.linha) !== (p.linha || 'Sem linha')) ? `<button class="btn small" onclick="App.corrigirLinhasDuplicadas()">🔧 Corrigir linhas duplicadas</button>` : ''}
           <button class="btn small" onclick="App.exportarProdutosJson()">📤 Exportar JSON</button>
           <button class="btn ghost" style="color:var(--error)" onclick="App.excluirTodosProdutos()">🗑️ Excluir todos os produtos</button>
         </div>` : ''}
@@ -168,6 +169,21 @@ export async function corrigirLinhaImportadoPedido() {
       const restantes = String(p.linha || '').split(',').map(s => s.trim()).filter(s => s && norm(s) !== alvo);
       batch.update(ref('produtos', p.id), { linha: restantes.length ? restantes.join(', ') : 'Sem linha' });
     });
+    await batch.commit();
+  }
+  window.App.refresh(`Linha corrigida em ${afetados.length} produto(s)`);
+}
+
+// Limpa produtos que ficaram com nomes de linha repetidos no campo (ex: "Maquiagem, Cremoso,
+// Maquiagem, Cremoso"), bug de raiz já corrigido em mesclarLinhas — isso só limpa o estrago que já
+// tinha sido feito em sincronizações anteriores.
+export async function corrigirLinhasDuplicadas() {
+  const afetados = state.data.produtos.filter(p => mesclarLinhas('', p.linha) !== (p.linha || 'Sem linha'));
+  if (!afetados.length) return toast('Nenhum produto com linha duplicada encontrado.');
+  if (!confirm(`Corrigir linhas duplicadas em ${afetados.length} produto(s)?`)) return;
+  for (let i = 0; i < afetados.length; i += 450) {
+    const batch = writeBatch(db);
+    afetados.slice(i, i + 450).forEach(p => batch.update(ref('produtos', p.id), { linha: mesclarLinhas('', p.linha) }));
     await batch.commit();
   }
   window.App.refresh(`Linha corrigida em ${afetados.length} produto(s)`);
@@ -386,11 +402,31 @@ function dedupMestre(items) {
   return Object.values(map);
 }
 
-function statusBaseColetiva(p) {
+function produtoExistente(p) {
   const codigo = String(p.codigoFarmasi || '').trim();
-  const ex = codigo ? state.data.produtos.find(x => String(x.codigoFarmasi || '') === codigo)
+  return codigo ? state.data.produtos.find(x => String(x.codigoFarmasi || '') === codigo)
     : state.data.produtos.find(x => norm(x.nome) === norm(p.nome));
-  return ex ? 'Atualiza' : 'Novo';
+}
+
+function statusBaseColetiva(p) {
+  return produtoExistente(p) ? 'Atualiza' : 'Novo';
+}
+
+// Só entra na tela de conferência quem é produto novo OU tem alguma divergência real (nome, linha,
+// preço de tabela ou foto) contra o que já está cadastrado — produtos já iguais não precisam de
+// atenção da consultora a cada sincronização.
+function difereDaBaseColetiva(mestre) {
+  const ex = produtoExistente(mestre);
+  if (!ex) return true;
+  if (norm(ex.nome || '') !== norm(mestre.nome || '')) return true;
+  const linhasExistentes = new Set(String(ex.linha || '').split(',').map(s => norm(s.trim())).filter(Boolean));
+  const linhasNovas = String(mestre.linha || '').split(',').map(s => norm(s.trim())).filter(Boolean);
+  if (linhasNovas.some(l => !linhasExistentes.has(l))) return true;
+  const paraCentavos = v => Math.round(parseMoney(v || 0) * 100);
+  if (paraCentavos(ex.precoOriginal) !== paraCentavos(mestre.precoOriginal)) return true;
+  if (paraCentavos(ex.precoAtual) !== paraCentavos(mestre.precoAtual || mestre.precoOriginal)) return true;
+  if (mestre.imagem && mestre.imagem !== ex.imagem) return true;
+  return false;
 }
 
 // Puxa os produtos da base coletiva do Admin (catalogoMestre) e abre uma tela de conferência
@@ -402,16 +438,18 @@ export async function sincronizarBaseColetiva() {
   } catch (e) {
     return toast('Não foi possível acessar a base coletiva. Fale com a administração.');
   }
-  const itens = dedupMestre(snap.docs.map(d => d.data()));
-  if (!itens.length) return toast('A base coletiva do Administrador ainda não tem produtos.');
-  window.__baseColetivaTodos = itens;
+  const todosVerificados = dedupMestre(snap.docs.map(d => d.data()));
+  if (!todosVerificados.length) return toast('A base coletiva do Administrador ainda não tem produtos.');
+  window.__baseColetivaVerificados = todosVerificados.length;
+  window.__baseColetivaTodos = todosVerificados.filter(difereDaBaseColetiva);
   window.__baseColetivaLinhaFiltro = '';
   aplicarFiltroBaseColetiva();
 }
 
-// Reconstrói a lista de conferência a partir da base completa (window.__baseColetivaTodos),
-// aplicando o filtro de linha escolhido — trocar o filtro reinicia a conferência (edições feitas
-// antes da troca não são mantidas, já que a lista é remontada do zero pra refletir a nova linha).
+// Reconstrói a lista de conferência a partir da base já filtrada por divergência
+// (window.__baseColetivaTodos), aplicando o filtro de linha escolhido — trocar o filtro reinicia a
+// conferência (edições feitas antes da troca não são mantidas, já que a lista é remontada do zero
+// pra refletir a nova linha).
 function aplicarFiltroBaseColetiva() {
   const todos = window.__baseColetivaTodos || [];
   const filtro = window.__baseColetivaLinhaFiltro || '';
@@ -427,21 +465,26 @@ export function filtrarLinhaBaseColetiva(linha) {
 function renderBaseColetivaPreview() {
   const arr = window.__baseColetivaPreview || [];
   const todasLinhas = Array.from(new Set((window.__baseColetivaTodos || []).flatMap(linhasDe))).sort((a, b) => labelLinha(a).localeCompare(labelLinha(b), 'pt-BR'));
+  const verificados = window.__baseColetivaVerificados || (window.__baseColetivaTodos || []).length;
+  const necessitam = (window.__baseColetivaTodos || []).length;
+  const banner = `<p class="muted" style="margin-bottom:10px">Foram verificados ${verificados} produto(s) e ${necessitam ? `apenas ${necessitam} necessita(m)` : 'nenhum necessita'} de atualização.</p>`;
   if (!arr.length) {
     showModal(`<h3>Conferência da base coletiva</h3>
+      ${banner}
       <div class="field" style="max-width:260px;margin-bottom:10px"><label>Importar só a linha</label>
         <select onchange="App.filtrarLinhaBaseColetiva(this.value)">
           <option value="">Todas as linhas</option>
           ${todasLinhas.map(l => `<option value="${esc(l)}" ${window.__baseColetivaLinhaFiltro === l ? 'selected' : ''}>${esc(labelLinha(l))}</option>`).join('')}
         </select>
       </div>
-      <p class="muted">Nenhum produto nessa linha na base coletiva.</p>
+      <p class="muted">${necessitam ? 'Nenhum produto nessa linha precisa de atualização.' : 'Tudo já está em dia com a base coletiva.'}</p>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
     return;
   }
   const novos = arr.filter(p => statusBaseColetiva(p) === 'Novo').length;
   const atualiza = arr.length - novos;
   showModal(`<h3>Conferência da base coletiva (${arr.length})</h3>
+    ${banner}
     <div class="field" style="max-width:260px;margin-bottom:10px"><label>Importar só a linha</label>
       <select onchange="App.filtrarLinhaBaseColetiva(this.value)">
         <option value="">Todas as linhas</option>
@@ -450,14 +493,14 @@ function renderBaseColetivaPreview() {
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">${pill(novos + ' novos', 'green')}${pill(atualiza + ' atualizações', 'blue')}</div>
     <p class="muted">Confira, edite ou remova itens antes de salvar. Seu preço de venda, custo médio e estoque não são alterados.</p>
-    <div class="table"><table><thead><tr>
-      <th>Nome</th><th>Código</th><th>Linha</th><th>Preço original</th><th>Preço atual</th><th>Situação</th><th></th>
+    <div class="table" style="overflow-x:auto"><table style="table-layout:fixed;min-width:720px"><thead><tr>
+      <th style="width:22%">Nome</th><th style="width:12%">Código</th><th style="width:22%">Linha</th><th style="width:14%">Preço original</th><th style="width:14%">Preço atual</th><th style="width:12%">Situação</th><th style="width:4%"></th>
     </tr></thead><tbody>${arr.map((p, idx) => `<tr>
-      <td data-label="Nome"><input value="${esc(p.nome || '')}" onchange="App.editarItemBaseColetiva(${idx},'nome',this.value)"></td>
-      <td data-label="Código"><input value="${esc(p.codigoFarmasi || '')}" onchange="App.editarItemBaseColetiva(${idx},'codigoFarmasi',this.value)"></td>
-      <td data-label="Linha"><input value="${esc(p.linha || '')}" onchange="App.editarItemBaseColetiva(${idx},'linha',this.value)"></td>
-      <td data-label="Original"><input value="${esc(p.precoOriginal || '')}" onchange="App.editarItemBaseColetiva(${idx},'precoOriginal',this.value)"></td>
-      <td data-label="Atual"><input value="${esc(p.precoAtual || '')}" onchange="App.editarItemBaseColetiva(${idx},'precoAtual',this.value)"></td>
+      <td data-label="Nome"><input style="width:100%" value="${esc(p.nome || '')}" onchange="App.editarItemBaseColetiva(${idx},'nome',this.value)"></td>
+      <td data-label="Código"><input style="width:100%" value="${esc(p.codigoFarmasi || '')}" onchange="App.editarItemBaseColetiva(${idx},'codigoFarmasi',this.value)"></td>
+      <td data-label="Linha"><input style="width:100%" value="${esc(p.linha || '')}" onchange="App.editarItemBaseColetiva(${idx},'linha',this.value)"></td>
+      <td data-label="Original"><input style="width:100%" value="${esc(p.precoOriginal || '')}" onchange="App.editarItemBaseColetiva(${idx},'precoOriginal',this.value)"></td>
+      <td data-label="Atual"><input style="width:100%" value="${esc(p.precoAtual || '')}" onchange="App.editarItemBaseColetiva(${idx},'precoAtual',this.value)"></td>
       <td data-label="Situação">${pill(statusBaseColetiva(p), statusBaseColetiva(p) === 'Novo' ? 'green' : 'blue')}</td>
       <td><button class="btn small" style="color:var(--error)" onclick="App.removerItemBaseColetiva(${idx})" title="Remover">✗</button></td>
     </tr>`).join('')}</tbody></table></div><br>
@@ -510,12 +553,24 @@ export async function autoSincronizarBaseColetiva() {
 
 // Um produto pode existir em mais de uma linha (ex: mesmo código vendido em "Skincare" e "Kits").
 // Em vez de sobrescrever, combina as linhas existentes com a nova em uma lista única "A, B".
+// Bug de raiz corrigido: linhaNova podia vir como uma string já com várias linhas separadas por
+// vírgula (ex: "Maquiagem, Cremoso"), mas só era trim()ada como um bloco único antes de entrar no
+// Set — então numa sincronização seguinte, a mesma string "Maquiagem, Cremoso" (agora diferente dos
+// elementos "Maquiagem" e "Cremoso" já separados de uma mesclagem anterior) entrava de novo inteira,
+// duplicando tudo a cada sync (ex: "Maquiagem, Cremoso, Maquiagem, Cremoso"). Agora as duas entradas
+// são sempre separadas por vírgula antes de comparar, e a comparação ignora acento/maiúscula
+// (normalizada) mas preserva a grafia da primeira ocorrência.
 export function mesclarLinhas(linhaAtual, linhaNova) {
-  const atual = String(linhaAtual || '').split(',').map(s => s.trim()).filter(s => s && s !== 'Sem linha');
-  const nova = String(linhaNova || '').trim();
-  const set = new Set(atual);
-  if (nova && nova !== 'Sem linha') set.add(nova);
-  return set.size ? Array.from(set).join(', ') : 'Sem linha';
+  const partes = [...String(linhaAtual || '').split(','), ...String(linhaNova || '').split(',')]
+    .map(s => s.trim())
+    .filter(s => s && norm(s) !== 'sem linha');
+  const vistos = new Set();
+  const resultado = [];
+  for (const p of partes) {
+    const chave = norm(p);
+    if (!vistos.has(chave)) { vistos.add(chave); resultado.push(p); }
+  }
+  return resultado.length ? resultado.join(', ') : 'Sem linha';
 }
 
 export async function upsertProduto(raw) {

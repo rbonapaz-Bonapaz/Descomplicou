@@ -1,4 +1,4 @@
-import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById, proximoNumeroPedido, proximaSequenciaCliente } from './state.js';
+import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
 import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml } from './utils.js';
 import { WA_ICON } from './whatsapp.js';
 
@@ -599,7 +599,6 @@ export async function transformarEmCarrinho(eventoId, listaId) {
 
   const r = await addDoc(col('carrinhos'), {
     clienteId: cliente.id, clienteNome: cliente.nome,
-    numeroPedido: proximoNumeroPedido(), sequenciaCliente: proximaSequenciaCliente(cliente.id),
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
     permitirEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
     mostrarSemEstoque: false,

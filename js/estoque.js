@@ -156,7 +156,7 @@ function stockCard(x) {
     <div class="metric"><small>Qtd</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Investido</small><b>${money(x.investido)}</b></div>
-    <div class="metric"><small>Lucro potencial</small><b>${money(x.lucroPot)} <span class="muted" style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
+    <div class="metric"><small>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</small><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
     <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
       ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
         x.semCusto || x.baixo ? 'red' : 'green',
@@ -205,7 +205,7 @@ function renderEstoqueInner() {
         <div class="card"><span>Produtos em estoque</span><b>${s.em.length}</b></div>
         <div class="card"><span>Unidades</span><b>${s.un}</b></div>
         <div class="card"><span>Valor investido</span><b>${money(s.invest)}</b></div>
-        <div class="card"><span>Lucro potencial</span><b>${money(s.pot)} <span class="muted" style="font-size:11px;font-weight:700">(${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></b></div>
+        <div class="card"><span>${s.pot >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${s.pot >= 0 ? 'var(--success)' : 'var(--error)'}">${money(s.pot)} <span style="font-size:11px;font-weight:700">(${s.pot >= 0 ? '+' : '-'}${s.invest ? Math.abs(s.pot / s.invest * 100).toFixed(0) : 0}%)</span></b></div>
       </div>
       ${sectionTabsHtml('estoque', SECTIONS.estoque, sec)}`;
 
@@ -214,7 +214,7 @@ function renderEstoqueInner() {
         <div class="panel-head">
           <h3>Visão do estoque</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn dark small" onclick="App.openEntradaManual()">+ Entrada</button>
+            <button class="btn small" style="background:#EAF7EC;color:var(--success)" onclick="App.openEntradaManual()">+ Entrada</button>
             <button class="btn small pink" onclick="App.openSaidaManual()">− Saída</button>
             <button class="btn small" onclick="App.ativarProntaEntregaTodos()">✅ Ativar pronta entrega (em estoque)</button>
           </div>

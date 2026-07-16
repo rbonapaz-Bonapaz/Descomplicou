@@ -3,10 +3,25 @@ import { $, esc, sectionTabsHtml, formatDateBR } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v100';
+export const APP_VERSION = 'v102';
 
 // Changelog manual — cada entrada é uma rodada de melhorias já concluída.
 const NOVIDADES = [
+  { versao: 'v102', itens: [
+    'Corrigido: no carrinho aberto no celular, o campo "Desconto no pedido" (valor + %/R$) podia extrapolar a borda da tela — agora sempre cabe na largura disponível. Correção aplicada de forma geral em qualquer campo/select dentro de linhas flexíveis pelo app inteiro (bug de raiz, não só nesse campo).',
+    'Gemini "Gerar com IA": mensagem de erro de cota agora diferencia limite de requisições por MINUTO (plano gratuito — passa sozinho em instantes, não precisa trocar de chave) de cota diária/do plano realmente esgotada, além de identificar chave sem permissão pra API. Erros da API agora ficam registrados no console para depuração.',
+    'Importação da base coletiva: a tela de conferência agora lista só os produtos novos ou com alguma divergência real (nome, linha, preço de tabela ou foto) contra o que já está cadastrado — produtos já iguais não aparecem mais toda vez. Banner no topo mostra "Foram verificados X produtos e apenas Y necessitam de atualização."',
+    'Corrigido na raiz: o campo "Linha" de um produto podia acumular nomes repetidos a cada sincronização (ex: "Maquiagem, Cremoso, Maquiagem, Cremoso") — a mesclagem não separava corretamente uma linha nova que já viesse com várias linhas juntas. Produtos já afetados podem ser corrigidos de uma vez com o novo botão "🔧 Corrigir linhas duplicadas" em Produtos.'
+  ] },
+  { versao: 'v101', itens: [
+    'Relatórios: além dos "Cards de Inteligência", agora dá pra escolher quais seções aparecem (Produtos, Estoque, Clientes, Agenda, Pagamentos, Trocas, Saídas de estoque, Recomendações, Novas clientes por origem) e arrastar pra reordenar, em Minha Conta → Relatórios.',
+    'Corrigido: a numeração do pedido agora é atribuída no momento em que a venda é FINALIZADA, não quando o carrinho é criado — evita números fora de ordem quando um carrinho fica aberto um tempo antes de fechar. O botão "Numerar pedidos antigos" (Minha Conta → Segurança) também passou a ordenar pela data de finalização da venda, e só numera pedidos já finalizados.',
+    'Catálogo: removido o botão "Sincronizar com base coletiva" da tela de geração do catálogo PDF — a sincronização já é feita em Produtos, e o catálogo reflete automaticamente o que está lá.',
+    'Estoque: o card e a lista de produtos agora mostram "Prejuízo potencial" em vermelho quando a margem é negativa (em vez de sempre "Lucro potencial" em cinza), e o botão "+ Entrada" ganhou destaque verde para diferenciar rápido do "− Saída".',
+    'Base coletiva: a coluna "Linha" na tabela de conferência ganhou mais espaço (largura fixa por coluna) — nomes de linha longos não cortam mais.',
+    'Corrigido: desativar um card ou seção em Minha Conta → Relatórios agora atualiza a tela de Relatórios na hora, sem precisar dar F5.',
+    'Corrigido: remover um item da lista de interesse no Cliente 360 agora some da tela imediatamente, sem precisar fechar e reabrir o cadastro do cliente.'
+  ] },
   { versao: 'v100', itens: [
     '📦 Importar PDF do pedido Farmasi agora reconhece KITs automaticamente: monta os componentes e rateia o valor total do kit entre eles (mesma lógica da montagem manual de kit), além de preencher o custo unitário dos produtos avulsos quando o valor está legível no PDF. Também ficou mais resistente a bloqueadores de anúncios (tenta 3 CDNs antes de desistir).',
     '🧠 Corrigido na raiz: os cards "Mais vendido/lucrativo/faturamento" em Relatórios → Produtos mostravam a palavra genérica "Pedido" em vez do nome do produto — uma venda representa o pedido inteiro (pode ter vários produtos), então o ranking agora usa os itens reais do carrinho de cada venda.',
@@ -22,7 +37,8 @@ const NOVIDADES = [
     'Trocas: os blocos "Saem" e "Entram" agora têm cor (azul/verde) pra diferenciar rapidinho, e mostram o lucro ou prejuízo da troca em valor e %.',
     'Corrigido: em vários lugares (principalmente Relatórios) o texto em negrito ficava colado na legenda ao lado — mesmo bug das "datas comemorativas", só que espalhado. Corrigido na raiz com uma regra geral, não item por item.',
     'Corrigido: os cards de estatística do Cliente 360 e do Carrinho ficavam espremidos em 4/3 colunas no celular (uma regra mais específica sobrescrevia o ajuste mobile) — agora ficam em 2 colunas.',
-    'Ícone do WhatsApp na lista de desejos do evento agora usa o mesmo ícone oficial do resto do sistema (antes era um emoji genérico).'
+    'Ícone do WhatsApp na lista de desejos do evento agora usa o mesmo ícone oficial do resto do sistema (antes era um emoji genérico).',
+    'Catálogo de Eventos: quando o WhatsApp de uma lista de desejos é igual ao de um cliente já cadastrado, aparece direto na lista uma tag "📌 Telefone de [Nome]" — antes só aparecia depois de clicar em "Vincular cliente".'
   ] },
   { versao: 'v99', itens: [
     '⚠️ Reabrir uma venda com pagamento registrado deixou de apagar o pagamento — agora ele é mantido e aparece um aviso bem visível no topo do carrinho reaberto com o valor já pago. Ao finalizar de novo, o status (pendente/parcial/pago) é recalculado sozinho contra o total atual; se o valor pago passar do novo total, o sistema avisa o excedente para você decidir (crédito ou estorno).',

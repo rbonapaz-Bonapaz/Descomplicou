@@ -62,12 +62,6 @@ export function renderCatalogo() {
         </div>
       </aside>
       <section>
-        ${state.profile?.usaBaseColetiva ? `<div class="panel" style="background:#F7FAFC">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-            <div><b>Base coletiva ativa</b><br><small class="muted">Puxe as novidades publicadas pela administração para seus produtos.</small></div>
-            <button class="btn dark small" onclick="App.sincronizarBaseColetiva()">🔄 Sincronizar com base coletiva</button>
-          </div>
-        </div>` : ''}
         <div class="panel">
           <h3>Prévia por linhas selecionadas</h3>
           <p class="muted">Cabeçalho, rodapé e QR Code vêm de "Minha Conta". Apenas produtos com "Ativo no catálogo".</p>

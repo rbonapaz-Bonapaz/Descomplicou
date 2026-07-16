@@ -109,7 +109,6 @@ async function criarCarrinho(clienteId) {
   if (!c) return toast('Cliente não encontrado');
   const r = await addDoc(col('carrinhos'), {
     clienteId: c.id, clienteNome: c.nome,
-    numeroPedido: proximoNumeroPedido(), sequenciaCliente: proximaSequenciaCliente(c.id),
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
     permitirEntregaFutura: false, mostrarSemEstoque: false,
     itens: [], totalPedido: 0, custoTotal: 0, lucroTotal: 0,
@@ -240,9 +239,9 @@ export function openCarrinho(id) {
         </select>
       </div>
       <div class="field"><label>Desconto no pedido (opcional)</label>
-        <div style="display:flex;gap:8px">
-          <input id="cDescontoValor" placeholder="Ex: 10" value="${carr.descontoPedido?.valor ?? ''}" style="flex:1" onblur="App.aplicarDescontoPedido('${id}')">
-          <select id="cDescontoTipo" style="max-width:80px" onchange="App.aplicarDescontoPedido('${id}')">
+        <div style="display:flex;gap:8px;max-width:100%">
+          <input id="cDescontoValor" placeholder="Ex: 10" value="${carr.descontoPedido?.valor ?? ''}" style="flex:1;min-width:0" onblur="App.aplicarDescontoPedido('${id}')">
+          <select id="cDescontoTipo" style="flex:0 0 72px;width:72px" onchange="App.aplicarDescontoPedido('${id}')">
             <option value="percent" ${(!carr.descontoPedido || carr.descontoPedido.tipo === 'percent') ? 'selected' : ''}>%</option>
             <option value="valor" ${carr.descontoPedido?.tipo === 'valor' ? 'selected' : ''}>R$</option>
           </select>
@@ -772,10 +771,18 @@ export async function finalizarCarrinho(id) {
   // por padrão) e cobrar o juro do parcelamento dela mesmo quando a regra diz que é do cliente.
   const jurosPorFinal = jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile);
 
+  // Número do pedido é atribuído aqui (na finalização), não na criação do carrinho — reflete a
+  // ordem real das vendas, já que um carrinho pode ficar aberto muito tempo antes de fechar. Se o
+  // carrinho já tem número (reaberto e finalizado de novo), mantém o mesmo.
+  const numeracao = carr.numeroPedido
+    ? {}
+    : { numeroPedido: proximoNumeroPedido(), sequenciaCliente: proximaSequenciaCliente(carr.clienteId) };
+
   await setDoc(ref('carrinhos', id), {
     status, itens: carr.itens,
     possuiEntregaFutura: temFutura,
     jurosPor: jurosPorFinal,
+    ...numeracao,
     ...updatesPagamento,
     finalizadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
   }, { merge: true });

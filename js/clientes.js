@@ -312,7 +312,13 @@ export async function removerInteresseCliente(clienteId, produtoId) {
   if (!c) return;
   const interesses = (c.interesses || []).filter(i => i.produtoId !== produtoId);
   await setDoc(ref('clientes', clienteId), { interesses, atualizadoEm: serverTimestamp() }, { merge: true });
-  window.App.refresh('Item removido da lista de interesse');
+  // Atualiza o state local e reabre o mesmo modal na hora, em vez de esperar o refresh completo
+  // (que recarrega tudo do Firestore mas não remonta o modal já aberto — o item ficava visível
+  // até fechar/reabrir a tela do cliente).
+  const idx = state.data.clientes.findIndex(x => x.id === clienteId);
+  if (idx !== -1) state.data.clientes[idx] = { ...state.data.clientes[idx], interesses };
+  openCliente360(clienteId);
+  toast('Item removido da lista de interesse');
 }
 
 export async function marcarContatado(id) {

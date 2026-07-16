@@ -6,7 +6,7 @@ import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
 import { importarDoGoogleAgenda } from './agenda.js';
 import { gerarBeneficios } from './gemini.js';
-import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva } from './relatorios.js';
+import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRelatorios } from './relatorios.js';
 
 export function renderPerfil() {
   const p = state.profile || {};
@@ -183,7 +183,7 @@ export function renderPerfil() {
 
     <div class="panel">
       <h3>🔢 Numeração de pedidos</h3>
-      <p class="muted">Cada pedido novo já recebe um número sequencial + um sufixo exclusivo do cliente (ex: "1042-01" na 1ª compra dela, "-02" na 2ª). Pedidos antigos, feitos antes desse recurso, ainda não têm número — rode uma vez para numerá-los retroativamente em ordem cronológica. Ação segura, pode rodar mais de uma vez (só numera quem ainda não tem número).</p>
+      <p class="muted">Cada pedido novo já recebe um número sequencial + um sufixo exclusivo do cliente (ex: "1042-01" na 1ª compra dela, "-02" na 2ª) no momento em que a venda é finalizada. Pedidos antigos, feitos antes desse recurso, ainda não têm número — rode uma vez para numerá-los em ordem de finalização da venda. Ação segura, pode rodar quantas vezes quiser.</p>
       <button class="btn" onclick="App.migrarNumeracaoPedidos()">Numerar pedidos antigos</button>
     </div>
 
@@ -379,6 +379,7 @@ export async function salvarConfigRelatorios(key, ativo) {
   const atual = { ...(state.profile?.relCardsAtivos || {}), [key]: ativo };
   await setDoc(doc(db, 'users', state.user.uid), { relCardsAtivos: atual, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, relCardsAtivos: atual };
+  renderRelatorios();
   toast(ativo ? 'Card ativado' : 'Card desativado');
 }
 
@@ -415,6 +416,7 @@ export async function relSecaoDrop(ev) {
   relDragKey = null;
   await setDoc(doc(db, 'users', state.user.uid), { relSecoesOrdem: ordem, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, relSecoesOrdem: ordem };
+  renderRelatorios();
   const box = $('relSecoesLista');
   if (box) box.innerHTML = secoesListaHtml();
 }
@@ -423,6 +425,7 @@ export async function salvarSecaoRelatorioAtiva(key, ativo) {
   const atual = { ...(state.profile?.relSecoesAtivas || {}), [key]: ativo };
   await setDoc(doc(db, 'users', state.user.uid), { relSecoesAtivas: atual, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, relSecoesAtivas: atual };
+  renderRelatorios();
   toast(ativo ? 'Seção ativada' : 'Seção desativada');
 }
 
