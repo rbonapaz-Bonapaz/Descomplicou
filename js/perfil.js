@@ -8,6 +8,7 @@ import { importarDoGoogleAgenda } from './agenda.js';
 import { gerarBeneficios } from './gemini.js';
 import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRelatorios } from './relatorios.js';
 import { NOMES_DATAS_AUTOMATICAS, carregarDatasComemorativas } from './datasComemorativas.js';
+import { renderOperadorasPanel } from './operadoras.js';
 
 const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -132,7 +133,9 @@ export function renderPerfil() {
       </div>
       <p class="muted" style="font-size:12px;margin-top:8px">Ex: com 3 e R$450 — pedidos parcelados em até 3x você assume o juro; acima de 3x o juro fica com a cliente. Pedidos abaixo de R$450 que forem parcelados sempre têm o juro por conta da cliente.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
-    </div>`;
+    </div>
+
+    ${renderOperadorasPanel()}`;
   }
 
   if (sec === 'plano') {
@@ -565,7 +568,7 @@ export function exportarBackupCompleto() {
 // (fallback nome) em vez de id do documento — o id salvo no backup só bate se nenhum produto foi
 // recriado desde então.
 // Coleções restauráveis pelo backup completo — mesma lista de state.data.
-const COLECOES_BACKUP = ['clientes', 'produtos', 'vendas', 'carrinhos', 'agendamentos', 'movimentacoesEstoque', 'catalogos', 'eventos', 'trocas', 'preEncomenda', 'despesas'];
+const COLECOES_BACKUP = ['clientes', 'produtos', 'vendas', 'carrinhos', 'agendamentos', 'movimentacoesEstoque', 'catalogos', 'eventos', 'trocas', 'preEncomenda', 'despesas', 'operadoras'];
 
 // Restaura TODOS os registros de TODAS as coleções presentes no arquivo, recriando pelo mesmo id
 // quem foi apagado e sobrescrevendo por completo quem ainda existe (não é merge parcial — o

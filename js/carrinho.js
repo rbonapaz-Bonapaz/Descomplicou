@@ -5,6 +5,7 @@ import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
+import { taxaOperadora, operadoraById } from './operadoras.js';
 
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
@@ -35,17 +36,51 @@ export function jurosAutomatico(totalPedido, parcelas, perfil) {
 // (jurosPor 'vendedor') — nesse caso o cliente paga o valor cheio, mas a operadora desconta o juro
 // dela no repasse. Quando o juro é do cliente, ele já paga a diferença, então não pesa no lucro dela.
 // Débito nunca parcela e usa uma taxa própria (normalmente mais baixa que a de crédito).
-export function calcCustoCartao(totalPedido, pagamento, parcelas, jurosPor, perfil, cartaoTipo = 'Crédito') {
+export function calcCustoCartao(totalPedido, pagamento, parcelas, jurosPor, perfil, cartaoTipo = 'Crédito', operadoraId = '', bandeiraGrupo = '') {
   const ehCartao = pagamento === 'Cartão' || pagamento === 'Link de pagamento';
   if (!ehCartao || !totalPedido) return { taxaTransacao: 0, custoJuros: 0, total: 0 };
   const ehDebito = pagamento === 'Cartão' && cartaoTipo === 'Débito';
+  const n = ehDebito ? 1 : Math.max(1, Number(parcelas || 1));
+
+  // Com operadora cadastrada, a taxa da tabela já é "tudo incluso" (a própria InfinitePay diz:
+  // "taxas únicas sobre a venda, já com antecipação de todas as parcelas incluída") — não soma
+  // juro de parcelamento por cima, senão contaria o mesmo custo duas vezes.
+  const taxaTabela = operadoraId ? taxaOperadora(operadoraId, bandeiraGrupo, ehDebito, n) : null;
+  if (taxaTabela != null) {
+    const taxaTransacao = totalPedido * (taxaTabela / 100);
+    return { taxaTransacao, custoJuros: 0, total: taxaTransacao };
+  }
+
   const taxaBase = Number((ehDebito ? perfil?.taxaBaseDebito : perfil?.taxaBaseTransacao) || 0) / 100;
   const tarifaFixa = Number((ehDebito ? perfil?.tarifaFixaDebito : perfil?.tarifaFixaTransacao) || 0);
   const taxaTransacao = totalPedido * taxaBase + tarifaFixa;
-  const n = ehDebito ? 1 : Math.max(1, Number(parcelas || 1));
   const taxaJuros = Number(perfil?.taxaJurosCartao || 0) / 100;
   const custoJuros = (!ehDebito && (jurosPor || 'vendedor') === 'vendedor' && n > 1) ? totalPedido * taxaJuros * (n - 1) : 0;
   return { taxaTransacao, custoJuros, total: taxaTransacao + custoJuros };
+}
+
+function operadoraBandeiraHtml(id, carr) {
+  if (!state.data.operadoras.length) return '';
+  return `<div class="field"><label>Operadora</label>
+      <select id="cOperadora" onchange="App.salvarCarrinhoOpt('${id}',true)">
+        <option value="">— Taxa padrão (Minha Conta) —</option>
+        ${state.data.operadoras.map(o => `<option value="${o.id}" ${carr.cartaoOperadoraId === o.id ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Bandeira</label>
+      <select id="cBandeira" onchange="App.salvarCarrinhoOpt('${id}',true)">
+        <option value="visaMaster" ${carr.cartaoBandeiraGrupo !== 'eloAmex' ? 'selected' : ''}>Visa / Mastercard</option>
+        <option value="eloAmex" ${carr.cartaoBandeiraGrupo === 'eloAmex' ? 'selected' : ''}>Elo / Amex</option>
+      </select>
+    </div>`;
+}
+
+function prazoRecebimentoHtml(carr) {
+  if (!carr.cartaoOperadoraId) return '';
+  const op = operadoraById(carr.cartaoOperadoraId);
+  if (!op) return '';
+  const dias = Number(op.prazoRecebimentoDias || 1);
+  return `<p class="muted" style="margin:4px 0 0">💰 Recebe da ${esc(op.nome)} em ${dias} dia${dias === 1 ? '' : 's'} útil${dias === 1 ? '' : 'eis'}</p>`;
 }
 
 function parcelamentoHtml(id, carr) {
@@ -61,12 +96,13 @@ function parcelamentoHtml(id, carr) {
   </div>` : '';
 
   if (ehDebito) {
-    const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, 1, 'vendedor', cfg, 'Débito');
+    const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, 1, 'vendedor', cfg, 'Débito', carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo);
     return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
       <h4 style="margin:0 0 8px">Cartão de débito</h4>
-      <div class="grid">${tipoCartaoHtml}</div>
+      <div class="grid">${tipoCartaoHtml}${operadoraBandeiraHtml(id, carr)}</div>
       <p class="muted" style="margin:8px 0 0">Débito é sempre à vista, sem parcelamento.</p>
       ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
+      ${prazoRecebimentoHtml(carr)}
     </div>`;
   }
 
@@ -74,7 +110,7 @@ function parcelamentoHtml(id, carr) {
   const opts = Array.from({ length: maxParcelas }, (_, i) => i + 1);
   const jurosPor = jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, cfg);
   const { valorParcela, totalComJuros } = calcParcelas(carr.totalPedido || 0, carr.parcelas || 1, jurosPor, cfg.taxaJurosCartao);
-  const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas || 1, jurosPor, cfg, 'Crédito');
+  const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas || 1, jurosPor, cfg, 'Crédito', carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo);
   const minimo = Number(cfg.valorMinimoParcelamento || 0);
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
     <h4 style="margin:0 0 8px">Parcelamento</h4>
@@ -88,10 +124,12 @@ function parcelamentoHtml(id, carr) {
       <div class="field"><label>Quem assume os juros?</label>
         <div style="padding-top:10px">${pill(jurosPor === 'vendedor' ? porGenero(cfg.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' }) : 'Cliente', jurosPor === 'vendedor' ? 'blue' : 'orange')}<span class="muted" style="font-size:12px;margin-left:6px">(definido automaticamente pelas suas regras em Minha Conta)</span></div>
       </div>
+      ${operadoraBandeiraHtml(id, carr)}
     </div>
     ${minimo > 0 && (carr.parcelas || 1) > 1 && (carr.totalPedido || 0) < minimo ? `<p class="muted" style="margin:4px 0 0;color:var(--error)">Pedido abaixo de ${money(minimo)} — juro do parcelamento sempre por conta da cliente.</p>` : ''}
     <p class="muted" style="margin:8px 0 0">${carr.parcelas > 1 ? `${carr.parcelas}x de ${money(valorParcela)}` : 'À vista'}${jurosPor === 'cliente' && carr.parcelas > 1 ? ` — total com juros: ${money(totalComJuros)}` : ''}</p>
     ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> (taxa ${money(custoCartao.taxaTransacao)}${custoCartao.custoJuros > 0 ? ` + juro parcelamento ${money(custoCartao.custoJuros)}` : ''}) — sai do seu lucro</p>` : ''}
+    ${prazoRecebimentoHtml(carr)}
   </div>`;
 }
 
@@ -223,7 +261,7 @@ export function openCarrinho(id) {
       ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total a cobrar</span><b>${money(carr.totalPedido || 0)}</b></div>
       <div class="card"><span>Desconto por item</span><b>${money(itens.reduce((s, i) => s + (Number(i.precoOriginal || i.precoUnitario || 0) - i.precoUnitario) * i.quantidade, 0))}</b></div>
-      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total)}</b></div>
+      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total)}</b></div>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -279,7 +317,7 @@ export function openCarrinho(id) {
 function openCarrinhoView(carr) {
   const itens = carr.itens || [];
   const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
-  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo).total;
+  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
   showModal(`<h3>Pedido — ${esc(carr.clienteNome)}</h3>
     <div class="cards">
       <div class="card"><span>Status</span><b>${pill(carr.status, carr.status === 'finalizado' ? 'green' : carr.status === 'cancelado' ? 'red' : 'blue')}</b></div>
@@ -436,6 +474,7 @@ export function aplicarCreditoPagamento(carrinhoId, usar) {
 // Mostra/esconde Tipo (Débito/Crédito) e Parcelas conforme a forma escolhida, e calcula na hora o
 // custo estimado da maquininha pra esse pagamento — mesma lógica usada no carrinho na hora da venda.
 export function atualizarCalcPagamento(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   const forma = $('pgForma')?.value;
   const ehCartao = forma === 'Cartão';
   $('pgCartaoWrap')?.classList.toggle('hidden', !ehCartao);
@@ -447,7 +486,7 @@ export function atualizarCalcPagamento(carrinhoId) {
   const valor = parseMoney($('pgValor')?.value || 0);
   const parcelas = ehDebito ? 1 : Number($('pgParcelas')?.value || 1);
   const jurosPor = ehDebito ? 'vendedor' : jurosAutomatico(valor, parcelas, state.profile);
-  const custo = calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, tipo);
+  const custo = calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, tipo, carr?.cartaoOperadoraId, carr?.cartaoBandeiraGrupo);
   if ($('pgCalc')) {
     $('pgCalc').textContent = custo.total > 0
       ? `Custo estimado da maquininha: ${money(custo.total)} (taxa ${money(custo.taxaTransacao)}${custo.custoJuros > 0 ? ` + juro parcelamento ${money(custo.custoJuros)}` : ''}) — sai do seu lucro`
@@ -476,7 +515,7 @@ export async function confirmarPagamento(carrinhoId) {
   const cartaoTipo = ehCartao ? ($('pgCartaoTipo')?.value || 'Crédito') : '';
   const parcelas = ehCartao && cartaoTipo === 'Crédito' ? Number($('pgParcelas')?.value || 1) : 1;
   const jurosPor = ehCartao ? (cartaoTipo === 'Débito' ? 'vendedor' : jurosAutomatico(valor, parcelas, state.profile)) : 'vendedor';
-  const custoCartao = ehCartao && valor > 0.004 ? calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, cartaoTipo).total : 0;
+  const custoCartao = ehCartao && valor > 0.004 ? calcCustoCartao(valor, 'Cartão', parcelas, jurosPor, state.profile, cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total : 0;
 
   const pagamentos = [...(carr.pagamentos || [])];
   if (creditoUsado > 0.004) pagamentos.push({ valor: creditoUsado, forma: 'Créditos do cliente', data: dataPg, observacoes: 'Créditos do cadastro usados' });
@@ -673,6 +712,8 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
   const updates = { atualizadoEm: serverTimestamp() };
   if ($('cPag')) updates.pagamento = $('cPag').value;
   if ($('cCartaoTipo')) updates.cartaoTipo = $('cCartaoTipo').value;
+  if ($('cOperadora')) updates.cartaoOperadoraId = $('cOperadora').value;
+  if ($('cBandeira')) updates.cartaoBandeiraGrupo = $('cBandeira').value;
   if ($('cObs')) updates.observacoes = $('cObs').value;
   if ($('cParcelas')) {
     const parcelas = Number($('cParcelas').value);
@@ -779,7 +820,7 @@ export async function finalizarCarrinho(id) {
     finalizadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
   }, { merge: true });
 
-  const custoCartao = calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, jurosPorFinal, state.profile, carr.cartaoTipo).total;
+  const custoCartao = calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, jurosPorFinal, state.profile, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
   const lucroReal = carr.lucroTotal - custoCartao;
 
   await addDoc(col('vendas'), {

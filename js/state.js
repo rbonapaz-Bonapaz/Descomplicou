@@ -23,7 +23,7 @@ export const state = {
   user: null,
   profile: null,
   filters: { prod: 'todos', estoque: 'todos', rel: '30', vendas: 'todos', prodSort: 'nome_asc', estoqueSort: 'nome_asc', vendasSort: '', prodLinha: '', relProdSort: '', estoqueLinha: '' },
-  data: { clientes: [], produtos: [], vendas: [], carrinhos: [], agendamentos: [], movimentacoesEstoque: [], catalogos: [], eventos: [], trocas: [], preEncomenda: [], despesas: [] },
+  data: { clientes: [], produtos: [], vendas: [], carrinhos: [], agendamentos: [], movimentacoesEstoque: [], catalogos: [], eventos: [], trocas: [], preEncomenda: [], despesas: [], operadoras: [] },
   config: { limiteTeste: 5, limiteGratuito: 10, precoMensal: 0, precoSemestral: 0, precoAnual: 0 },
   // Aba ativa (por página) nas telas divididas em seções — ver SECTIONS abaixo.
   section: { admin: 'consultoras', perfil: 'conta', produtos: 'produtos', estoque: 'estoque', catalogo: 'montar', sobre: 'dados' }
