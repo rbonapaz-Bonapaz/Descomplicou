@@ -34,6 +34,7 @@ export const SECOES_RELATORIO = [
   { key: 'pagamentos', label: 'Pagamentos' },
   { key: 'trocas', label: 'Trocas' },
   { key: 'saidas', label: 'Saídas de estoque (sem venda)' },
+  { key: 'curvaAbc', label: 'Curva ABC detalhada' },
   { key: 'recomendacoes', label: 'Recomendações automáticas' }
 ];
 
@@ -77,6 +78,21 @@ function curvaAbc(prodMap) {
     else classes.C++;
   });
   return { ...classes, totalProdutos: arr.length };
+}
+
+// Versão detalhada da mesma classificação: cada produto vendido no período com seu % individual,
+// % acumulado e classe (A/B/C) — base do relatório "Curva ABC detalhada", pra saber exatamente
+// QUAIS produtos puxam o faturamento, não só quantos.
+function curvaAbcDetalhada(prodMap) {
+  const arr = Object.values(prodMap).sort((a, b) => b.rec - a.rec);
+  const total = arr.reduce((s, x) => s + x.rec, 0);
+  let acumulado = 0;
+  return arr.map(x => {
+    acumulado += x.rec;
+    const pctAcumulado = total ? (acumulado / total) * 100 : 0;
+    const classe = pctAcumulado <= 80 ? 'A' : pctAcumulado <= 95 ? 'B' : 'C';
+    return { nome: x.nome, rec: x.rec, pct: total ? (x.rec / total) * 100 : 0, pctAcumulado, classe };
+  });
 }
 
 function taxaRuptura() {
@@ -296,6 +312,7 @@ export function renderRelatorios() {
     ${(() => {
       // Cada seção "grande" vira um bloco no mapa, montado uma vez — a ordem/visibilidade final vem
       // de ordemSecoes()/secaoAtiva() (configurável em Minha Conta → Relatórios, com drag-and-drop).
+      const abcDetalhe = curvaAbcDetalhada(r.prod);
       const secoesHtml = {
         origem: `<div class="panel">
           <div class="panel-head"><h3>Novas clientes por origem</h3></div>
@@ -373,6 +390,19 @@ export function renderRelatorios() {
           <div class="list">
             ${saidasList.length ? saidasList.map(([motivo, x]) => `<div class="list-item clickable" onclick="App.goto('estoque')"><div><b>${esc(motivo)}</b><small>${x.qtd} un.</small></div><span class="tag orange">${money(x.valor)}</span></div>`).join('') : '<p class="muted">Nenhuma saída sem venda nesse período.</p>'}
           </div>
+        </div>`,
+        curvaAbc: `<div class="panel">
+          <h3>Curva ABC detalhada</h3>
+          <p class="muted" style="margin:0 0 8px">Produtos ordenados por faturamento no período — classe A é quem puxa até 80% do total, B até 95%, C o resto. Foco de reposição/promoção deve ser nos produtos A.</p>
+          ${abcDetalhe.length ? `<div class="table"><table><thead><tr>
+            <th>Produto</th><th>Faturamento</th><th>% do total</th><th>% acumulado</th><th>Classe</th>
+          </tr></thead><tbody>${abcDetalhe.map(x => `<tr>
+            <td data-label="Produto">${esc(x.nome)}</td>
+            <td data-label="Faturamento">${money(x.rec)}</td>
+            <td data-label="% do total">${x.pct.toFixed(1)}%</td>
+            <td data-label="% acumulado">${x.pctAcumulado.toFixed(1)}%</td>
+            <td data-label="Classe">${pill(x.classe, x.classe === 'A' ? 'green' : x.classe === 'B' ? 'blue' : 'gray')}</td>
+          </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}
         </div>`,
         recomendacoes: `<div class="panel">
           <h3>Recomendações automáticas</h3>
