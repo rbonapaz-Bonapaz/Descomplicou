@@ -1,5 +1,5 @@
 import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agendaAgg, lastBuy, diasContatoFrio } from './state.js';
-import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, thSort, norm } from './utils.js';
+import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, thSort, norm, linhasDe } from './utils.js';
 import { recommendations } from './dashboard.js';
 
 // Registro dos "Cards de Inteligência" — cada consultora escolhe quais quer ver (Minha Conta →
@@ -107,7 +107,7 @@ function ticketMedioPorLinha(d) {
     const linhasNoPedido = new Set();
     (carr.itens || []).forEach(it => {
       const p = state.data.produtos.find(x => x.id === it.produtoId);
-      String(p?.linha || 'Sem linha').split(',').map(s => s.trim()).forEach(l => linhasNoPedido.add(l));
+      linhasDe(p).forEach(l => linhasNoPedido.add(l));
     });
     const valorPedido = Number(v.receita || v.totalPedido || 0);
     linhasNoPedido.forEach(l => {

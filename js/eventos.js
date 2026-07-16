@@ -1,5 +1,5 @@
 import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
-import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml } from './utils.js';
+import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml, linhasDe } from './utils.js';
 import { WA_ICON } from './whatsapp.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
@@ -129,14 +129,14 @@ function eventoCard(ev) {
 function linhasDisponiveis() {
   return [...new Set(state.data.produtos
     .filter(p => p.ativoCatalogo !== false)
-    .flatMap(p => String(p.linha || 'Sem linha').split(',').map(s => s.trim())))]
+    .flatMap(p => linhasDe(p)))]
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 function formHtmlEvento(ev) {
   const linhas = linhasDisponiveis();
   const descontosAtuais = ev?.descontosPorLinha || {};
-  const linhasNoEvento = new Set((ev?.produtos || []).flatMap(p => String(p.linha || '').split(',').map(s => s.trim())));
+  const linhasNoEvento = new Set((ev?.produtos || []).flatMap(p => linhasDe(p)));
   return `
     <div class="grid">
       <div class="field full"><label>Nome do evento</label><input id="evNome" value="${esc(ev?.nome || '')}" placeholder="Ex: Semana da Beleza"></div>
@@ -206,15 +206,15 @@ function coletarDadosFormEvento() {
   const produtos = state.data.produtos.filter(p => {
     if (p.ativoCatalogo === false) return false;
     if (todoCatalogo) return true;
-    const linhasProd = String(p.linha || 'Sem linha').split(',').map(s => s.trim());
+    const linhasProd = linhasDe(p);
     return linhasProd.some(l => linhasSelecionadas.includes(l));
   }).map(p => {
-    const linhasProd = String(p.linha || 'Sem linha').split(',').map(s => s.trim());
+    const linhasProd = linhasDe(p);
     const descontoMax = Math.max(0, ...linhasProd.filter(l => linhasSelecionadas.includes(l)).map(l => descontos[l] || 0));
     const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     return {
-      id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: p.linha || 'Sem linha',
+      id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: linhasProd.join(', ') || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
       precoOriginal, precoComDesconto,
       // Quantidade em pronta entrega no momento da publicação — snapshot, não atualiza sozinho

@@ -1,5 +1,5 @@
 import { state, SECTIONS, db, setDoc, getDoc, getDocs, addDoc, deleteDoc, writeBatch, serverTimestamp, doc, collection, showModal, closeModal, toast } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sectionTabsHtml, formatDateBR, addDias, today, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sectionTabsHtml, formatDateBR, addDias, today, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero, combinarLinhas } from './utils.js';
 import { extractProdutos, dedupBatch } from './importar.js';
 
 const PLANOS = ['teste', 'gratuito', 'mensal', 'semestral', 'anual', 'vencido', 'cancelado'];
@@ -233,7 +233,7 @@ export async function salvarProdutoMestre(id) {
   const d = {
     nome: $('cmENome').value,
     codigoFarmasi: $('cmECodigo').value,
-    linha: $('cmELinha').value || 'Sem linha',
+    linha: combinarLinhas($('cmELinha').value),
     imagem: $('cmEImagem').value,
     precoOriginal: parseMoney($('cmEOriginal').value),
     precoAtual: parseMoney($('cmEAtual').value),
@@ -264,7 +264,7 @@ async function upsertCatalogoMestreLote(existentes, raw) {
   let p = codigo ? existentes.find(x => String(x.codigoFarmasi || '') === codigo) : null;
   if (!p && nome) p = existentes.find(x => norm(x.nome) === norm(nome));
   const d = {
-    nome, codigoFarmasi: codigo, linha: raw.linha || 'Sem linha', imagem: raw.imagem || '',
+    nome, codigoFarmasi: codigo, linha: combinarLinhas(p?.linha, raw.linha), imagem: raw.imagem || '',
     precoOriginal: parseMoney(raw.precoOriginal || 0),
     precoAtual: parseMoney(raw.precoAtual || raw.precoOriginal || 0),
     atualizadoEm: serverTimestamp()

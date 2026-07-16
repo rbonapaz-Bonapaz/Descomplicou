@@ -18,11 +18,58 @@ export function porGenero(genero, formas) {
 // maiúscula (bug de <option> sem value= já corrigido, mas dados existentes podem ter ficado assim).
 export const normStatusPag = v => String(v || 'pendente').toLowerCase();
 
+// De/para de grafias divergentes do banco (hífen, minúsculo, variações de escrita) para o nome
+// oficial da linha — evita que "Cuidados-pessoais", "cuidados pessoais" e "Cuidados Pessoais"
+// virem 3 categorias diferentes nos filtros do Catálogo/PDF. Chave = norm() da grafia encontrada.
+const LINHA_CANONICA = {
+  'cuidados pessoais': 'Cuidados Pessoais',
+  'cuidados pele': 'Cuidados com a pele',
+  'cuidados cabelo': 'Cuidados com o cabelo',
+  'crescimento cabelo': 'Crescimento Cabelo'
+};
+
+// Higieniza uma única linha: remove espaços extras e, se a grafia (ignorando acento/maiúscula/
+// hífen) bater com uma variação conhecida, troca pelo nome oficial. Grafias não mapeadas mantêm
+// o texto exatamente como a consultora cadastrou.
+export function canonLinha(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return s;
+  return LINHA_CANONICA[norm(s)] || s;
+}
+
 // Um produto pode pertencer a mais de uma linha — quando o mesmo produto aparece em JSONs de
 // categorias diferentes na importação, as linhas são mescladas numa string "Linha A, Linha B".
 // Trata isso como tags (uma por categoria) em vez de valor único, senão cada combinação vira uma
 // "linha" própria nos filtros (poluindo o catálogo/PDF/link de evento com entradas gigantes).
-export const linhasDe = p => String(p?.linha || 'Sem linha').split(',').map(s => s.trim()).filter(Boolean);
+// Cada parte passa por canonLinha (de/para de grafias) e o resultado é deduplicado por norm()
+// (ignora acento/maiúscula/hífen), preservando a grafia oficial/primeira ocorrência.
+export const linhasDe = p => {
+  const partes = String(p?.linha || 'Sem linha').split(',').map(s => canonLinha(s)).filter(Boolean);
+  const vistos = new Set();
+  return partes.filter(s => {
+    const chave = norm(s);
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+};
+
+// Junta uma ou mais strings de linhas (cada uma podendo já conter várias separadas por vírgula),
+// higienizando (trim + de/para) e deduplicando por norm() — usada tanto para mesclar linha atual +
+// nova numa importação quanto para sanitizar o valor digitado/selecionado antes de salvar.
+export function combinarLinhas(...strings) {
+  const partes = strings
+    .flatMap(s => String(s || '').split(','))
+    .map(s => canonLinha(s))
+    .filter(s => s && norm(s) !== 'sem linha');
+  const vistos = new Set();
+  const resultado = [];
+  for (const p of partes) {
+    const chave = norm(p);
+    if (!vistos.has(chave)) { vistos.add(chave); resultado.push(p); }
+  }
+  return resultado.length ? resultado.join(', ') : 'Sem linha';
+}
 
 // % de desconto para exibir junto do "De/Por" (arredondado, só quando realmente há desconto).
 export function descontoPercent(original, atual) {
@@ -33,15 +80,10 @@ export function descontoPercent(original, atual) {
 
 // Nomes de linha "crus" (às vezes vindos de URLs/JSON de importação, com hífen) ganham uma
 // versão mais natural só para exibição — o valor gravado/usado em filtros continua o original.
-const LINHA_LABELS = {
-  'cuidados cabelo': 'Cuidados com o Cabelo',
-  'cuidados pele': 'Cuidados com a Pele',
-  'cuidados pessoais': 'Cuidados Pessoais'
-};
 export function labelLinha(l) {
   const raw = String(l || 'Sem linha').trim();
-  const friendly = LINHA_LABELS[norm(raw)];
-  if (friendly) return friendly;
+  const canonico = canonLinha(raw);
+  if (canonico !== raw) return canonico;
   // Só converte hífen→espaço e capitaliza quando é um slug cru (ex: vindo de importação antiga,
   // "cuidados-cabelo"). Linhas cadastradas normalmente (sem hífen) mantêm a grafia exata digitada.
   if (raw.includes('-')) {
