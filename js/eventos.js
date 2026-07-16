@@ -251,7 +251,12 @@ function coletarDadosFormEvento() {
 // sem precisar reabrir/reeditar o evento inteiro. Só atualiza item já presente no evento (não
 // adiciona nem remove produto da lista — isso continua exigindo editar o evento manualmente).
 export async function sincronizarProdutoNosEventos(p) {
-  const eventosAfetados = (state.data.eventos || []).filter(ev => (ev.produtos || []).some(x => x.id === p.id));
+  // Eventos criados antes do id ser gravado no snapshot não têm x.id — nesses,
+  // casa por código Farmasi ou nome pra não deixar evento antigo com preço velho.
+  const mesmoProduto = x => x.id
+    ? x.id === p.id
+    : (x.codigoFarmasi && x.codigoFarmasi === (p.codigoFarmasi || '')) || norm(x.nome) === norm(p.nome);
+  const eventosAfetados = (state.data.eventos || []).filter(ev => (ev.produtos || []).some(mesmoProduto));
   if (!eventosAfetados.length) return;
   const linhasProd = linhasDe(p);
   const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
@@ -259,8 +264,8 @@ export async function sincronizarProdutoNosEventos(p) {
     const descontos = ev.descontosPorLinha || {};
     const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
-    const produtosAtualizados = ev.produtos.map(x => x.id === p.id ? {
-      ...x, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
+    const produtosAtualizados = ev.produtos.map(x => mesmoProduto(x) ? {
+      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
       precoOriginal, precoComDesconto, prontaEntrega: Number(p.estoqueAtual || 0)
     } : x);
