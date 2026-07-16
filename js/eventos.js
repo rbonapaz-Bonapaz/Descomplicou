@@ -243,6 +243,35 @@ function coletarDadosFormEvento() {
   };
 }
 
+// O link de evento congela nome/preço/desconto/estoque/imagem dos produtos no momento de
+// criar/editar (senão a página pública precisaria ler o catálogo privado da consultora, o que as
+// regras do Firestore não permitem). Isso significa que uma alteração de preço/estoque/imagem no
+// produto não aparece sozinha no link — chamada depois de salvar um produto (saveProduto,
+// upsertProduto), atualiza esse instantâneo em qualquer evento ativo que já tenha esse produto,
+// sem precisar reabrir/reeditar o evento inteiro. Só atualiza item já presente no evento (não
+// adiciona nem remove produto da lista — isso continua exigindo editar o evento manualmente).
+export async function sincronizarProdutoNosEventos(p) {
+  const eventosAfetados = (state.data.eventos || []).filter(ev => (ev.produtos || []).some(x => x.id === p.id));
+  if (!eventosAfetados.length) return;
+  const linhasProd = linhasDe(p);
+  const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+  for (const ev of eventosAfetados) {
+    const descontos = ev.descontosPorLinha || {};
+    const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
+    const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
+    const produtosAtualizados = ev.produtos.map(x => x.id === p.id ? {
+      ...x, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
+      imagem: p.imagem || '', beneficios: p.beneficios || '',
+      precoOriginal, precoComDesconto, prontaEntrega: Number(p.estoqueAtual || 0)
+    } : x);
+    try {
+      await setDoc(ref('eventos', ev.id), { produtos: produtosAtualizados }, { merge: true });
+      await setDoc(doc(db, 'eventosPublicos', ev.id), { produtos: produtosAtualizados }, { merge: true });
+      ev.produtos = produtosAtualizados;
+    } catch (e) { /* evento pode ter sido excluído nesse meio-tempo — não trava o salvamento do produto */ }
+  }
+}
+
 // Transforma o texto digitado em "Link personalizado" num slug seguro pra usar como id de
 // documento e pedaço de URL — só letras minúsculas, números e hífen.
 function sanitizarSlug(txt) {

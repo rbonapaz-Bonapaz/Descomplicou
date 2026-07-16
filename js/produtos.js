@@ -2,6 +2,7 @@ import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showMo
 import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
+import { sincronizarProdutoNosEventos } from './eventos.js';
 
 // Reutilizável em qualquer formulário com campos de nome/linha/benefícios (Produtos, Catálogo mestre).
 export async function gerarBeneficiosProduto(btn, idNome, idLinha, idBeneficios) {
@@ -382,6 +383,7 @@ export async function saveProduto(id = '') {
   };
   if (id) {
     await setDoc(ref('produtos', id), d, { merge: true });
+    await sincronizarProdutoNosEventos({ id, ...d });
   } else {
     await addDoc(col('produtos'), { ...d, ativo: true, criadoEm: serverTimestamp() });
   }
@@ -615,6 +617,7 @@ export async function upsertProduto(raw) {
   if (raw.monitorarEstoqueBaixo != null) d.monitorarEstoqueBaixo = !!raw.monitorarEstoqueBaixo;
   if (p) {
     await setDoc(ref('produtos', p.id), d, { merge: true });
+    await sincronizarProdutoNosEventos({ ...p, ...d, id: p.id });
     return p.id;
   }
   const r = await addDoc(col('produtos'), {
