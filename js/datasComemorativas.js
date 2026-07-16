@@ -60,11 +60,12 @@ function datasComerciaisDoAno(ano) {
   ];
 }
 
-// Datas cadastradas manualmente pela consultora (Minha Conta) — mesmo mês/dia todo ano, igual
-// às comerciais fixas. Guardadas em state.profile.datasComemorativasCustom (array {nome,mes,dia}).
+// Datas cadastradas manualmente pela consultora (Minha Conta). Sem "ano" definido, repete todo
+// ano (igual às comerciais fixas); com "ano" definido, só entra no ano informado (data única,
+// ex: uma promoção específica que não deve voltar a aparecer nos anos seguintes).
 function datasCustomDoAno(ano) {
   const custom = state.profile?.datasComemorativasCustom || [];
-  return custom.map(d => ({ mes: d.mes, dia: d.dia, nome: d.nome, ano }));
+  return custom.filter(d => !d.ano || d.ano === ano).map(d => ({ mes: d.mes, dia: d.dia, nome: d.nome, ano }));
 }
 
 // null = ainda não carregado nesta sessão; array = resultado (pode ser vazio).

@@ -67,11 +67,17 @@ export function renderPerfil() {
         <input id="novaDataNome" placeholder="Nome (ex: Aniversário da loja)">
         <select id="novaDataDia">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}">${d}</option>`).join('')}</select>
         <select id="novaDataMes">${MESES_NOME.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}</select>
-        <button class="btn dark" onclick="App.adicionarDataComemorativa()">+ Adicionar data</button>
+        <select id="novaDataAno" title="Deixe em 'Todo ano' pra repetir anualmente (ex: aniversário), ou escolha um ano específico pra uma data que só acontece uma vez">
+          <option value="">Todo ano</option>
+          ${Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i).map(a => `<option value="${a}">${a}</option>`).join('')}
+        </select>
+        <button class="btn dark" id="btnSalvarDataComemorativa" onclick="App.adicionarDataComemorativa()">+ Adicionar data</button>
+        <button class="btn ghost hidden" id="btnCancelarEdicaoData" onclick="App.cancelarEdicaoDataComemorativa()">Cancelar edição</button>
       </div>
       ${(p.datasComemorativasCustom || []).length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">${[...(p.datasComemorativasCustom || [])].sort((a, b) => a.mes - b.mes || a.dia - b.dia).map(d => `
         <span class="chip" style="display:inline-flex;align-items:center;gap:8px">
-          ${esc(d.nome)} — ${String(d.dia).padStart(2, '0')}/${String(d.mes).padStart(2, '0')}
+          ${esc(d.nome)} — ${String(d.dia).padStart(2, '0')}/${String(d.mes).padStart(2, '0')}${d.ano ? `/${d.ano}` : ''}
+          <button style="border:0;background:none;cursor:pointer;font-weight:900" onclick="App.editarDataComemorativa('${esc(d.nome)}')" title="Editar">✏️</button>
           <button style="border:0;background:none;cursor:pointer;color:var(--error);font-weight:900" onclick="App.removerDataComemorativa('${esc(d.nome)}')" title="Remover">✗</button>
         </span>`).join('')}</div>` : '<p class="muted" style="margin-top:12px">Nenhuma data personalizada cadastrada ainda.</p>'}
     </div>
@@ -468,25 +474,55 @@ export async function toggleBaseColetiva(v) {
   window.App.refresh(v ? 'Base coletiva ativada' : 'Base coletiva desativada');
 }
 
+// Nome original da data em edição (null = modo "adicionar nova"). Guardado à parte porque o nome
+// pode ser alterado no próprio formulário — precisa saber qual entrada substituir na gravação.
+let editandoDataComemorativaNome = null;
+
+export function editarDataComemorativa(nome) {
+  const d = (state.profile?.datasComemorativasCustom || []).find(x => x.nome === nome);
+  if (!d) return;
+  editandoDataComemorativaNome = nome;
+  if ($('novaDataNome')) $('novaDataNome').value = d.nome;
+  if ($('novaDataDia')) $('novaDataDia').value = String(d.dia);
+  if ($('novaDataMes')) $('novaDataMes').value = String(d.mes);
+  if ($('novaDataAno')) $('novaDataAno').value = d.ano ? String(d.ano) : '';
+  if ($('btnSalvarDataComemorativa')) $('btnSalvarDataComemorativa').textContent = '✓ Salvar edição';
+  $('btnCancelarEdicaoData')?.classList.remove('hidden');
+  $('novaDataNome')?.focus();
+}
+
+export function cancelarEdicaoDataComemorativa() {
+  editandoDataComemorativaNome = null;
+  if ($('novaDataNome')) $('novaDataNome').value = '';
+  if ($('novaDataAno')) $('novaDataAno').value = '';
+  if ($('btnSalvarDataComemorativa')) $('btnSalvarDataComemorativa').textContent = '+ Adicionar data';
+  $('btnCancelarEdicaoData')?.classList.add('hidden');
+}
+
 export async function adicionarDataComemorativa() {
   const nome = ($('novaDataNome')?.value || '').trim();
   if (!nome) return toast('Digite o nome da data');
   const dia = Number($('novaDataDia')?.value || 0);
   const mes = Number($('novaDataMes')?.value || 0);
+  const ano = Number($('novaDataAno')?.value || 0) || null; // null = repete todo ano
   const atuais = state.profile?.datasComemorativasCustom || [];
-  if (atuais.some(d => d.nome.toLowerCase() === nome.toLowerCase())) return toast('Já existe uma data com esse nome');
-  const novas = [...atuais, { nome, dia, mes }];
+  const editando = editandoDataComemorativaNome;
+  // Duplicidade de nome só é problema contra as OUTRAS datas (a própria, em edição, pode manter o nome)
+  if (atuais.some(d => d.nome.toLowerCase() === nome.toLowerCase() && d.nome !== editando)) return toast('Já existe uma data com esse nome');
+  const entrada = { nome, dia, mes, ...(ano ? { ano } : {}) };
+  const novas = editando ? atuais.map(d => d.nome === editando ? entrada : d) : [...atuais, entrada];
   await setDoc(doc(db, 'users', state.user.uid), { datasComemorativasCustom: novas }, { merge: true });
   state.profile = { ...state.profile, datasComemorativasCustom: novas };
-  if ($('novaDataNome')) $('novaDataNome').value = '';
+  cancelarEdicaoDataComemorativa();
   await carregarDatasComemorativas();
-  window.App.refresh(`Data "${nome}" adicionada`);
+  window.App.refresh(`Data "${nome}" ${editando ? 'atualizada' : 'adicionada'}`);
 }
 
 export async function removerDataComemorativa(nome) {
   const novas = (state.profile?.datasComemorativasCustom || []).filter(d => d.nome !== nome);
   await setDoc(doc(db, 'users', state.user.uid), { datasComemorativasCustom: novas }, { merge: true });
   state.profile = { ...state.profile, datasComemorativasCustom: novas };
+  if (editandoDataComemorativaNome === nome) cancelarEdicaoDataComemorativa();
   await carregarDatasComemorativas();
   window.App.refresh(`Data "${nome}" removida`);
 }
