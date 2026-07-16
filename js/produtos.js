@@ -428,6 +428,12 @@ function difereDaBaseColetiva(mestre) {
   if (paraCentavos(ex.precoOriginal) !== paraCentavos(mestre.precoOriginal)) return true;
   if (paraCentavos(ex.precoAtual) !== paraCentavos(mestre.precoAtual || mestre.precoOriginal)) return true;
   if (mestre.imagem && mestre.imagem !== ex.imagem) return true;
+  // Descrição da consultora mais completa que a do mestre e ainda não sugerida — precisa entrar
+  // na conferência pra que salvar dispare sugerirBeneficioCatalogoMestre() dentro de upsertProduto
+  // (senão um produto "igual" em tudo, menos na descrição, nunca chegava a gerar sugestão).
+  const beneficiosEx = String(ex.beneficios || '').trim();
+  const beneficiosMestre = String(mestre.beneficios || '').trim();
+  if (beneficiosEx.length > beneficiosMestre.length && ex.beneficioSugeridoHash !== beneficiosEx) return true;
   return false;
 }
 
