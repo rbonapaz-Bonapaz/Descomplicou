@@ -6,7 +6,7 @@ import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
 import { abrirPedidoPorTexto, alternarGravacaoPedidoVoz, interpretarPedidoVoz, confirmarPedidoVoz } from './pedidoTexto.js';
-import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay } from './operadoras.js';
+import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA } from './operadoras.js';
 import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
   gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem, removerInteresseCliente } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
@@ -313,7 +313,7 @@ window.App = {
   // Pedido por voz/texto
   abrirPedidoPorTexto, alternarGravacaoPedidoVoz, interpretarPedidoVoz, confirmarPedidoVoz,
   // Operadoras de cartão
-  abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay,
+  abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA,
   // Carrinho
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,

@@ -86,6 +86,51 @@ Se a quantidade não for dita, use 1. Não invente produtos que não foram citad
   return { cliente: String(obj.cliente || '').trim(), itens };
 }
 
+// Interpretação de tabela de taxas de operadora de cartão (Minha Conta → Pagamento → Operadoras)
+// — a consultora cola o texto copiado do app da maquininha (débito, crédito à vista, 2x a 12x,
+// por bandeira) e a IA devolve só os números que reconheceu, sem inventar o que não veio no texto.
+// Preenche os campos do formulário; quem confirma e grava é a consultora ao clicar "Salvar".
+export async function interpretarTaxasOperadora(texto) {
+  const apiKey = (state.profile?.geminiApiKey || '').trim();
+  if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
+  if (!texto?.trim()) throw new Error('Cole ou digite as taxas antes de interpretar.');
+
+  const prompt = `Extraia taxas de uma tabela de operadora de cartão (maquininha/gateway), com valores separados por dois grupos de bandeira: "visaMaster" (Visa/Mastercard) e "eloAmex" (Elo/Amex ou Elo sozinho). Texto:
+"""
+${texto.replace(/"""/g, "'")}
+"""
+
+Responda SOMENTE em JSON válido, neste formato exato (use null nos campos que não aparecerem no texto, não invente valor):
+{"prazoRecebimentoDias":numero_ou_null,"taxaDebito":{"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},"taxaCredito":[{"parcelas":1,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":2,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":3,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":4,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":5,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":6,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":7,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":8,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":9,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":10,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":11,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":12,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null}]}
+
+"Crédito à vista" conta como parcelas=1. Números são percentuais (ex: "1,37%" vira 1.37). Se o texto só tiver uma coluna de bandeira (sem separar grupos), use o mesmo valor pros dois grupos.`;
+
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } })
+  });
+
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw erroGemini(r.status, body);
+  }
+  const data = await r.json();
+  const texto2 = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!texto2) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
+  let obj;
+  try { obj = JSON.parse(texto2); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente colar o texto de outra forma.'); }
+  const numOrNull = v => (v === null || v === undefined || v === '') ? null : Number(v);
+  return {
+    prazoRecebimentoDias: numOrNull(obj.prazoRecebimentoDias),
+    taxaDebito: { visaMaster: numOrNull(obj.taxaDebito?.visaMaster), eloAmex: numOrNull(obj.taxaDebito?.eloAmex) },
+    taxaCredito: Array.from({ length: 12 }, (_, i) => {
+      const linha = Array.isArray(obj.taxaCredito) ? obj.taxaCredito.find(l => Number(l.parcelas) === i + 1) : null;
+      return { parcelas: i + 1, visaMaster: numOrNull(linha?.visaMaster), eloAmex: numOrNull(linha?.eloAmex) };
+    })
+  };
+}
+
 // Copiloto de vendas (Cliente 360 → "Gerar Sugestão de Abordagem") — mesma chave BYOK acima.
 // Recebe o contexto já compilado (histórico, tags, gatilhos) e devolve um rascunho de mensagem
 // de WhatsApp pronto pra revisar/editar antes de enviar.
