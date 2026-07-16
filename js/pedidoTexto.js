@@ -105,13 +105,13 @@ export async function interpretarPedidoVoz() {
     renderPreviewPedidoVoz(texto, resultado.cliente, clienteMatch, itensResolvidos);
   } catch (e) {
     toast(e.message);
-    cooldown = e.tipoGemini === 'limite_por_minuto';
+    if (e.tipoGemini === 'limite_por_minuto') cooldown = e.segundosEspera || 30;
   } finally {
     interpretando = false;
     // O botão pode não existir mais se a interpretação deu certo e o modal já trocou de tela.
     const btnAtual = $('pvInterpretarBtn');
     if (btnAtual) {
-      if (cooldown) iniciarCooldownBotao(btnAtual, 60, '✨ Interpretar');
+      if (cooldown) iniciarCooldownBotao(btnAtual, cooldown, '✨ Interpretar');
       else { btnAtual.disabled = false; btnAtual.textContent = '✨ Interpretar'; }
     }
   }

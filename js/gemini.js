@@ -6,11 +6,26 @@ import { state } from './state.js';
 
 const MODELO = 'gemini-2.0-flash';
 
-// Erro 429 do Gemini cobre dois casos bem diferentes que a mensagem genérica "sem cota" confundia:
-// limite de requisições por MINUTO (free tier: 15/min — passa sozinho, só esperar) e cota
-// diária/do plano realmente esgotada (aí sim precisa esperar renovar ou trocar de chave/projeto).
-// O corpo do erro traz um "quotaId" que diferencia os dois (ex: "...RequestsPerMinute..." vs
-// "...RequestsPerDay..." ou sem menção a minuto). Loga o erro completo no console pra depuração.
+// Quantas vezes reenviar automaticamente quando o Gemini devolve 429/503 antes de desistir e
+// mostrar erro. O free tier costuma responder 429 já na PRIMEIRA chamada de uma "rajada" (burst)
+// e aceitar a segunda poucos segundos depois — é por isso que a mesma chave "funciona em outros
+// apps": eles reenviam sozinhos por baixo dos panos. Nosso código antigo não reenviava, então
+// jogava o 429 transitório direto na tela como se fosse cota esgotada.
+const MAX_TENTATIVAS = 3;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Puxa do corpo do erro 429 o quotaId (QUAL cota bateu — por minuto, por dia, tokens etc.) e o
+// retryDelay que o próprio Google sugere. Assim a mensagem e o cooldown usam o número real em vez
+// de um "60s" chutado, e o console mostra exatamente qual limite está sendo atingido.
+function extrairInfoQuota(body) {
+  const detalhes = body?.error?.details || [];
+  const quota = detalhes.find(d => String(d['@type'] || '').includes('QuotaFailure'));
+  const retry = detalhes.find(d => String(d['@type'] || '').includes('RetryInfo'));
+  const quotaId = quota?.violations?.[0]?.quotaId || '';
+  const retrySeg = retry?.retryDelay ? Math.ceil(parseFloat(String(retry.retryDelay).replace('s', ''))) || 0 : 0;
+  return { quotaId, retrySeg };
+}
+
 function erroGemini(status, body) {
   console.error('[Gemini] Erro na chamada da API:', status, body);
   const msg = body?.error?.message || `Erro ${status}`;
@@ -18,41 +33,60 @@ function erroGemini(status, body) {
   if (status === 400 && /API key/i.test(msg)) return new Error('Chave do Gemini inválida — confira se copiou certinho em aistudio.google.com/apikey.');
   if (status === 403) return new Error('A chave do Gemini não tem permissão para essa API — confira se a "Generative Language API" está ativada no projeto dessa chave em aistudio.google.com/apikey.');
   if (status === 429) {
-    if (/PerMinute/i.test(raw)) {
-      // Marcador que as telas usam pra travar o botão com contagem regressiva em vez de deixar
-      // clicar de novo na hora — cada clique repetido durante o minuto de espera é mais uma
-      // requisição que soma na mesma cota e só atrasa ainda mais (não é a chave que está errada).
-      const e = new Error('Limite de requisições por minuto do Gemini atingido (plano gratuito permite poucas por minuto) — a chave está certa, é só esperar cerca de 1 minuto.');
-      e.tipoGemini = 'limite_por_minuto';
-      return e;
+    const { quotaId, retrySeg } = extrairInfoQuota(body);
+    console.error('[Gemini] Cota atingida:', quotaId || '(sem quotaId)', '· retryDelay:', retrySeg + 's');
+    if (/PerDay/i.test(quotaId) || /PerDay/i.test(raw)) {
+      return new Error(`Cota DIÁRIA do modelo ${MODELO} esgotada nesta chave (limite por dia do plano gratuito). Outros modelos/projetos da mesma chave continuam funcionando — a cota é por modelo. Aguarde a renovação (24h) ou use outra chave. [${quotaId || 'quota'}]`);
     }
-    return new Error('Sua chave do Gemini está sem cota disponível (limite diário ou do plano esgotado). Aguarde a renovação (geralmente 24h) ou crie uma chave em um projeto novo em aistudio.google.com/apikey.');
+    // Não é a chave errada: é o limite por minuto (ou tokens/min) do free tier — passa sozinho.
+    // O cooldown das telas usa `segundosEspera` (número real do Google) em vez de fixar 60s.
+    const espera = retrySeg > 0 ? retrySeg : 30;
+    const e = new Error(`Limite de requisições por minuto do Gemini atingido — a chave está certa, é só aguardar ${espera}s. (Reenviamos automaticamente ${MAX_TENTATIVAS}x antes de mostrar isso.) [${quotaId || 'RequestsPerMinute'}]`);
+    e.tipoGemini = 'limite_por_minuto';
+    e.segundosEspera = espera;
+    return e;
   }
   if (status >= 500) return new Error('O Gemini está indisponível no momento (erro no servidor do Google) — tente novamente em instantes.');
   return new Error(msg);
 }
 
-export async function gerarBeneficios(nomeProduto, linha = '') {
+// Chamada única e centralizada ao Gemini, com retry automático em 429/503. Substitui os 4 blocos
+// de fetch que estavam duplicados (um por função) — agora todas ganham o retry de graça. Reenvia
+// só quando o retryDelay sugerido é curto (rajada transitória); se o Google pede uma espera longa
+// (cota real de minuto/dia), não fica travando a tela — devolve o erro pra UI mostrar o cooldown.
+async function chamarGemini(prompt, { json = false } = {}) {
   const apiKey = (state.profile?.geminiApiKey || '').trim();
   if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
-  if (!nomeProduto?.trim()) throw new Error('Preencha o nome do produto antes de gerar.');
 
-  const prompt = `Escreva uma descrição curta de benefícios (no máximo 2 frases, linguagem de vendas, sem emojis, sem markdown) para o produto de cosmético/beleza "${nomeProduto}"${linha ? ` da linha "${linha}"` : ''}, destinada a um catálogo de vendas de consultora de beleza. Responda só com o texto da descrição, sem aspas.`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const corpo = { contents: [{ parts: [{ text: prompt }] }] };
+  if (json) corpo.generationConfig = { responseMimeType: 'application/json' };
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-  });
-
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw erroGemini(r.status, body);
+  let ultimoErroBody = null, ultimoStatus = 0;
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    if (r.ok) {
+      const data = await r.json();
+      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!texto) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
+      return texto;
+    }
+    ultimoErroBody = await r.json().catch(() => ({}));
+    ultimoStatus = r.status;
+    // Só vale reenviar em 429/503; e só se ainda houver tentativa e a espera sugerida for curta
+    // (≤ ~4s = rajada transitória). Espera longa é cota real — sai do loop e mostra o cooldown.
+    const reenviavel = r.status === 429 || r.status === 503;
+    const { retrySeg } = r.status === 429 ? extrairInfoQuota(ultimoErroBody) : { retrySeg: 2 };
+    if (!reenviavel || tentativa === MAX_TENTATIVAS || retrySeg > 4) break;
+    await sleep((retrySeg > 0 ? retrySeg : tentativa) * 1000);
   }
-  const data = await r.json();
-  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!texto) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
-  return texto;
+  throw erroGemini(ultimoStatus, ultimoErroBody);
+}
+
+export async function gerarBeneficios(nomeProduto, linha = '') {
+  if (!nomeProduto?.trim()) throw new Error('Preencha o nome do produto antes de gerar.');
+  const prompt = `Escreva uma descrição curta de benefícios (no máximo 2 frases, linguagem de vendas, sem emojis, sem markdown) para o produto de cosmético/beleza "${nomeProduto}"${linha ? ` da linha "${linha}"` : ''}, destinada a um catálogo de vendas de consultora de beleza. Responda só com o texto da descrição, sem aspas.`;
+  return chamarGemini(prompt);
 }
 
 // Interpretação de pedido falado/digitado em texto livre (Ações Rápidas → "Adicionar por voz") —
@@ -61,8 +95,6 @@ export async function gerarBeneficios(nomeProduto, linha = '') {
 // normalização de texto — evita mandar o catálogo inteiro no prompt e a IA "inventar" um produto
 // que não existe no cadastro dela.
 export async function interpretarPedidoDeVenda(texto) {
-  const apiKey = (state.profile?.geminiApiKey || '').trim();
-  if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
   if (!texto?.trim()) throw new Error('Digite ou fale o pedido antes de interpretar.');
 
   const prompt = `Extraia de um pedido de venda falado por uma consultora de cosméticos o nome da cliente e os produtos com quantidade. Frase: "${texto.replace(/"/g, "'")}"
@@ -72,19 +104,7 @@ Responda SOMENTE em JSON válido, neste formato exato:
 
 Se a quantidade não for dita, use 1. Não invente produtos que não foram citados na frase.`;
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } })
-  });
-
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw erroGemini(r.status, body);
-  }
-  const data = await r.json();
-  const texto2 = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!texto2) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
+  const texto2 = await chamarGemini(prompt, { json: true });
   let obj;
   try { obj = JSON.parse(texto2); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente reformular o pedido.'); }
   const itens = Array.isArray(obj.itens) ? obj.itens
@@ -98,8 +118,6 @@ Se a quantidade não for dita, use 1. Não invente produtos que não foram citad
 // por bandeira) e a IA devolve só os números que reconheceu, sem inventar o que não veio no texto.
 // Preenche os campos do formulário; quem confirma e grava é a consultora ao clicar "Salvar".
 export async function interpretarTaxasOperadora(texto) {
-  const apiKey = (state.profile?.geminiApiKey || '').trim();
-  if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
   if (!texto?.trim()) throw new Error('Cole ou digite as taxas antes de interpretar.');
 
   const prompt = `Extraia taxas de uma tabela de operadora de cartão (maquininha/gateway), com valores separados por dois grupos de bandeira: "visaMaster" (Visa/Mastercard) e "eloAmex" (Elo/Amex ou Elo sozinho). Texto:
@@ -112,19 +130,7 @@ Responda SOMENTE em JSON válido, neste formato exato (use null nos campos que n
 
 "Crédito à vista" conta como parcelas=1. Números são percentuais (ex: "1,37%" vira 1.37). Se o texto só tiver uma coluna de bandeira (sem separar grupos), use o mesmo valor pros dois grupos.`;
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } })
-  });
-
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw erroGemini(r.status, body);
-  }
-  const data = await r.json();
-  const texto2 = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!texto2) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
+  const texto2 = await chamarGemini(prompt, { json: true });
   let obj;
   try { obj = JSON.parse(texto2); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente colar o texto de outra forma.'); }
   const numOrNull = v => (v === null || v === undefined || v === '') ? null : Number(v);
@@ -142,27 +148,10 @@ Responda SOMENTE em JSON válido, neste formato exato (use null nos campos que n
 // Recebe o contexto já compilado (histórico, tags, gatilhos) e devolve um rascunho de mensagem
 // de WhatsApp pronto pra revisar/editar antes de enviar.
 export async function gerarSugestaoAbordagem(contexto) {
-  const apiKey = (state.profile?.geminiApiKey || '').trim();
-  if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
-
   const nomeNegocio = state.profile?.nomeNegocio || 'sua loja';
   const prompt = `Você é o assistente de vendas de ${nomeNegocio}, uma consultora de vendas Farmasi. Com base no histórico de compras do cliente e nas informações enviadas abaixo, escreva uma mensagem de WhatsApp curta (no máximo 4 frases), amigável e persuasiva. Use um tom de voz profissional, porém próximo. Nunca invente produtos que não foram mencionados no contexto. Inclua uma chamada para ação (CTA) no final. Responda só com o texto da mensagem, sem aspas, sem markdown.
 
 Contexto do cliente:
 ${contexto}`;
-
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-  });
-
-  if (!r.ok) {
-    const body = await r.json().catch(() => ({}));
-    throw erroGemini(r.status, body);
-  }
-  const data = await r.json();
-  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!texto) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
-  return texto;
+  return chamarGemini(prompt);
 }

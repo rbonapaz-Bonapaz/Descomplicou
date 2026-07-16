@@ -142,12 +142,12 @@ export async function atualizarOperadoraComIA() {
     toast(preenchidos ? 'Campos preenchidos pela IA — confira e clique "Salvar" para confirmar' : 'Não encontrei nenhuma taxa reconhecível nesse texto — tente colar de outra forma');
   } catch (e) {
     toast(e.message);
-    cooldown = e.tipoGemini === 'limite_por_minuto';
+    if (e.tipoGemini === 'limite_por_minuto') cooldown = e.segundosEspera || 30;
   } finally {
     atualizandoComIA = false;
     const btnAtual = $('opIaBtn');
     if (btnAtual) {
-      if (cooldown) iniciarCooldownBotao(btnAtual, 60, '✨ Atualizar campos com IA');
+      if (cooldown) iniciarCooldownBotao(btnAtual, cooldown, '✨ Atualizar campos com IA');
       else { btnAtual.disabled = false; btnAtual.textContent = '✨ Atualizar campos com IA'; }
     }
   }
