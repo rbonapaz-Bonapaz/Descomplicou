@@ -1,3 +1,5 @@
+import { state } from './state.js';
+
 // Datas comerciais fixas (mesmo mês/dia todo ano) — as que mais geram venda de presente
 // pra uma consultora de cosméticos, não só feriado cívico.
 const DATAS_FIXAS = [
@@ -5,6 +7,14 @@ const DATAS_FIXAS = [
   { mes: 6, dia: 12, nome: 'Dia dos Namorados' },
   { mes: 10, dia: 12, nome: 'Dia das Crianças' },
   { mes: 12, dia: 25, nome: 'Natal' }
+];
+
+// Nomes das datas comerciais que entram automaticamente (fixas + móveis calculadas) — exibido
+// em Minha Conta pra deixar claro o que já vem pronto, sem a consultora precisar cadastrar.
+// Feriados nacionais (via BrasilAPI) entram à parte, variam de ano a ano e não têm lista fixa aqui.
+export const NOMES_DATAS_AUTOMATICAS = [
+  ...DATAS_FIXAS.map(d => d.nome),
+  'Páscoa', 'Dia das Mães', 'Dia dos Pais', 'Black Friday'
 ];
 
 // Páscoa (feriado móvel) pelo algoritmo de Gauss/Meeus — usada como referência de época de
@@ -50,6 +60,13 @@ function datasComerciaisDoAno(ano) {
   ];
 }
 
+// Datas cadastradas manualmente pela consultora (Minha Conta) — mesmo mês/dia todo ano, igual
+// às comerciais fixas. Guardadas em state.profile.datasComemorativasCustom (array {nome,mes,dia}).
+function datasCustomDoAno(ano) {
+  const custom = state.profile?.datasComemorativasCustom || [];
+  return custom.map(d => ({ mes: d.mes, dia: d.dia, nome: d.nome, ano }));
+}
+
 // null = ainda não carregado nesta sessão; array = resultado (pode ser vazio).
 let cache = null;
 
@@ -75,7 +92,10 @@ export async function carregarDatasComemorativas() {
     });
   } catch (e) { /* sem internet ou API fora do ar — segue só com as datas comerciais */ }
 
-  const comerciais = [...datasComerciaisDoAno(anoAtual), ...datasComerciaisDoAno(anoAtual + 1)];
+  const comerciais = [
+    ...datasComerciaisDoAno(anoAtual), ...datasComerciaisDoAno(anoAtual + 1),
+    ...datasCustomDoAno(anoAtual), ...datasCustomDoAno(anoAtual + 1)
+  ];
   const todas = [...feriados, ...comerciais];
 
   const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
