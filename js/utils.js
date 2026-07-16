@@ -24,7 +24,9 @@ export const normStatusPag = v => String(v || 'pendente').toLowerCase();
 const LINHA_CANONICA = {
   'cuidados pessoais': 'Cuidados Pessoais',
   'cuidados pele': 'Cuidados com a pele',
+  'cuidados com a pele': 'Cuidados com a pele',
   'cuidados cabelo': 'Cuidados com o cabelo',
+  'cuidados com o cabelo': 'Cuidados com o cabelo',
   'crescimento cabelo': 'Crescimento Cabelo'
 };
 
