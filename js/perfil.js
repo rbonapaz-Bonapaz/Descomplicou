@@ -1,12 +1,12 @@
 import { state, SECTIONS, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
   auth, GoogleAuthProvider, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from './state.js';
-import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, toggleHtml, senhaInputHtml } from './utils.js';
+import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, toggleHtml, toggleBareHtml, senhaInputHtml } from './utils.js';
 import { biometriaDisponivel, temBiometriaAtiva } from './biometria.js';
 import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
 import { importarDoGoogleAgenda } from './agenda.js';
 import { gerarBeneficios } from './gemini.js';
-import { CARDS_INTELIGENCIA } from './relatorios.js';
+import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva } from './relatorios.js';
 
 export function renderPerfil() {
   const p = state.profile || {};
@@ -127,6 +127,12 @@ export function renderPerfil() {
           <small class="muted">${esc(c.desc)}</small>
         </div>`).join('')}
       </div>
+    </div>
+
+    <div class="panel">
+      <h3>Seções do relatório</h3>
+      <p class="muted">Escolha quais seções aparecem e em que ordem — arraste pelo ☰ para reorganizar. Todas vêm ativadas por padrão.</p>
+      <div id="relSecoesLista" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${secoesListaHtml()}</div>
     </div>`;
   }
 
@@ -374,6 +380,50 @@ export async function salvarConfigRelatorios(key, ativo) {
   await setDoc(doc(db, 'users', state.user.uid), { relCardsAtivos: atual, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, relCardsAtivos: atual };
   toast(ativo ? 'Card ativado' : 'Card desativado');
+}
+
+// Lista arrastável das seções do relatório (drag-and-drop nativo do navegador, sem biblioteca).
+function secoesListaHtml() {
+  return ordemSecoes().map(key => {
+    const def = SECOES_RELATORIO.find(s => s.key === key);
+    if (!def) return '';
+    return `<div class="list-item" draggable="true" data-key="${key}"
+      ondragstart="App.relSecaoDragStart(event)" ondragover="event.preventDefault()" ondrop="App.relSecaoDrop(event)"
+      style="cursor:grab">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:var(--muted)" title="Arraste para reordenar">☰</span>
+        <b>${esc(def.label)}</b>
+      </div>
+      ${toggleBareHtml('relSecao_' + key, secaoAtiva(key), `App.salvarSecaoRelatorioAtiva('${key}',this.checked)`)}
+    </div>`;
+  }).join('');
+}
+
+let relDragKey = null;
+export function relSecaoDragStart(ev) {
+  relDragKey = ev.currentTarget.dataset.key;
+  ev.dataTransfer.effectAllowed = 'move';
+}
+
+export async function relSecaoDrop(ev) {
+  ev.preventDefault();
+  const targetKey = ev.currentTarget.dataset.key;
+  if (!relDragKey || relDragKey === targetKey) return;
+  const ordem = ordemSecoes().filter(k => k !== relDragKey);
+  const idx = ordem.indexOf(targetKey);
+  ordem.splice(idx, 0, relDragKey);
+  relDragKey = null;
+  await setDoc(doc(db, 'users', state.user.uid), { relSecoesOrdem: ordem, atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, relSecoesOrdem: ordem };
+  const box = $('relSecoesLista');
+  if (box) box.innerHTML = secoesListaHtml();
+}
+
+export async function salvarSecaoRelatorioAtiva(key, ativo) {
+  const atual = { ...(state.profile?.relSecoesAtivas || {}), [key]: ativo };
+  await setDoc(doc(db, 'users', state.user.uid), { relSecoesAtivas: atual, atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, relSecoesAtivas: atual };
+  toast(ativo ? 'Seção ativada' : 'Seção desativada');
 }
 
 export async function toggleBaseColetiva(v) {

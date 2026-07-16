@@ -21,6 +21,35 @@ function cardAtivo(key) {
   return !cfg || cfg[key] !== false;
 }
 
+// Seções "grandes" da tela de Relatórios que a consultora pode esconder/reordenar (Minha Conta →
+// Relatórios) — mesma ideia dos Cards de Inteligência, mas pra blocos inteiros, não só indicadores.
+// Período, Lucro líquido, Tendência, os KPIs principais e o relatório completo por produto ficam de
+// fora (são a base fixa da tela); só o "miolo" configurável entra aqui.
+export const SECOES_RELATORIO = [
+  { key: 'origem', label: 'Novas clientes por origem' },
+  { key: 'produtos', label: 'Produtos' },
+  { key: 'estoque', label: 'Estoque' },
+  { key: 'clientes', label: 'Clientes' },
+  { key: 'agenda', label: 'Agenda' },
+  { key: 'pagamentos', label: 'Pagamentos' },
+  { key: 'trocas', label: 'Trocas' },
+  { key: 'saidas', label: 'Saídas de estoque (sem venda)' },
+  { key: 'recomendacoes', label: 'Recomendações automáticas' }
+];
+
+export function secaoAtiva(key) {
+  const cfg = state.profile?.relSecoesAtivas;
+  return !cfg || cfg[key] !== false;
+}
+
+// Ordem salva + qualquer chave nova que ainda não esteja lá (ex: seção adicionada numa atualização
+// futura) entra no fim, na ordem padrão — evita sumir uma seção só porque a config salva é antiga.
+export function ordemSecoes() {
+  const salva = (state.profile?.relSecoesOrdem || []).filter(k => SECOES_RELATORIO.some(s => s.key === k));
+  const faltando = SECOES_RELATORIO.map(s => s.key).filter(k => !salva.includes(k));
+  return [...salva, ...faltando];
+}
+
 function taxaRecompra() {
   const porCliente = {};
   state.data.vendas.forEach(v => {
@@ -264,97 +293,96 @@ export function renderRelatorios() {
       </div>`}
     </div>
 
-    <div class="panel">
-      <div class="panel-head"><h3>Novas clientes por origem</h3></div>
-      <p class="muted">De onde vieram as clientes cadastradas no período — ajuda a saber onde vale mais investir tempo captando gente nova.</p>
-      ${totalNovas ? `<div class="list" style="margin-top:8px">${origemList.map(([o, n]) => `
-        <div class="list-item clickable" onclick="App.goto('clientes')">
-          <div><b>${esc(o)}</b>${o === 'Evento' ? '<small>Cadastradas pela lista de desejos de eventos</small>' : ''}</div>
-          <span class="tag ${o === 'Evento' ? 'green' : 'blue'}">${n} (${pctOrigem(n)}%)</span>
-        </div>`).join('')}</div>` : '<p class="muted" style="margin-top:8px">Nenhuma cliente nova nesse período.</p>'}
-    </div>
-
-    <div class="report-grid">
-      <div class="panel">
-        <h3>Produtos</h3>
-        <div class="list">
-          ${rankList('Mais vendido', r.top5Vend, x => x.q + ' un.', 'Produto com mais unidades vendidas no período (não considera valor em R$)')}
-          ${rankList('Mais lucrativo', r.top5LucProd, x => money(x.luc), 'Produto com maior lucro no período (valor vendido menos o custo)')}
-          ${rankList('Maior faturamento', r.top5FatProd, x => money(x.rec), 'Produto com maior valor total vendido no período (receita bruta, antes de descontar o custo)')}
-          ${rankList('Maior valor em estoque', prodPorEstoque, x => money(x.valor), 'Produto com maior valor parado em estoque hoje (quantidade × custo)')}
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Estoque baixo</b><small>Produtos para repor</small></div><span class="tag orange">${s.baixo.length}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','parados')"><div><b>Parados (90+ dias)</b><small>Sem venda</small></div><span class="tag pink">${s.parados.length}</span></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Estoque</h3>
-        <div class="list">
-          <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Valor investido</b><small>${s.un} unidades em estoque</small></div><span class="tag blue">${money(s.invest)}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Lucro potencial</b><small>Se vender pelo preço atual</small></div><span class="tag green">${money(s.pot)} (${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Saúde do estoque</b><small>Baixo, parado e sem custo</small></div><span class="tag ${s.saude === 'Boa' ? 'green' : 'orange'}">${s.saude}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','semcusto')"><div><b>Sem custo médio</b><small>Corrigir antes de vender</small></div><span class="tag orange">${s.sem.length}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Sugestões de reposição</b><small>Produtos abaixo do mínimo</small></div><span class="tag orange">${s.baixo.length}</span></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Clientes</h3>
-        <div class="list">
-          ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras', 'Cliente com mais compras no período (não considera valor em R$)')}
-          ${rankList('Mais lucrativa', r.top5CliLuc, x => money(x.luc), 'Cliente que gerou mais lucro no período (valor comprado menos o custo)')}
-          ${rankList('Maior faturamento', r.top5CliRec, x => money(x.rec), 'Cliente com maior valor total comprado no período (receita bruta, antes de descontar o custo)')}
-          <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes VIP</b><small>Top 10% por faturamento</small></div><span class="tag green">${vips.length}</span></div>
-          <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes frios</b><small>${diasContatoFrio()}+ dias sem contato</small></div><span class="tag orange">${clientesFrios.length}</span></div>
-          <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Sem compra</b><small>Nunca compraram</small></div><span class="tag pink">${clientesSemCompra.length}</span></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Agenda</h3>
-        <div class="list">
-          <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Agendamentos</b><small>No período</small></div><span class="tag blue">${ag.total}</span></div>
-          <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Realizados</b><small>Concluídos</small></div><span class="tag green">${ag.realizados}</span></div>
-          <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Pendentes</b><small>Não concluídos</small></div><span class="tag orange">${ag.pendentes}</span></div>
-          <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Cancelados</b></div><span class="tag pink">${ag.cancelados}</span></div>
-          <div class="list-item"><div><b>Taxa comparecimento</b></div><span class="tag blue">${ag.taxaComparecimento.toFixed(0)}%</span></div>
-          <div class="list-item"><div><b>Conversão em venda</b></div><span class="tag green">${ag.conversaoVenda.toFixed(0)}%</span></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Pagamentos</h3>
-        <div class="list">
-          ${Object.entries(r.pay).map(([k, v]) => `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>${esc(k)}</b></div><span class="tag blue">${money(v)}</span></div>`).join('') || '<p class="muted">Sem vendas no período.</p>'}
-          ${pedidosPgtoPendente.length ? `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>Pedidos com pgto pendente</b></div><span class="tag orange">${pedidosPgtoPendente.length}</span></div>` : ''}
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Trocas</h3>
-        <div class="list">
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Em andamento / pendentes</b></div><span class="tag orange">${tr.pendentes}</span></div>
-          <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Finalizadas</b></div><span class="tag green">${tr.finalizadas}</span></div>
-          <div class="list-item"><div><b>Valor total saído</b><small>${tr.itensSaida} item(ns)</small></div><span class="tag pink">${money(tr.valorSaida)}</span></div>
-          <div class="list-item"><div><b>Valor total recebido</b><small>${tr.itensEntrada} item(ns)</small></div><span class="tag green">${money(tr.valorEntrada)}</span></div>
-          <div class="list-item"><div><b>Diferença</b><small>Recebido - saído</small></div><span class="tag ${tr.valorEntrada - tr.valorSaida >= 0 ? 'green' : 'pink'}">${money(tr.valorEntrada - tr.valorSaida)}</span></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Saídas de estoque (sem venda)</h3>
-        <p class="muted" style="margin:0 0 8px">Brinde, parceria, consumo próprio, perda e ajuste — o que sai do estoque sem virar receita.</p>
-        <div class="list">
-          ${saidasList.length ? saidasList.map(([motivo, x]) => `<div class="list-item clickable" onclick="App.goto('estoque')"><div><b>${esc(motivo)}</b><small>${x.qtd} un.</small></div><span class="tag orange">${money(x.valor)}</span></div>`).join('') : '<p class="muted">Nenhuma saída sem venda nesse período.</p>'}
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>Recomendações automáticas</h3>
-        <div class="list">${recommendations().join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>
-      </div>
-    </div>
+    ${(() => {
+      // Cada seção "grande" vira um bloco no mapa, montado uma vez — a ordem/visibilidade final vem
+      // de ordemSecoes()/secaoAtiva() (configurável em Minha Conta → Relatórios, com drag-and-drop).
+      const secoesHtml = {
+        origem: `<div class="panel">
+          <div class="panel-head"><h3>Novas clientes por origem</h3></div>
+          <p class="muted">De onde vieram as clientes cadastradas no período — ajuda a saber onde vale mais investir tempo captando gente nova.</p>
+          ${totalNovas ? `<div class="list" style="margin-top:8px">${origemList.map(([o, n]) => `
+            <div class="list-item clickable" onclick="App.goto('clientes')">
+              <div><b>${esc(o)}</b>${o === 'Evento' ? '<small>Cadastradas pela lista de desejos de eventos</small>' : ''}</div>
+              <span class="tag ${o === 'Evento' ? 'green' : 'blue'}">${n} (${pctOrigem(n)}%)</span>
+            </div>`).join('')}</div>` : '<p class="muted" style="margin-top:8px">Nenhuma cliente nova nesse período.</p>'}
+        </div>`,
+        produtos: `<div class="panel">
+          <h3>Produtos</h3>
+          <div class="list">
+            ${rankList('Mais vendido', r.top5Vend, x => x.q + ' un.', 'Produto com mais unidades vendidas no período (não considera valor em R$)')}
+            ${rankList('Mais lucrativo', r.top5LucProd, x => money(x.luc), 'Produto com maior lucro no período (valor vendido menos o custo)')}
+            ${rankList('Maior faturamento', r.top5FatProd, x => money(x.rec), 'Produto com maior valor total vendido no período (receita bruta, antes de descontar o custo)')}
+            ${rankList('Maior valor em estoque', prodPorEstoque, x => money(x.valor), 'Produto com maior valor parado em estoque hoje (quantidade × custo)')}
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Estoque baixo</b><small>Produtos para repor</small></div><span class="tag orange">${s.baixo.length}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','parados')"><div><b>Parados (90+ dias)</b><small>Sem venda</small></div><span class="tag pink">${s.parados.length}</span></div>
+          </div>
+        </div>`,
+        estoque: `<div class="panel">
+          <h3>Estoque</h3>
+          <div class="list">
+            <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Valor investido</b><small>${s.un} unidades em estoque</small></div><span class="tag blue">${money(s.invest)}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Lucro potencial</b><small>Se vender pelo preço atual</small></div><span class="tag green">${money(s.pot)} (${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Saúde do estoque</b><small>Baixo, parado e sem custo</small></div><span class="tag ${s.saude === 'Boa' ? 'green' : 'orange'}">${s.saude}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','semcusto')"><div><b>Sem custo médio</b><small>Corrigir antes de vender</small></div><span class="tag orange">${s.sem.length}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Sugestões de reposição</b><small>Produtos abaixo do mínimo</small></div><span class="tag orange">${s.baixo.length}</span></div>
+          </div>
+        </div>`,
+        clientes: `<div class="panel">
+          <h3>Clientes</h3>
+          <div class="list">
+            ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras', 'Cliente com mais compras no período (não considera valor em R$)')}
+            ${rankList('Mais lucrativa', r.top5CliLuc, x => money(x.luc), 'Cliente que gerou mais lucro no período (valor comprado menos o custo)')}
+            ${rankList('Maior faturamento', r.top5CliRec, x => money(x.rec), 'Cliente com maior valor total comprado no período (receita bruta, antes de descontar o custo)')}
+            <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes VIP</b><small>Top 10% por faturamento</small></div><span class="tag green">${vips.length}</span></div>
+            <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes frios</b><small>${diasContatoFrio()}+ dias sem contato</small></div><span class="tag orange">${clientesFrios.length}</span></div>
+            <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Sem compra</b><small>Nunca compraram</small></div><span class="tag pink">${clientesSemCompra.length}</span></div>
+          </div>
+        </div>`,
+        agenda: `<div class="panel">
+          <h3>Agenda</h3>
+          <div class="list">
+            <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Agendamentos</b><small>No período</small></div><span class="tag blue">${ag.total}</span></div>
+            <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Realizados</b><small>Concluídos</small></div><span class="tag green">${ag.realizados}</span></div>
+            <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Pendentes</b><small>Não concluídos</small></div><span class="tag orange">${ag.pendentes}</span></div>
+            <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Cancelados</b></div><span class="tag pink">${ag.cancelados}</span></div>
+            <div class="list-item"><div><b>Taxa comparecimento</b></div><span class="tag blue">${ag.taxaComparecimento.toFixed(0)}%</span></div>
+            <div class="list-item"><div><b>Conversão em venda</b></div><span class="tag green">${ag.conversaoVenda.toFixed(0)}%</span></div>
+          </div>
+        </div>`,
+        pagamentos: `<div class="panel">
+          <h3>Pagamentos</h3>
+          <div class="list">
+            ${Object.entries(r.pay).map(([k, v]) => `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>${esc(k)}</b></div><span class="tag blue">${money(v)}</span></div>`).join('') || '<p class="muted">Sem vendas no período.</p>'}
+            ${pedidosPgtoPendente.length ? `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>Pedidos com pgto pendente</b></div><span class="tag orange">${pedidosPgtoPendente.length}</span></div>` : ''}
+          </div>
+        </div>`,
+        trocas: `<div class="panel">
+          <h3>Trocas</h3>
+          <div class="list">
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Em andamento / pendentes</b></div><span class="tag orange">${tr.pendentes}</span></div>
+            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Finalizadas</b></div><span class="tag green">${tr.finalizadas}</span></div>
+            <div class="list-item"><div><b>Valor total saído</b><small>${tr.itensSaida} item(ns)</small></div><span class="tag pink">${money(tr.valorSaida)}</span></div>
+            <div class="list-item"><div><b>Valor total recebido</b><small>${tr.itensEntrada} item(ns)</small></div><span class="tag green">${money(tr.valorEntrada)}</span></div>
+            <div class="list-item"><div><b>Diferença</b><small>Recebido - saído</small></div><span class="tag ${tr.valorEntrada - tr.valorSaida >= 0 ? 'green' : 'pink'}">${money(tr.valorEntrada - tr.valorSaida)}</span></div>
+          </div>
+        </div>`,
+        saidas: `<div class="panel">
+          <h3>Saídas de estoque (sem venda)</h3>
+          <p class="muted" style="margin:0 0 8px">Brinde, parceria, consumo próprio, perda e ajuste — o que sai do estoque sem virar receita.</p>
+          <div class="list">
+            ${saidasList.length ? saidasList.map(([motivo, x]) => `<div class="list-item clickable" onclick="App.goto('estoque')"><div><b>${esc(motivo)}</b><small>${x.qtd} un.</small></div><span class="tag orange">${money(x.valor)}</span></div>`).join('') : '<p class="muted">Nenhuma saída sem venda nesse período.</p>'}
+          </div>
+        </div>`,
+        recomendacoes: `<div class="panel">
+          <h3>Recomendações automáticas</h3>
+          <div class="list">${recommendations().join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>
+        </div>`
+      };
+      const ativas = ordemSecoes().filter(secaoAtiva);
+      if (!ativas.length) return '<div class="panel"><p class="muted">Todas as seções do relatório estão ocultas — reative em Minha Conta → Relatórios.</p></div>';
+      return `<div class="report-grid">${ativas.map(k => secoesHtml[k]).join('')}</div>`;
+    })()}
 
     <div class="panel" id="relPorProduto">
       <h3>Relatório completo por produto</h3>
