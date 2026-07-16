@@ -86,3 +86,24 @@ A. Geração de QR Code no Computador (Venda Presencial):
 B. Integração com o Celular (Atalho InfiniteTap):
    - Se o CRM detectar que está sendo executado em um dispositivo móvel (celular ou tablet), ao lado da opção de QR Code, exibir o botão "Cobrar via InfiniteTap".
    - Esse botão deve disparar um Deep Link configurado para abrir o aplicativo nativo da InfinitePay diretamente na tela de venda física por aproximação (Tap to Pay), passando o valor total do pedido e o número de parcelas desejado como parâmetros.
+
+-------------------------------------------------------------------
+9. PERFORMANCE, ACELERAÇÃO DE CARREGAMENTO E PWA (FOCO MOBILE)
+-------------------------------------------------------------------
+Implementar melhorias críticas de performance para garantir que o CRM abra de forma instantânea, especialmente no Safari/Chrome do iPhone.
+
+A. Configuração de PWA (Progressive Web App):
+   - Configurar o pacote 'next-pwa' no Next.js.
+   - Criar o arquivo 'manifest.json' com os ícones do sistema e configurar o Service Worker para cachear todos os assets estáticos (HTML, CSS, JS, Imagens de interface e Fontes).
+   - Garantir suporte completo para a opção "Adicionar à Tela de Início" no iOS/iPhone.
+
+B. Ativação de Cache Offline no Firestore:
+   - Configurar a persistência offline no arquivo de inicialização do Firebase usando 'enableIndexedDbPersistence(db)'.
+   - Tratar possíveis erros de múltiplas abas abertas no navegador usando 'enableMultiTabIndexedDbPersistence(db)' para evitar conflitos de leitura do cache local.
+
+C. Code Splitting (Lazy Loading) com Next.js Dynamic:
+   - Identificar componentes pesados que não são exibidos imediatamente (Modais de Edição de Produto, Modal Cliente 360, Modal de Novo Agendamento, Gráficos de Relatórios) e importá-los utilizando 'next/dynamic' com a opção { ssr: false }.
+
+D. Otimização de Imagens do Catálogo e Estoque:
+   - Substituir todas as tags '<img>' de produtos pelo componente '<Image>' nativo do Next.js.
+   - Configurar o domínio de imagens da Farmasi ('content.farmasi.com.br' ou similar) no 'next.config.js' para permitir a otimização e conversão dinâmica de imagens para WebP no servidor Next.js.
