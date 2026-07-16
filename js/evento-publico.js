@@ -2,7 +2,7 @@
 // (que assumem uma consultora logada). Instância própria do Firebase.
 import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, doc, onSnapshot, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { norm, linhasDe, labelLinha } from './utils.js';
 
 const fb = initializeApp(firebaseConfig);
@@ -49,28 +49,30 @@ function showExpirado(mensagem) {
 
 async function init() {
   if (!eventoId) return showExpirado();
-  let snap;
   try {
-    snap = await getDoc(doc(db, 'eventosPublicos', eventoId));
+    onSnapshot(doc(db, 'eventosPublicos', eventoId), (snap) => {
+      if (!snap.exists()) return showExpirado();
+      evento = snap.data();
+      if (evento.ativo === false) return showExpirado();
+
+      const agora = new Date();
+      if (evento.vigenciaInicio || evento.vigenciaFim) {
+        if (evento.vigenciaInicio && agora < new Date(evento.vigenciaInicio)) {
+          return showExpirado('Este link ainda não está disponível. Volte mais tarde!');
+        }
+        if (evento.vigenciaFim && agora > new Date(evento.vigenciaFim)) {
+          return showExpirado();
+        }
+      } else if (evento.validade && evento.validade < today()) {
+        return showExpirado();
+      }
+      render();
+    }, (e) => {
+      return showExpirado();
+    });
   } catch (e) {
     return showExpirado();
   }
-  if (!snap.exists()) return showExpirado();
-  evento = snap.data();
-  if (evento.ativo === false) return showExpirado();
-
-  const agora = new Date();
-  if (evento.vigenciaInicio || evento.vigenciaFim) {
-    if (evento.vigenciaInicio && agora < new Date(evento.vigenciaInicio)) {
-      return showExpirado('Este link ainda não está disponível. Volte mais tarde!');
-    }
-    if (evento.vigenciaFim && agora > new Date(evento.vigenciaFim)) {
-      return showExpirado();
-    }
-  } else if (evento.validade && evento.validade < today()) {
-    return showExpirado();
-  }
-  render();
 }
 
 function render() {
