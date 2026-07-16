@@ -98,7 +98,7 @@ function renderHeaderFooter() {
   if (nome) $('evTitulo').textContent = evento.nome ? `${evento.nome}` : nome;
   if ($('evLogo')) {
     if (pp.foto) {
-      $('evLogo').innerHTML = `<img src="${esc(pp.foto)}" alt="${esc(nome)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      $('evLogo').innerHTML = `<img src="${esc(pp.foto)}" alt="${esc(nome)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='${esc(iniciais(nome))}'">`;
     } else {
       $('evLogo').textContent = iniciais(nome);
     }
