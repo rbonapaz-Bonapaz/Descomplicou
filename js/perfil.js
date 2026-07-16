@@ -227,6 +227,13 @@ export function renderPerfil() {
     </div>
 
     <div class="panel" style="border:1px solid #FBE4E4">
+      <h3 style="color:var(--error)">♻️ Restaurar backup completo</h3>
+      <p class="muted">Restaura clientes, produtos, vendas, carrinhos, agenda, movimentações de estoque, catálogos, eventos, trocas, pré-encomendas e despesas — tudo exatamente como estava no arquivo. Registros apagados desde o backup voltam a existir; registros que mudaram são sobrescritos por completo. Nada criado depois do backup é apagado. Use com cuidado.</p>
+      <input type="file" id="restaurarBackupArquivo" accept="application/json">
+      <button class="btn ghost" style="margin-top:8px;color:var(--error);border-color:var(--error)" onclick="App.restaurarBackupCompleto()">♻️ Restaurar backup completo deste arquivo</button>
+    </div>
+
+    <div class="panel" style="border:1px solid #FBE4E4">
       <h3 style="color:var(--error)">Zona de risco</h3>
       <p class="muted">Ações irreversíveis. Cada botão pede confirmação por digitação antes de executar. Seu login e plano nunca são afetados.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -557,6 +564,52 @@ export function exportarBackupCompleto() {
 // já zera direto no Firestore; isso reverte lendo o snapshot salvo em disco). Casa por código Farmasi
 // (fallback nome) em vez de id do documento — o id salvo no backup só bate se nenhum produto foi
 // recriado desde então.
+// Coleções restauráveis pelo backup completo — mesma lista de state.data.
+const COLECOES_BACKUP = ['clientes', 'produtos', 'vendas', 'carrinhos', 'agendamentos', 'movimentacoesEstoque', 'catalogos', 'eventos', 'trocas', 'preEncomenda', 'despesas'];
+
+// Restaura TODOS os registros de TODAS as coleções presentes no arquivo, recriando pelo mesmo id
+// quem foi apagado e sobrescrevendo por completo quem ainda existe (não é merge parcial — o
+// documento inteiro volta a ser exatamente o que estava no backup). Ação pesada e ampla: por isso
+// pede confirmação mostrando quantos registros de cada coleção serão tocados antes de rodar.
+export async function restaurarBackupCompleto() {
+  const input = $('restaurarBackupArquivo');
+  const arquivo = input?.files?.[0];
+  if (!arquivo) return toast('Escolha o arquivo de backup (.json) antes de restaurar');
+  let backup;
+  try {
+    backup = JSON.parse(await arquivo.text());
+  } catch (e) { return toast('Arquivo inválido: não é um JSON legível'); }
+  const dados = backup?.dados;
+  if (!dados || typeof dados !== 'object') return toast('Esse arquivo não tem dados para restaurar');
+
+  const resumo = COLECOES_BACKUP
+    .map(n => ({ n, qtd: Array.isArray(dados[n]) ? dados[n].length : 0 }))
+    .filter(x => x.qtd > 0);
+  if (!resumo.length) return toast('Esse arquivo não tem dados para restaurar');
+
+  const listaResumo = resumo.map(x => `${x.qtd} ${x.n}`).join(', ');
+  const dataBackup = backup.exportadoEm ? new Date(backup.exportadoEm).toLocaleString('pt-BR') : 'no arquivo';
+  if (!confirm(`Isso vai restaurar exatamente como estava em ${dataBackup}:\n${listaResumo}.\n\nRegistros apagados desde então voltam a existir; registros que ainda existem e mudaram são sobrescritos por completo. Nada que foi criado DEPOIS do backup é apagado. Continuar?`)) return;
+
+  let totalRestaurado = 0;
+  for (const { n } of resumo) {
+    const docs = dados[n];
+    for (let i = 0; i < docs.length; i += 450) {
+      const lote = docs.slice(i, i + 450);
+      const batch = writeBatch(db);
+      lote.forEach(d => {
+        const { id, ...rest } = d;
+        if (!id) return;
+        batch.set(ref(n, id), rest);
+      });
+      await batch.commit();
+      totalRestaurado += lote.length;
+    }
+  }
+  toast(`Backup restaurado: ${listaResumo} (${totalRestaurado} registro(s) no total)`);
+  window.App.refresh();
+}
+
 export async function restaurarEstoqueDoBackup() {
   const input = $('restaurarEstoqueArquivo');
   const arquivo = input?.files?.[0];
