@@ -1,0 +1,43 @@
+===================================================================
+CRM FARMASI - BACKLOG DE AJUSTES E CORREÇÕES (RODADA DE MEIA-NOITE)
+===================================================================
+
+-------------------------------------------------------------------
+1. SISTEMA DE VENDAS E ID DE PEDIDO (CRÍTICO)
+-------------------------------------------------------------------
+- Adicionar o Número do Pedido visível nas telas de Vendas e no histórico de vendas do cliente.
+- Formato do ID: Deve seguir uma sequência numérica incremental lógica, mas com um sufixo indicando a recorrência de compra do cliente específico (Ex: "1001-01" para a primeira compra do cliente, "1024-02" para a segunda compra do mesmo cliente, etc.).
+- Atualização Retroativa: Para todas as vendas já registradas no banco de dados, gerar e salvar os números de pedidos automaticamente seguindo rigorosamente a ordem cronológica de finalização de cada venda.
+
+-------------------------------------------------------------------
+2. COMPORTAMENTO E SÍNCRONIZAÇÃO DO CATÁLOGO
+-------------------------------------------------------------------
+- Remover o botão "Sincronizar com base coletiva" da interface pública do Catálogo. A sincronização deve ocorrer unicamente a partir dos produtos da própria consultora.
+
+-------------------------------------------------------------------
+3. AJUSTE DE LAYOUT, ESPAÇAMENTO E RESPONSIVIDADE (UI/UX)
+-------------------------------------------------------------------
+- Correção de Textos Agrupados (Falta de Espaço): Corrigir o bug de CSS onde textos de tags ou eventos ficam colados no nome do produto (como ocorre na seção "Produtos de interesse", onde o nome do produto e a tag do evento aparecem grudados sem espaçamento). Aplicar margens/paddings adequados para separar essas informações.
+- Revisão Global de Espaçamentos: Garantir que esse ajuste de espaçamento seja herdado por todas as instâncias do sistema, incluindo o Carrinho de compras.
+- Responsividade Mobile do Carrinho: Corrigir o alinhamento de elementos no mobile. O menu de desconto do carrinho está extrapolando os limites da viewport ("fora da página"). Ajustar o overflow e o grid para telas menores.
+- Largura da Coluna "LINHA": Na tabela de conferência da base coletiva, aumentar a largura/espaçamento da coluna "LINHA" para evitar cortes de texto e melhorar a legibilidade.
+
+-------------------------------------------------------------------
+4. REQUISITOS DE INTEGRAÇÃO COM A API DO GEMINI
+-------------------------------------------------------------------
+- Revisar a integração de "Gerar com IA" no cadastro/edição de produtos. O usuário relatou que, mesmo com uma chave de API válida recém-criada, o sistema retorna erro de cota. 
+- Adicionar logs detalhados e tratar o erro de cota da API de forma mais robusta, garantindo que o sistema diferencie erros de chave inválida, limites de requisições por minuto (TPM/RPM) e falta real de créditos na plataforma Google.
+
+-------------------------------------------------------------------
+5. FLUXO DE IMPORTAÇÃO DE PRODUTOS E VÍNCULO DE LINHAS
+-------------------------------------------------------------------
+- Otimização da Importação: Ao abrir a tela de importação, o sistema deve comparar a base do ADM com a base do cliente local. Apenas os produtos que apresentarem divergências (valores diferentes ou novos produtos) devem ser listados para importação.
+- Banner de Resumo: Exibir uma mensagem informativa no topo da tela de importação: "Foram verificados X produtos e apenas Y necessitam de atualização."
+- Correção de Duplicidade de Linhas: Corrigir o bug que faz com que, ao atualizar/importar produtos, o campo "Linha" acumule nomes duplicados na visualização (Ex: exibindo "Maquiagem, Cremoso, Maquiagem, Cremoso" repetidamente). Garantir que o array de linhas passe por uma limpeza de duplicados antes de renderizar e salvar.
+- Vínculo Automático de Linha: No cadastro/importação de produtos, se o nome da linha vinda do produto coincidir exatamente com uma linha existente no sistema do cliente, o vínculo deve ser feito de forma 100% automática, sem a necessidade de o usuário ter que desmarcar e marcar a linha novamente para salvar a relação.
+
+-------------------------------------------------------------------
+6. REATIVIDADE E ATUALIZAÇÃO DE ESTADO DO COMPONENTE (STATE BUGS)
+-------------------------------------------------------------------
+- Visibilidade de Relatórios: Na tela de configurações, ao desativar a exibição de um relatório específico (como o de "recomendações"), o dashboard de relatórios deve refletir a mudança instantaneamente. Corrigir o estado reativo do React para que o componente seja remontado/atualizado sem depender de um refresh manual do navegador (F5). Aplicar esse comportamento reativo a todos os cards de relatórios.
+- Exclusão na Lista de Interesse: No perfil do cliente, ao clicar para remover um item da seção "Produtos de interesse" e confirmar, o item deve desaparecer imediatamente da interface. Corrigir o estado local (state) para filtrar o item removido na hora, evitando que ele continue visível até que a tela do cliente seja fechada e reaberta.
