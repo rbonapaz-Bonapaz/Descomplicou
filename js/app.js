@@ -34,7 +34,8 @@ import { renderRelatorios } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
-  relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto } from './perfil.js';
+  relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto,
+  adicionarDataComemorativa, removerDataComemorativa } from './perfil.js';
 import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
@@ -344,6 +345,7 @@ window.App = {
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto,
+  adicionarDataComemorativa, removerDataComemorativa,
   // Admin
   carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,

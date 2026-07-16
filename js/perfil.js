@@ -7,6 +7,9 @@ import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } 
 import { importarDoGoogleAgenda } from './agenda.js';
 import { gerarBeneficios } from './gemini.js';
 import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRelatorios } from './relatorios.js';
+import { NOMES_DATAS_AUTOMATICAS, carregarDatasComemorativas } from './datasComemorativas.js';
+
+const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 export function renderPerfil() {
   const p = state.profile || {};
@@ -54,6 +57,23 @@ export function renderPerfil() {
         <div class="field full"><label>Mensagem padrão</label><textarea id="perMsg">${esc(p.mensagemPadrao || '')}</textarea></div>
       </div><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
+    </div>
+
+    <div class="panel">
+      <h3>🎉 Datas comemorativas</h3>
+      <p class="muted">Aparecem no Painel Inicial como sugestão de presente quando faltam 30 dias ou menos.</p>
+      <p class="muted" style="margin-top:10px"><b>Importadas automaticamente:</b> ${NOMES_DATAS_AUTOMATICAS.join(', ')}, além dos feriados nacionais do ano (buscados automaticamente, variam ano a ano).</p>
+      <div class="toolbar" style="margin-top:14px">
+        <input id="novaDataNome" placeholder="Nome (ex: Aniversário da loja)">
+        <select id="novaDataDia">${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}">${d}</option>`).join('')}</select>
+        <select id="novaDataMes">${MESES_NOME.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}</select>
+        <button class="btn dark" onclick="App.adicionarDataComemorativa()">+ Adicionar data</button>
+      </div>
+      ${(p.datasComemorativasCustom || []).length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">${[...(p.datasComemorativasCustom || [])].sort((a, b) => a.mes - b.mes || a.dia - b.dia).map(d => `
+        <span class="chip" style="display:inline-flex;align-items:center;gap:8px">
+          ${esc(d.nome)} — ${String(d.dia).padStart(2, '0')}/${String(d.mes).padStart(2, '0')}
+          <button style="border:0;background:none;cursor:pointer;color:var(--error);font-weight:900" onclick="App.removerDataComemorativa('${esc(d.nome)}')" title="Remover">✗</button>
+        </span>`).join('')}</div>` : '<p class="muted" style="margin-top:12px">Nenhuma data personalizada cadastrada ainda.</p>'}
     </div>
 
     <div class="panel">
@@ -439,6 +459,29 @@ export async function toggleBaseColetiva(v) {
   await setDoc(doc(db, 'users', state.user.uid), { usaBaseColetiva: v, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, usaBaseColetiva: v };
   window.App.refresh(v ? 'Base coletiva ativada' : 'Base coletiva desativada');
+}
+
+export async function adicionarDataComemorativa() {
+  const nome = ($('novaDataNome')?.value || '').trim();
+  if (!nome) return toast('Digite o nome da data');
+  const dia = Number($('novaDataDia')?.value || 0);
+  const mes = Number($('novaDataMes')?.value || 0);
+  const atuais = state.profile?.datasComemorativasCustom || [];
+  if (atuais.some(d => d.nome.toLowerCase() === nome.toLowerCase())) return toast('Já existe uma data com esse nome');
+  const novas = [...atuais, { nome, dia, mes }];
+  await setDoc(doc(db, 'users', state.user.uid), { datasComemorativasCustom: novas }, { merge: true });
+  state.profile = { ...state.profile, datasComemorativasCustom: novas };
+  if ($('novaDataNome')) $('novaDataNome').value = '';
+  await carregarDatasComemorativas();
+  window.App.refresh(`Data "${nome}" adicionada`);
+}
+
+export async function removerDataComemorativa(nome) {
+  const novas = (state.profile?.datasComemorativasCustom || []).filter(d => d.nome !== nome);
+  await setDoc(doc(db, 'users', state.user.uid), { datasComemorativasCustom: novas }, { merge: true });
+  state.profile = { ...state.profile, datasComemorativasCustom: novas };
+  await carregarDatasComemorativas();
+  window.App.refresh(`Data "${nome}" removida`);
 }
 
 export async function salvarAutoSyncBaseColetiva(ativo) {
