@@ -77,6 +77,11 @@ export async function excluirTroca(trocaId) {
 export function preencherValorTrocaSaida() {
   const p = prodById($('trProdSai')?.value);
   if ($('trValorSai') && p) $('trValorSai').value = money(p.precoVenda || p.precoAtual || 0);
+  // Sem estoque disponível pra entregar agora, já deixa selecionado "entrega futura" — evita
+  // que a consultora tente confirmar "pronta entrega" e leve o toast de estoque insuficiente.
+  if ($('trEntregaSai') && p) {
+    $('trEntregaSai').value = estoqueDisponivel(p.id) > 0 ? 'pronta_entrega' : 'entrega_futura';
+  }
 }
 
 function itemRowHtml(trocaId, lado, item, idx) {
