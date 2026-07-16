@@ -110,7 +110,7 @@ async function criarCarrinho(clienteId) {
   const r = await addDoc(col('carrinhos'), {
     clienteId: c.id, clienteNome: c.nome,
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
-    permitirEntregaFutura: false, mostrarSemEstoque: false,
+    mostrarSemEstoque: false,
     itens: [], totalPedido: 0, custoTotal: 0, lucroTotal: 0,
     possuiEntregaFutura: false, observacoes: '',
     criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
@@ -142,7 +142,6 @@ export function openCarrinho(id) {
 
   const itens = carr.itens || [];
   const mostrarSem = carr.mostrarSemEstoque;
-  const futuraAtivo = carr.permitirEntregaFutura;
   const creditoDisponivel = carr.clienteId ? creditoDoCliente(carr.clienteId) : 0;
   const creditoAplicado = carr.usarCreditos ? Math.min(creditoDisponivel, carr.totalPedido || 0) : 0;
 
@@ -170,9 +169,8 @@ export function openCarrinho(id) {
     </div>` : ''}
 
     <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px">
-      ${toggleHtml('cMostrarSem', mostrarSem, `App.toggleCarrinhoOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque')}
-      ${toggleHtml('cFutura', futuraAtivo, `App.toggleCarrinhoOpt('${id}','permitirEntregaFutura',this.checked)`, 'Permitir entrega futura',
-        '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Libera adicionar produtos sem estoque ao carrinho. Eles ficam marcados como "entrega futura" e não baixam o estoque até você marcar como entregues.</span></span>')}
+      ${toggleHtml('cMostrarSem', mostrarSem, `App.toggleCarrinhoOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque',
+        '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Libera escolher produtos sem estoque disponível. Ao adicionar um deles, o item entra sozinho como "entrega futura" e não baixa o estoque até você marcar como entregue.</span></span>')}
     </div>
 
     <div class="panel" style="background:#FFF9F5">
@@ -539,16 +537,10 @@ export async function adicionarItemCarrinho(carrinhoId) {
   // unidade em estoque, cada um achando que ainda tinha disponível.
   const estoque = estoqueDisponivel(p.id);
 
-  let tipoEntrega = 'pronta_entrega';
-  if (estoque < qtd) {
-    if (!carr.permitirEntregaFutura) {
-      const reservadoOutros = reservadoEmAberto(p.id, carrinhoId);
-      return toast(reservadoOutros > 0
-        ? `Estoque insuficiente: ${reservadoOutros} unidade(s) já reservada(s) em outro carrinho/troca aberto. Ative "Permitir entrega futura" ou aguarde.`
-        : 'Estoque insuficiente. Ative "Permitir entrega futura".');
-    }
-    tipoEntrega = 'entrega_futura';
-  }
+  // Sem estoque suficiente, o item entra sozinho como "entrega futura" — não baixa o estoque até
+  // ser marcado como entregue (mesmo comportamento das trocas). Nenhuma confirmação extra é
+  // necessária: escolher um produto sem estoque já exige ativar "Mostrar itens sem estoque" antes.
+  const tipoEntrega = estoque < qtd ? 'entrega_futura' : 'pronta_entrega';
 
   const custoMedio = Number(p.custoMedio || 0);
   // precoOriginal só serve de referência visual (tabela "de/por"); não afeta nenhum cálculo de lucro.

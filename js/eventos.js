@@ -675,7 +675,6 @@ export async function transformarEmCarrinho(eventoId, listaId) {
   const r = await addDoc(col('carrinhos'), {
     clienteId: cliente.id, clienteNome: cliente.nome,
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
-    permitirEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
     mostrarSemEstoque: false,
     itens, totalPedido, custoTotal, lucroTotal,
     possuiEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
