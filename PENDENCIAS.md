@@ -122,7 +122,7 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 ## 📋 Checklist de Publicação para Produção
 
 - [x] **Publicar Firestore rules** (bloqueia sugestão de descrição) — ✅ PUBLICADO
-- [ ] **Validar sugestão de descrição** em staging/produção
+- [x] **Validar sugestão de descrição** em staging/produção — ✅ TESTADO E FUNCIONANDO
 - [x] **Validar sync de preço** em staging/produção (✅ Testado e funcionando)
 - [x] **Validar restauração de estoque** (✅ Testado e funcionando)
 - [x] **Validar datas comemorativas** (✅ Automáticas + manuais + edição implementados)
