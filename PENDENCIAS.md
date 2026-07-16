@@ -2,7 +2,7 @@
 
 **Data**: 2026-07-16  
 **Ambiente**: GitHub + Firestore  
-**Status**: 11 PRs mergeadas com sucesso
+**Status**: 15 commits, sincronização automática de preço validada e funcionando
 
 ---
 
@@ -16,8 +16,12 @@
 6. **Responsividade mobile** - Cards do carrinho e cliente360 ajustados (2 colunas mobile, 3-4 desktop)
 7. **Font scaling** - Botões A+/A- ajustam página toda (cabeçalho, filtros, produtos)
 8. **Foto do consultor com fallback** - Se URL falha, mostra iniciais
-9. **Sincronização automática de preço** - Quando produto muda preço, atualiza automático em eventos ativos
-10. **Sincronização de código** - Código local sincronizado com GitHub (todas as 11 PRs mergeadas)
+9. **Sincronização automática de preço** - ✅ **VALIDADO** - Quando produto muda preço, atualiza automático e em tempo real em eventos ativos (via `onSnapshot`)
+10. **Tag de linha discreta** - Mostra qual linha cada produto pertence no link do evento
+11. **Botão de re-sincronização manual** - "🔄 Atualizar preços" como fallback determinístico
+12. **Correção de fallback em eventos antigos** - Casa produtos por código Farmasi/nome quando `id` não existe (eventos criados antes da mudança)
+13. **Erro visível na replicação** - Falhas de sincronização agora alertam consultora em vez de falhar em silêncio
+14. **Sincronização de código** - Código local sincronizado com GitHub (15 commits no total)
 
 ---
 
@@ -42,18 +46,8 @@
    - **Esperado**: Se aprovado, benefício atualiza no mestre; se rejeitado, sugestão sumida
    - **Prioridade**: 🟡 MÉDIA - Feature importante, precisa validação real
 
-### 3. **Testar sincronização automática de preço em eventos**
-   - **O que**: Após implementar PR #11, preço do produto deve atualizar automaticamente em eventos que usam esse produto
-   - **Como testar**:
-     1. Criar um evento com um produto (ex: Protetor Solar - R$ 50,00)
-     2. Compartilhar link público do evento
-     3. Em outra aba, editar o produto e mudar preço para R$ 60,00
-     4. Voltar ao link do evento e recarregar
-     5. Preço deve estar R$ 60,00 (sem precisar reeditar o evento)
-   - **Esperado**: Preço atualizado automaticamente, sem ação manual
-   - **Prioridade**: 🟡 MÉDIA - Evita retrabalho, mas falha silenciosa se não funcionar
 
-### 4. **Testar foto do consultor com URL quebrada**
+### 3. **Testar foto do consultor com URL quebrada**
    - **O que**: Logo/foto no topo do link de evento agora tem fallback para iniciais quando URL falha
    - **Como testar**:
      1. Simular URL quebrada: editar evento e colocar URL da foto inválida
@@ -62,7 +56,7 @@
    - **Esperado**: Página não quebra, iniciais aparecem com estilo consistente
    - **Prioridade**: 🟢 BAIXA - Feature defensiva, melhora UX em caso de erro
 
-### 5. **Revisar responsividade mobile completa**
+### 4. **Revisar responsividade mobile completa**
    - **O que**: Verificar que TODAS as páginas (não apenas carrinho/cliente360) ficam boas no mobile
    - **Páginas a revisar**:
      - [ ] Catálogo Pessoal (2-3 colunas em mobile)
@@ -74,7 +68,7 @@
    - **Tamanhos a testar**: 320px (smartphone pequeno), 480px (smartphone médio), 768px (tablet)
    - **Prioridade**: 🟡 MÉDIA - Evita má experiência em mobile
 
-### 6. **Testar datas comemorativas em produção**
+### 5. **Testar datas comemorativas em produção**
    - **O que**: Validar que datas automáticas (Páscoa, Dia da Mulher, etc.) e manuais aparecem corretamente
    - **Como testar**:
      1. Admin entra em Minha Conta → Datas Comemorativas
@@ -85,7 +79,7 @@
    - **Esperado**: Listagem correta, adição/remoção sem erros
    - **Prioridade**: 🟢 BAIXA - Feature estável em código
 
-### 7. **Validar backup manual de dados**
+### 6. **Validar backup manual de dados**
    - **O que**: Botão "📥 Baixar backup" em Minha Conta → Segurança gera JSON completo
    - **Como testar**:
      1. Admin entra em Minha Conta → Segurança
@@ -125,7 +119,7 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 
 - [ ] **Publicar Firestore rules** (bloqueia sugestão de descrição)
 - [ ] **Validar sugestão de descrição** em staging/produção
-- [ ] **Validar sync de preço** em staging/produção
+- [x] **Validar sync de preço** em staging/produção (✅ Testado e funcionando)
 - [ ] **Testar mobile** em todos os tamanhos
 - [ ] **Testar foto fallback** com URLs quebradas
 - [ ] **Revisar performance** do Firestore (se muitos eventos, sync pode ficar lento)
@@ -136,8 +130,13 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 
 ## 🔗 Referências
 
-- **Branch principal**: `main` (todas as 11 PRs mergeadas)
-- **Último commit**: `ab4b38c` - Replica automaticamente alteração de produto pros eventos ativos (#11)
+- **Branch principal**: `main` (15 commits após sincronização)
+- **Último commit**: `8aecd91` - Botão "Atualizar preços" no evento + erro visível na replicação
+- **Commits principais**:
+  - `8aecd91` - Botão re-sincronização + erro visível
+  - `39c7071` - Fix cache + fallback em eventos antigos
+  - `576279e` - Tag de linha discreta nos cards
+  - `2ce2314` - onSnapshot em tempo real no link
 - **Firestore rules**: `/firestore.rules` (contém nova coleção `sugestoesBeneficios`)
 - **Arquivos-chave**:
   - `js/utils.js` - `canonLinha()`, `combinarLinhas()`
@@ -149,4 +148,9 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 
 ---
 
-**Próximos passos**: Publicar Firestore rules no console Firebase e então fazer testes end-to-end em staging antes de ir para produção.
+**Próximos passos**: 
+1. **Publicar Firestore rules** no console Firebase (`firebase deploy --only firestore:rules`) — isso libera a feature de sugestão de descrição
+2. Testar sugestão de descrição end-to-end
+3. Revisar responsividade mobile em todas as páginas
+4. Validar datas comemorativas e backup de dados
+5. Deploy final em produção com testes de performance do Firestore
