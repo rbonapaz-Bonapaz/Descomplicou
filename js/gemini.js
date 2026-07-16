@@ -4,7 +4,16 @@
 // Google — não passa por nenhum servidor nosso.
 import { state } from './state.js';
 
-const MODELO = 'gemini-2.0-flash';
+// Modelos em ordem de preferência, do mais novo pro mais antigo. Motivo de ser uma LISTA e não um
+// modelo fixo: o Google aposenta modelos antigos cortando a cota gratuita deles pra perto de zero
+// — foi o que derrubou o 'gemini-2.0-flash' fixo que usávamos: a chave continuava válida e
+// funcionava em apps que usam modelos novos, mas aqui TODA chamada voltava 429 "limite por
+// minuto", mesmo a primeira do dia (a cota é POR MODELO, não por chave). 'gemini-flash-latest' é
+// o apelido oficial que o Google mantém apontando pro flash mais recente — imune a aposentadoria.
+const MODELOS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+// Qual modelo respondeu por último nesta sessão — as próximas chamadas começam direto por ele,
+// sem re-testar os que falharam a cada clique.
+let modeloAtivo = null;
 
 // Quantas vezes reenviar automaticamente quando o Gemini devolve 429/503 antes de desistir e
 // mostrar erro. O free tier costuma responder 429 já na PRIMEIRA chamada de uma "rajada" (burst)
@@ -36,7 +45,7 @@ function erroGemini(status, body) {
     const { quotaId, retrySeg } = extrairInfoQuota(body);
     console.error('[Gemini] Cota atingida:', quotaId || '(sem quotaId)', '· retryDelay:', retrySeg + 's');
     if (/PerDay/i.test(quotaId) || /PerDay/i.test(raw)) {
-      return new Error(`Cota DIÁRIA do modelo ${MODELO} esgotada nesta chave (limite por dia do plano gratuito). Outros modelos/projetos da mesma chave continuam funcionando — a cota é por modelo. Aguarde a renovação (24h) ou use outra chave. [${quotaId || 'quota'}]`);
+      return new Error(`Cota DIÁRIA esgotada nesta chave para os modelos do Gemini que o app tenta usar (o limite diário do plano gratuito é por modelo). Aguarde a renovação (24h) ou use outra chave. [${quotaId || 'quota'}]`);
     }
     // Não é a chave errada: é o limite por minuto (ou tokens/min) do free tier — passa sozinho.
     // O cooldown das telas usa `segundosEspera` (número real do Google) em vez de fixar 60s.
@@ -46,39 +55,61 @@ function erroGemini(status, body) {
     e.segundosEspera = espera;
     return e;
   }
+  if (status === 404) return new Error('Nenhum dos modelos do Gemini que o app tenta usar está disponível nessa chave (o Google aposenta modelos antigos de tempos em tempos). Avise o suporte do CRM pra atualizar a lista de modelos.');
   if (status >= 500) return new Error('O Gemini está indisponível no momento (erro no servidor do Google) — tente novamente em instantes.');
   return new Error(msg);
 }
 
-// Chamada única e centralizada ao Gemini, com retry automático em 429/503. Substitui os 4 blocos
-// de fetch que estavam duplicados (um por função) — agora todas ganham o retry de graça. Reenvia
-// só quando o retryDelay sugerido é curto (rajada transitória); se o Google pede uma espera longa
-// (cota real de minuto/dia), não fica travando a tela — devolve o erro pra UI mostrar o cooldown.
+// Chamada única e centralizada ao Gemini, com DOIS níveis de resiliência:
+// 1. Fallback de modelo — tenta cada modelo de MODELOS na ordem; 404 (aposentado) ou 429 com
+//    espera longa (cota daquele modelo esgotada) passam pro próximo. O que responder vira o
+//    modeloAtivo da sessão, então as chamadas seguintes vão direto nele.
+// 2. Retry por modelo — 429/503 com espera curta (rajada transitória) reenvia até 3x respeitando
+//    o retryDelay do Google, sem incomodar a consultora.
+// Erros de chave (400/403) interrompem tudo na hora: trocar de modelo não conserta chave.
 async function chamarGemini(prompt, { json = false } = {}) {
   const apiKey = (state.profile?.geminiApiKey || '').trim();
   if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const corpo = { contents: [{ parts: [{ text: prompt }] }] };
   if (json) corpo.generationConfig = { responseMimeType: 'application/json' };
 
+  const candidatos = modeloAtivo ? [modeloAtivo, ...MODELOS.filter(m => m !== modeloAtivo)] : [...MODELOS];
   let ultimoErroBody = null, ultimoStatus = 0;
-  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
-    if (r.ok) {
-      const data = await r.json();
-      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (!texto) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
-      return texto;
+
+  for (const modelo of candidatos) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+      let r;
+      try {
+        r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+      } catch (e) {
+        throw new Error('Sem conexão com a API do Gemini — verifique a internet e tente de novo.');
+      }
+      if (r.ok) {
+        const data = await r.json();
+        const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (!texto) throw new Error('O Gemini não retornou nenhum texto — tente de novo.');
+        if (modeloAtivo !== modelo) console.info('[Gemini] Modelo em uso nesta sessão:', modelo);
+        modeloAtivo = modelo;
+        return texto;
+      }
+      ultimoErroBody = await r.json().catch(() => ({}));
+      ultimoStatus = r.status;
+      console.warn(`[Gemini] ${modelo} respondeu ${r.status}:`, ultimoErroBody?.error?.message || '(sem mensagem)');
+
+      // Chave inválida/sem permissão não depende do modelo — não adianta tentar outro.
+      if (r.status === 400 || r.status === 403) throw erroGemini(r.status, ultimoErroBody);
+      // 404 = este modelo foi aposentado/não existe nessa chave — próximo da lista.
+      if (r.status === 404) break;
+
+      const reenviavel = r.status === 429 || r.status === 503;
+      const { retrySeg } = r.status === 429 ? extrairInfoQuota(ultimoErroBody) : { retrySeg: 2 };
+      // Espera curta (≤4s) = rajada: reenvia no mesmo modelo. Espera longa = cota DESTE modelo
+      // esgotada: quebra pro próximo modelo da lista em vez de travar a consultora esperando.
+      if (!reenviavel || tentativa === MAX_TENTATIVAS || retrySeg > 4) break;
+      await sleep((retrySeg > 0 ? retrySeg : tentativa) * 1000);
     }
-    ultimoErroBody = await r.json().catch(() => ({}));
-    ultimoStatus = r.status;
-    // Só vale reenviar em 429/503; e só se ainda houver tentativa e a espera sugerida for curta
-    // (≤ ~4s = rajada transitória). Espera longa é cota real — sai do loop e mostra o cooldown.
-    const reenviavel = r.status === 429 || r.status === 503;
-    const { retrySeg } = r.status === 429 ? extrairInfoQuota(ultimoErroBody) : { retrySeg: 2 };
-    if (!reenviavel || tentativa === MAX_TENTATIVAS || retrySeg > 4) break;
-    await sleep((retrySeg > 0 ? retrySeg : tentativa) * 1000);
   }
   throw erroGemini(ultimoStatus, ultimoErroBody);
 }
