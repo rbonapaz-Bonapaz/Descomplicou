@@ -604,11 +604,11 @@ export async function upsertProduto(raw) {
   const beneficiosNovo = String(raw.beneficios || raw.descricao || raw.beneficio || '').trim();
   const beneficiosAtual = String(p?.beneficios || '').trim();
   if (beneficiosNovo.length > beneficiosAtual.length) d.beneficios = beneficiosNovo;
-  // Caso contrário (o Catálogo mestre não tem descrição e a da consultora está mais completa),
-  // sugere a descrição pro admin em vez de gravar direto — só admin pode escrever no mestre.
+  // Caso contrário (a descrição da consultora está mais completa que a do Catálogo mestre — vazia
+  // ou não), sugere a descrição pro admin em vez de gravar direto — só admin pode escrever no mestre.
   // raw.id só existe quando raw veio do catalogoMestre (sincronização); guarda o texto já sugerido
   // no próprio produto (beneficioSugeridoHash) pra não reenviar a mesma sugestão a cada sync.
-  else if (!beneficiosNovo && beneficiosAtual && raw.id && p?.beneficioSugeridoHash !== beneficiosAtual) {
+  else if (beneficiosAtual.length > beneficiosNovo.length && raw.id && p?.beneficioSugeridoHash !== beneficiosAtual) {
     await sugerirBeneficioCatalogoMestre(raw.id, nome, codigo, beneficiosAtual);
     d.beneficioSugeridoHash = beneficiosAtual;
   }
