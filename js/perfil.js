@@ -213,6 +213,13 @@ export function renderPerfil() {
       <button class="btn" onclick="App.exportarBackupCompleto()">📥 Baixar backup completo</button>
     </div>
 
+    <div class="panel">
+      <h3>♻️ Restaurar estoque de um backup</h3>
+      <p class="muted">Se você apagou o estoque por engano (ou precisa reverter para um estado anterior), suba aqui o arquivo JSON baixado em "Backup dos meus dados". Só a quantidade em estoque e o custo médio de cada produto são restaurados (por código Farmasi, com fallback por nome) — nada mais é alterado.</p>
+      <input type="file" id="restaurarEstoqueArquivo" accept="application/json">
+      <button class="btn" style="margin-top:8px" onclick="App.restaurarEstoqueDoBackup()">♻️ Restaurar estoque deste arquivo</button>
+    </div>
+
     <div class="panel" style="border:1px solid #FBE4E4">
       <h3 style="color:var(--error)">Zona de risco</h3>
       <p class="muted">Ações irreversíveis. Cada botão pede confirmação por digitação antes de executar. Seu login e plano nunca são afetados.</p>
@@ -507,6 +514,48 @@ export function exportarBackupCompleto() {
   a.click();
   URL.revokeObjectURL(url);
   toast('Backup baixado');
+}
+
+// Restaura só estoqueAtual e custoMedio de cada produto a partir de um backup gerado por
+// exportarBackupCompleto — recuperação pontual pra quem apagou o estoque sem querer (App.apagarEstoque
+// já zera direto no Firestore; isso reverte lendo o snapshot salvo em disco). Casa por código Farmasi
+// (fallback nome) em vez de id do documento — o id salvo no backup só bate se nenhum produto foi
+// recriado desde então.
+export async function restaurarEstoqueDoBackup() {
+  const input = $('restaurarEstoqueArquivo');
+  const arquivo = input?.files?.[0];
+  if (!arquivo) return toast('Escolha o arquivo de backup (.json) antes de restaurar');
+  let backup;
+  try {
+    backup = JSON.parse(await arquivo.text());
+  } catch (e) { return toast('Arquivo inválido: não é um JSON legível'); }
+  const produtosBackup = backup?.dados?.produtos;
+  if (!Array.isArray(produtosBackup) || !produtosBackup.length) return toast('Esse arquivo não tem produtos para restaurar');
+
+  if (!confirm(`Isso vai sobrescrever a quantidade em estoque e o custo médio de todos os produtos com os valores salvos em ${backup.exportadoEm ? new Date(backup.exportadoEm).toLocaleString('pt-BR') : 'no arquivo'}. Continuar?`)) return;
+
+  const norm2 = s => String(s || '').trim().toLowerCase();
+  const porCodigo = new Map(produtosBackup.filter(p => p.codigoFarmasi).map(p => [String(p.codigoFarmasi).trim(), p]));
+  const porNome = new Map(produtosBackup.filter(p => p.nome).map(p => [norm2(p.nome), p]));
+
+  let restaurados = 0, semCorrespondencia = 0;
+  const atuais = state.data.produtos || [];
+  for (let i = 0; i < atuais.length; i += 450) {
+    const lote = atuais.slice(i, i + 450);
+    const batch = writeBatch(db);
+    lote.forEach(p => {
+      const origem = (p.codigoFarmasi && porCodigo.get(String(p.codigoFarmasi).trim())) || porNome.get(norm2(p.nome));
+      if (!origem) { semCorrespondencia++; return; }
+      batch.update(ref('produtos', p.id), {
+        estoqueAtual: Number(origem.estoqueAtual || 0),
+        custoMedio: Number(origem.custoMedio || 0)
+      });
+      restaurados++;
+    });
+    await batch.commit();
+  }
+  toast(`Estoque restaurado em ${restaurados} produto(s)${semCorrespondencia ? ` • ${semCorrespondencia} sem correspondência no backup` : ''}`);
+  window.App.refresh();
 }
 
 export async function zerarMeusDados() {
