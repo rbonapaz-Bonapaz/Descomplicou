@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Catálogo do Evento</title>
+  <link rel="stylesheet" href="css/style.css?v=50">
+  <style>
+    body{background:var(--bg)}
+    .ev-wrap{max-width:960px;margin:0 auto;padding:0 16px 110px}
+    .ev-header{background:var(--p);color:white;padding:32px 20px;text-align:center;margin-bottom:24px;border-radius:0 0 28px 28px}
+    .ev-header .logo{margin:0 auto 12px;background:rgba(255,255,255,.16);color:white;width:88px;height:88px;border-radius:50%;overflow:hidden;font-size:28px}
+    .ev-header h1{color:white;margin:0 0 6px}
+    .ev-header p{color:rgba(255,255,255,.85);margin:0}
+    .ev-header-links{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+    .ev-header-links a{background:rgba(255,255,255,.18);color:white;text-decoration:none;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:900}
+    .ev-header-links a:hover{background:rgba(255,255,255,.28)}
+    .ev-desconto-tag{font-weight:900;color:var(--success)}
+    .chip .ev-desconto-tag{margin-left:4px}
+    .ev-estoque-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin:2px 0}
+    .ev-estoque-ok{background:#E6F7EE;color:#0E9F6E}
+    .ev-estoque-zero{background:#F3F6FA;color:var(--muted)}
+    .ev-wishbar{position:fixed;left:0;right:0;bottom:0;background:white;border-top:1px solid var(--line);padding:12px 16px;box-shadow:0 -8px 24px rgba(15,30,60,.08);z-index:40}
+    .ev-wish-resumo{display:flex;justify-content:center;gap:12px;align-items:baseline;margin-bottom:8px;font-size:13px;flex-wrap:wrap}
+    .ev-wish-resumo del{color:var(--muted)}
+    .ev-wish-resumo strong{font-size:16px;color:var(--text)}
+    .ev-wish-economia{color:var(--success);font-weight:900}
+    .ev-wishbar-btnwrap{display:flex;justify-content:center}
+    .ev-wishbar button{width:min(420px,100%)}
+    .ev-card-btn{width:100%;margin-top:8px}
+    .ev-footer{text-align:center;padding:28px 16px;color:var(--muted);font-size:12px;margin-top:16px}
+    .ev-footer b{color:var(--text)}
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">Carregando catálogo...</div>
+
+  <div id="evExpirado" class="loading hidden">
+    <div class="login-card" style="text-align:center">
+      <div class="logo">😕</div>
+      <h1>Link indisponível</h1>
+      <p class="muted">Este link de evento não existe, expirou ou foi desativado. Fale diretamente com quem te enviou o link para saber mais.</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="ev-header" id="evHeader">
+      <div class="logo" id="evLogo">CV</div>
+      <h1 id="evTitulo">Catálogo do evento</h1>
+      <p id="evSubtitulo"></p>
+      <div id="evHeaderLinks" class="ev-header-links"></div>
+    </header>
+
+    <div class="ev-wrap">
+      <div class="toolbar">
+        <input id="evBusca" placeholder="Buscar produto...">
+      </div>
+      <div id="evFiltros" class="chips"></div>
+      <div id="evGrid" class="catalog-grid"></div>
+
+      <footer class="ev-footer" id="evFooter"></footer>
+    </div>
+
+    <div id="evWishBar" class="ev-wishbar hidden">
+      <div class="ev-wish-resumo" id="evResumo"></div>
+      <div class="ev-wishbar-btnwrap">
+        <button id="evBtnEnviar" class="btn dark">💌 Enviar minha lista (<span id="evCount">0</span>)</button>
+      </div>
+    </div>
+
+    <div class="ev-font-ctrl" title="Tamanho da letra">
+      <button id="evFontMais" aria-label="Aumentar fonte">A+</button>
+      <button id="evFontMenos" aria-label="Diminuir fonte">A-</button>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden"><div id="modalCard"></div></div>
+  <div id="toast"></div>
+
+  <script type="module" src="js/evento-publico.js?v=13"></script>
+</body>
+</html>

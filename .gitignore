@@ -1,0 +1,11 @@
+# Sessões/config locais do Claude Code — nunca devem ir pro repositório (podem conter tokens,
+# transcrições de conversa e dados de sessão).
+.claude/
+
+# Material de referência local (PDFs de pedidos reais, planilhas, docs pessoais, backups) — não é
+# código do projeto e não deve ser publicado.
+Arquivos para consulta/
+
+# SO / editor
+.DS_Store
+Thumbs.db
