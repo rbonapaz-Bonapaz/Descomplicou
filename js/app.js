@@ -38,7 +38,7 @@ import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarF
 import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
-  adicionarLinhaColetiva, removerLinhaColetiva } from './admin.js';
+  adicionarLinhaColetiva, removerLinhaColetiva, aprovarSugestaoBeneficio, rejeitarSugestaoBeneficio } from './admin.js';
 import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
@@ -348,7 +348,7 @@ window.App = {
   carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
-  adicionarLinhaColetiva, removerLinhaColetiva,
+  adicionarLinhaColetiva, removerLinhaColetiva, aprovarSugestaoBeneficio, rejeitarSugestaoBeneficio,
   // WhatsApp
   sendWhatsApp,
   // PDF Pedido

@@ -438,7 +438,7 @@ export async function sincronizarBaseColetiva() {
   } catch (e) {
     return toast('Não foi possível acessar a base coletiva. Fale com a administração.');
   }
-  const todosVerificados = dedupMestre(snap.docs.map(d => d.data()));
+  const todosVerificados = dedupMestre(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   if (!todosVerificados.length) return toast('A base coletiva do Administrador ainda não tem produtos.');
   window.__baseColetivaVerificados = todosVerificados.length;
   window.__baseColetivaTodos = todosVerificados.filter(difereDaBaseColetiva);
@@ -545,7 +545,7 @@ export async function autoSincronizarBaseColetiva() {
     toast('Não foi possível sincronizar com a base coletiva automaticamente (erro: ' + e.message + '). Tente sincronizar manualmente em Produtos.');
     return;
   }
-  const itens = dedupMestre(snap.docs.map(d => d.data()));
+  const itens = dedupMestre(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   if (!itens.length) return;
   for (const p of itens) await upsertProduto(p);
   await marcarUltimaSincronizacaoBaseColetiva();
@@ -561,6 +561,21 @@ export async function autoSincronizarBaseColetiva() {
 // são sempre separadas por vírgula antes de comparar, e a comparação ignora acento/maiúscula/hífen
 // (normalizada, com de/para de grafias conhecidas) mas preserva a grafia oficial/primeira ocorrência.
 export const mesclarLinhas = combinarLinhas;
+
+// Consultoras não podem escrever no Catálogo mestre (só o admin) — em vez de gravar direto,
+// registra uma sugestão pro admin revisar e aprovar em Admin → Catálogo mestre.
+async function sugerirBeneficioCatalogoMestre(catalogoMestreId, nome, codigoFarmasi, beneficiosSugerido) {
+  try {
+    await addDoc(collection(db, 'sugestoesBeneficios'), {
+      catalogoMestreId, nome, codigoFarmasi,
+      beneficiosSugerido,
+      sugeridoPorUid: state.user.uid,
+      sugeridoPorNome: state.profile?.nome || state.user.email || '',
+      status: 'pendente',
+      criadoEm: serverTimestamp()
+    });
+  } catch (e) { /* sugestão é um extra opcional — não deve travar a sincronização se falhar */ }
+}
 
 export async function upsertProduto(raw) {
   const codigo = String(raw.codigoFarmasi || raw.codigo || '').trim();
@@ -587,6 +602,14 @@ export async function upsertProduto(raw) {
   const beneficiosNovo = String(raw.beneficios || raw.descricao || raw.beneficio || '').trim();
   const beneficiosAtual = String(p?.beneficios || '').trim();
   if (beneficiosNovo.length > beneficiosAtual.length) d.beneficios = beneficiosNovo;
+  // Caso contrário (o Catálogo mestre não tem descrição e a da consultora está mais completa),
+  // sugere a descrição pro admin em vez de gravar direto — só admin pode escrever no mestre.
+  // raw.id só existe quando raw veio do catalogoMestre (sincronização); guarda o texto já sugerido
+  // no próprio produto (beneficioSugeridoHash) pra não reenviar a mesma sugestão a cada sync.
+  else if (!beneficiosNovo && beneficiosAtual && raw.id && p?.beneficioSugeridoHash !== beneficiosAtual) {
+    await sugerirBeneficioCatalogoMestre(raw.id, nome, codigo, beneficiosAtual);
+    d.beneficioSugeridoHash = beneficiosAtual;
+  }
   // Flags de estoque (usadas pela importação de pedido) só são aplicadas quando explicitamente informadas
   if (raw.produtoProntaEntrega != null) d.produtoProntaEntrega = !!raw.produtoProntaEntrega;
   if (raw.monitorarEstoqueBaixo != null) d.monitorarEstoqueBaixo = !!raw.monitorarEstoqueBaixo;

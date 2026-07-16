@@ -31,6 +31,13 @@ export function renderAdmin() {
   if (sec === 'catalogoMestre') {
     html += `<div class="panel">
       <div class="panel-head">
+        <h3>Sugestões de descrição</h3>
+      </div>
+      <p class="muted">Quando uma consultora sincroniza e o produto dela tem uma descrição mais completa que a do Catálogo mestre (que estava sem descrição), a sugestão aparece aqui — aprove para atualizar o mestre, ou rejeite.</p>
+      <div id="sbLista" style="margin-top:12px"><p class="muted">Carregando sugestões...</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
         <h3>Linhas da base coletiva</h3>
       </div>
       <p class="muted">Linhas de produto publicadas para todas as consultoras. Quem usa a base coletiva pode sincronizar em Produtos → Linhas — as linhas daqui são <b>acrescentadas</b> às que a consultora já tem (nada é apagado).</p>
@@ -105,7 +112,58 @@ export function renderAdmin() {
   }
 
   $('admin').innerHTML = html;
-  if (sec === 'catalogoMestre') { carregarCatalogoMestre(); carregarLinhasColetivas(); }
+  if (sec === 'catalogoMestre') { carregarCatalogoMestre(); carregarLinhasColetivas(); carregarSugestoesBeneficios(); }
+}
+
+// --- Sugestões de descrição (benefícios) vindas da sincronização das consultoras ---
+// Consultora não tem permissão de escrita no catalogoMestre — a sincronização grava aqui uma
+// sugestão em vez de atualizar direto; o admin aprova (grava no mestre) ou rejeita.
+let sugestoesBeneficiosCache = [];
+
+async function carregarSugestoesBeneficios() {
+  try {
+    const snap = await getDocs(collection(db, 'sugestoesBeneficios'));
+    sugestoesBeneficiosCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => (s.status || 'pendente') === 'pendente');
+    renderSugestoesBeneficios();
+  } catch (e) {
+    if ($('sbLista')) $('sbLista').innerHTML = `<p class="muted">Erro ao carregar: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderSugestoesBeneficios() {
+  const box = $('sbLista');
+  if (!box) return;
+  if (!sugestoesBeneficiosCache.length) { box.innerHTML = '<p class="muted">Nenhuma sugestão pendente.</p>'; return; }
+  box.innerHTML = sugestoesBeneficiosCache.map(s => `
+    <div class="panel" style="background:#F7FAFC;margin-bottom:10px">
+      <b>${esc(s.nome || 'Produto')}</b>${s.codigoFarmasi ? ` <span class="muted">• Código ${esc(s.codigoFarmasi)}</span>` : ''}
+      <p class="muted" style="margin:6px 0 2px">Sugerido por ${esc(s.sugeridoPorNome || 'uma consultora')}:</p>
+      <p style="margin:0 0 10px">${esc(s.beneficiosSugerido)}</p>
+      <button class="btn small dark" onclick="App.aprovarSugestaoBeneficio('${s.id}')">✓ Aprovar e atualizar mestre</button>
+      <button class="btn small ghost" style="color:var(--error)" onclick="App.rejeitarSugestaoBeneficio('${s.id}')">✗ Rejeitar</button>
+    </div>`).join('');
+}
+
+export async function aprovarSugestaoBeneficio(id) {
+  const s = sugestoesBeneficiosCache.find(x => x.id === id);
+  if (!s) return;
+  try {
+    await setDoc(doc(db, 'catalogoMestre', s.catalogoMestreId), { beneficios: s.beneficiosSugerido, atualizadoEm: serverTimestamp() }, { merge: true });
+    await deleteDoc(doc(db, 'sugestoesBeneficios', id));
+    sugestoesBeneficiosCache = sugestoesBeneficiosCache.filter(x => x.id !== id);
+    renderSugestoesBeneficios();
+    toast('Descrição atualizada no Catálogo mestre');
+    carregarCatalogoMestre();
+  } catch (e) { toast('Erro ao aprovar: ' + e.message); }
+}
+
+export async function rejeitarSugestaoBeneficio(id) {
+  try {
+    await deleteDoc(doc(db, 'sugestoesBeneficios', id));
+    sugestoesBeneficiosCache = sugestoesBeneficiosCache.filter(x => x.id !== id);
+    renderSugestoesBeneficios();
+    toast('Sugestão rejeitada');
+  } catch (e) { toast('Erro ao rejeitar: ' + e.message); }
 }
 
 // --- Linhas da base coletiva (G.4) ---
