@@ -1,6 +1,6 @@
 import { state, SECTIONS, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
   auth, GoogleAuthProvider, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from './state.js';
-import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, toggleHtml, toggleBareHtml, senhaInputHtml } from './utils.js';
+import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml } from './utils.js';
 import { biometriaDisponivel, temBiometriaAtiva } from './biometria.js';
 import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
@@ -185,6 +185,12 @@ export function renderPerfil() {
       <h3>🔢 Numeração de pedidos</h3>
       <p class="muted">Cada pedido novo já recebe um número sequencial + um sufixo exclusivo do cliente (ex: "1042-01" na 1ª compra dela, "-02" na 2ª) no momento em que a venda é finalizada. Pedidos antigos, feitos antes desse recurso, ainda não têm número — rode uma vez para numerá-los em ordem de finalização da venda. Ação segura, pode rodar quantas vezes quiser.</p>
       <button class="btn" onclick="App.migrarNumeracaoPedidos()">Numerar pedidos antigos</button>
+    </div>
+
+    <div class="panel">
+      <h3>💾 Backup dos meus dados</h3>
+      <p class="muted">Baixa um arquivo JSON com todos os seus dados (clientes, produtos, vendas, agenda, estoque e demais cadastros) — guarde em algum lugar seguro de vez em quando, como uma cópia extra. Usa só os dados já carregados na tela, sem gastar leituras extras do banco.</p>
+      <button class="btn" onclick="App.exportarBackupCompleto()">📥 Baixar backup completo</button>
     </div>
 
     <div class="panel" style="border:1px solid #FBE4E4">
@@ -440,6 +446,24 @@ export async function salvarAutoSyncBaseColetiva(ativo) {
   await setDoc(doc(db, 'users', state.user.uid), { baseColetivaAutoSync: ativo, baseColetivaAutoSyncHora: hora }, { merge: true });
   state.profile = { ...state.profile, baseColetivaAutoSync: ativo, baseColetivaAutoSyncHora: hora };
   toast(ativo ? `Sincronização automática ativada, todo dia às ${hora}` : 'Sincronização automática desativada');
+}
+
+// Backup manual: usa só o que já está em memória (state.data, carregado no login) — não faz
+// nenhuma leitura extra no Firestore, então não tem custo de banco além do uso normal do app.
+export function exportarBackupCompleto() {
+  const backup = {
+    exportadoEm: new Date().toISOString(),
+    consultora: state.profile?.nome || state.user?.email || '',
+    dados: state.data
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `backup-crm-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup baixado');
 }
 
 export async function zerarMeusDados() {
