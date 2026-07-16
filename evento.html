@@ -10,25 +10,27 @@
     .ev-wrap{max-width:960px;margin:0 auto;padding:0 16px 110px}
     .ev-header{background:var(--p);color:white;padding:32px 20px;text-align:center;margin-bottom:24px;border-radius:0 0 28px 28px}
     .ev-header .logo{margin:0 auto 12px;background:rgba(255,255,255,.16);color:white;width:88px;height:88px;border-radius:50%;overflow:hidden;font-size:28px}
-    .ev-header h1{color:white;margin:0 0 6px}
-    .ev-header p{color:rgba(255,255,255,.85);margin:0}
+    .ev-header h1{color:white;margin:0 0 6px;font-size:calc(40px * var(--ev-font-scale,1))}
+    .ev-header p{color:rgba(255,255,255,.85);margin:0;font-size:calc(15px * var(--ev-font-scale,1))}
     .ev-header-links{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
-    .ev-header-links a{background:rgba(255,255,255,.18);color:white;text-decoration:none;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:900}
+    .ev-header-links a{background:rgba(255,255,255,.18);color:white;text-decoration:none;padding:6px 14px;border-radius:999px;font-size:calc(12px * var(--ev-font-scale,1));font-weight:900}
     .ev-header-links a:hover{background:rgba(255,255,255,.28)}
     .ev-desconto-tag{font-weight:900;color:var(--success)}
     .chip .ev-desconto-tag{margin-left:4px}
-    .ev-estoque-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;margin:2px 0}
+    #evFiltros .chip{font-size:calc(13px * var(--ev-font-scale,1))}
+    #evBusca{font-size:calc(14px * var(--ev-font-scale,1))}
+    .ev-estoque-tag{display:inline-block;font-size:calc(11px * var(--ev-font-scale,1));font-weight:700;padding:2px 8px;border-radius:999px;margin:2px 0}
     .ev-estoque-ok{background:#E6F7EE;color:#0E9F6E}
     .ev-estoque-zero{background:#F3F6FA;color:var(--muted)}
     .ev-wishbar{position:fixed;left:0;right:0;bottom:0;background:white;border-top:1px solid var(--line);padding:12px 16px;box-shadow:0 -8px 24px rgba(15,30,60,.08);z-index:40}
-    .ev-wish-resumo{display:flex;justify-content:center;gap:12px;align-items:baseline;margin-bottom:8px;font-size:13px;flex-wrap:wrap}
+    .ev-wish-resumo{display:flex;justify-content:center;gap:12px;align-items:baseline;margin-bottom:8px;font-size:calc(13px * var(--ev-font-scale,1));flex-wrap:wrap}
     .ev-wish-resumo del{color:var(--muted)}
-    .ev-wish-resumo strong{font-size:16px;color:var(--text)}
+    .ev-wish-resumo strong{font-size:calc(16px * var(--ev-font-scale,1));color:var(--text)}
     .ev-wish-economia{color:var(--success);font-weight:900}
     .ev-wishbar-btnwrap{display:flex;justify-content:center}
-    .ev-wishbar button{width:min(420px,100%)}
+    .ev-wishbar button{width:min(420px,100%);font-size:calc(14px * var(--ev-font-scale,1))}
     .ev-card-btn{width:100%;margin-top:8px}
-    .ev-footer{text-align:center;padding:28px 16px;color:var(--muted);font-size:12px;margin-top:16px}
+    .ev-footer{text-align:center;padding:28px 16px;color:var(--muted);font-size:calc(12px * var(--ev-font-scale,1));margin-top:16px}
     .ev-footer b{color:var(--text)}
   </style>
 </head>
