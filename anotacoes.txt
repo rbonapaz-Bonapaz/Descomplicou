@@ -41,3 +41,48 @@ CRM FARMASI - BACKLOG DE AJUSTES E CORREÇÕES (RODADA DE MEIA-NOITE)
 -------------------------------------------------------------------
 - Visibilidade de Relatórios: Na tela de configurações, ao desativar a exibição de um relatório específico (como o de "recomendações"), o dashboard de relatórios deve refletir a mudança instantaneamente. Corrigir o estado reativo do React para que o componente seja remontado/atualizado sem depender de um refresh manual do navegador (F5). Aplicar esse comportamento reativo a todos os cards de relatórios.
 - Exclusão na Lista de Interesse: No perfil do cliente, ao clicar para remover um item da seção "Produtos de interesse" e confirmar, o item deve desaparecer imediatamente da interface. Corrigir o estado local (state) para filtrar o item removido na hora, evitando que ele continue visível até que a tela do cliente seja fechada e reaberta.
+
+-------------------------------------------------------------------
+7. CADASTRO DE OPERADORAS, BANDEIRAS E TAXAS DINÂMICAS (FINANCEIRO)
+-------------------------------------------------------------------
+- Substituir o cálculo de juros linear baseado em "juros ao mês" por um sistema de tabelas de taxas dinâmicas indexadas por Operadora e por Grupo de Bandeiras.
+
+A. Modelagem do Banco de Dados (Firestore):
+   - Criar uma coleção/subcoleção de "operadoras_cartao" contendo:
+     * Nome da Operadora (Ex: "InfinitePay").
+     * Prazo de Recebimento (Ex: "1 dia útil", "Na hora", "14 dias", etc.).
+     * Dois Grupos de Tarifas principais:
+       1. Grupo 1: Visa / Mastercard
+       2. Grupo 2: Elo / Amex
+     * Cada grupo deve armazenar um array/objeto com as taxas exatas de 1x (à vista) até 12x, além das taxas de Débito e Pix.
+
+B. Tela de Configurações ("Pagamento"):
+   - Permitir que a consultora adicione/edite Operadoras.
+   - Ao editar uma operadora, carregar um formulário com inputs organizados em duas colunas (coluna Visa/Master e coluna Elo/Amex) para preenchimento manual de cada parcela (Débito, Crédito 1x, 2x... até 12x).
+   - Adicionar o campo de texto/select "Prazo de Recebimento" nesta tela.
+   - Seed Inicial (Valores Padrão): Para facilitar, o sistema já deve vir com a operadora "InfinitePay (1 dia útil)" pré-cadastrada com os seguintes valores exatos:
+     * Grupo Visa/Master: Débito (1.37%), Crédito à vista (3.15%), 2x (5.39%), 3x (6.12%), 4x (6.85%), 5x (7.57%), 6x (8.28%), 7x (8.99%), 8x (9.69%), 9x (10.38%), 10x (11.06%), 11x (11.74%), 12x (12.40%).
+     * Grupo Elo/Amex: Débito (2.58%), Crédito à vista (4.91%), 2x (6.47%), 3x (7.20%), 4x (7.92%), 5x (8.63%), 6x (9.33%), 7x (10.03%), 8x (10.72%), 9x (11.41%), 10x (12.08%), 11x (12.75%), 12x (13.41%).
+
+C. Integração no Carrinho de Compras (Checkout):
+   - Ao selecionar a forma de pagamento "Cartão (Crédito)" ou "Link de Pagamento", o sistema deve exibir dois novos seletores:
+     1. "Operadora" (Ex: InfinitePay)
+     2. "Bandeira do Cartão" (Opções: "Visa/Master" ou "Elo/Amex")
+   - Com base na operadora e bandeira selecionadas, o sistema deve buscar na tabela a taxa exata correspondente ao número de parcelas escolhido para calcular o valor líquido a receber e o juro a ser repassado (conforme a regra de quem assume o juro).
+   - Exibir na tela do carrinho o prazo de recebimento configurado daquela operadora (Ex: "Dinheiro na conta em: 1 dia útil").
+
+
+-------------------------------------------------------------------
+8. INTEGRAÇÃO DE PAGAMENTOS EM TEMPO REAL (API INFINITEPAY)
+-------------------------------------------------------------------
+Implementar o fluxo de automação de cobrança ao clicar em "Finalizar Pagamento" no checkout do CRM, utilizando a API de Checkout Integrado da InfinitePay.
+
+A. Geração de QR Code no Computador (Venda Presencial):
+   - Ao finalizar uma venda no computador escolhendo "Cartão" ou "Link", o sistema deve disparar uma requisição POST para 'https://api.checkout.infinitepay.io/links' enviando os dados da venda.
+   - O link de pagamento retornado pela API deve ser convertido em um QR Code dinâmico exibido em um modal na tela do computador.
+   - O cliente poderá escanear o QR Code para pagar no próprio celular via Pix, Cartão de Crédito ou Carteiras Digitais (Apple Pay/Google Pay).
+   - Implementar uma rota de Webhook no Firebase para escutar a confirmação de pagamento da InfinitePay. Assim que o pagamento for confirmado, atualizar o status da venda para "Pago" no Firestore em tempo real, fechando o modal automaticamente na tela do computador.
+
+B. Integração com o Celular (Atalho InfiniteTap):
+   - Se o CRM detectar que está sendo executado em um dispositivo móvel (celular ou tablet), ao lado da opção de QR Code, exibir o botão "Cobrar via InfiniteTap".
+   - Esse botão deve disparar um Deep Link configurado para abrir o aplicativo nativo da InfinitePay diretamente na tela de venda física por aproximação (Tap to Pay), passando o valor total do pedido e o número de parcelas desejado como parâmetros.
