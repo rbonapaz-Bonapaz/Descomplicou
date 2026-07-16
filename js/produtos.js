@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 
@@ -362,7 +362,7 @@ export async function saveProduto(id = '') {
   const d = {
     nome: $('pNome').value,
     codigoFarmasi: $('pCodigo').value,
-    linha: $('pLinha').value || 'Sem linha',
+    linha: combinarLinhas($('pLinha').value),
     imagem: $('pImagem').value,
     precoOriginal: parseMoney($('pOriginal').value),
     precoAtual: parseMoney($('pAtual').value),
@@ -558,20 +558,9 @@ export async function autoSincronizarBaseColetiva() {
 // Set — então numa sincronização seguinte, a mesma string "Maquiagem, Cremoso" (agora diferente dos
 // elementos "Maquiagem" e "Cremoso" já separados de uma mesclagem anterior) entrava de novo inteira,
 // duplicando tudo a cada sync (ex: "Maquiagem, Cremoso, Maquiagem, Cremoso"). Agora as duas entradas
-// são sempre separadas por vírgula antes de comparar, e a comparação ignora acento/maiúscula
-// (normalizada) mas preserva a grafia da primeira ocorrência.
-export function mesclarLinhas(linhaAtual, linhaNova) {
-  const partes = [...String(linhaAtual || '').split(','), ...String(linhaNova || '').split(',')]
-    .map(s => s.trim())
-    .filter(s => s && norm(s) !== 'sem linha');
-  const vistos = new Set();
-  const resultado = [];
-  for (const p of partes) {
-    const chave = norm(p);
-    if (!vistos.has(chave)) { vistos.add(chave); resultado.push(p); }
-  }
-  return resultado.length ? resultado.join(', ') : 'Sem linha';
-}
+// são sempre separadas por vírgula antes de comparar, e a comparação ignora acento/maiúscula/hífen
+// (normalizada, com de/para de grafias conhecidas) mas preserva a grafia oficial/primeira ocorrência.
+export const mesclarLinhas = combinarLinhas;
 
 export async function upsertProduto(raw) {
   const codigo = String(raw.codigoFarmasi || raw.codigo || '').trim();
