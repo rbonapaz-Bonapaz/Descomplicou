@@ -153,6 +153,7 @@ function renderGrid() {
       ${p.imagem ? `<img src="${esc(p.imagem)}">` : ''}
       <b>${esc(p.nome)}</b>
       <span>Código: ${esc(p.codigoFarmasi || '-')}</span>
+      ${linhasDe(p).length ? `<span class="ev-linha-tag">${esc(linhasDe(p).map(labelLinha).join(' · '))}</span>` : ''}
       ${mostrarBeneficios && p.beneficios ? `<span class="catalog-benef">${esc(p.beneficios)}</span>` : ''}
       ${mostrarEstoque && p.prontaEntrega != null ? `<span class="ev-estoque-tag ${pronta > 0 ? 'ev-estoque-ok' : 'ev-estoque-zero'}">${pronta > 0 ? `${pronta} em pronta entrega` : 'Sob encomenda'}</span>` : ''}
       ${mostrarPrecos ? `<div class="price-pair">${temDesconto
