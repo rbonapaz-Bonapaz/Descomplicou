@@ -118,6 +118,7 @@ function eventoCard(ev) {
       <button class="btn small green-btn" onclick="App.enviarWhatsappEvento('${ev.id}')">${WA_ICON} WhatsApp</button>
       <button class="btn small" onclick="App.gerarQrCodeEvento('${ev.id}')">📱 QR Code</button>
       <button class="btn small" onclick="App.abrirEditarEvento('${ev.id}')">✏️ Editar</button>
+      <button class="btn small" onclick="App.atualizarPrecosEvento('${ev.id}')" title="Puxa preço, imagem, benefícios e estoque atuais do catálogo pra dentro do link">🔄 Atualizar preços</button>
       <button class="btn small dark" onclick="App.toggleListasEvento('${ev.id}')">💌 Listas de desejo</button>
       <button class="btn small" style="color:var(--error)" onclick="App.excluirEvento('${ev.id}')">🗑️ Excluir</button>
     </div>
@@ -273,7 +274,47 @@ export async function sincronizarProdutoNosEventos(p) {
       await setDoc(ref('eventos', ev.id), { produtos: produtosAtualizados }, { merge: true });
       await setDoc(doc(db, 'eventosPublicos', ev.id), { produtos: produtosAtualizados }, { merge: true });
       ev.produtos = produtosAtualizados;
-    } catch (e) { /* evento pode ter sido excluído nesse meio-tempo — não trava o salvamento do produto */ }
+    } catch (e) {
+      // Não trava o salvamento do produto, mas a consultora precisa saber que o link ficou defasado.
+      console.error('Falha ao replicar produto no evento', ev.id, e);
+      toast(`Produto salvo, mas não consegui atualizar o evento "${ev.nome}": ${e.message}`);
+    }
+  }
+}
+
+// Re-sincroniza TODOS os produtos do evento com o catálogo atual (preço, imagem, benefícios,
+// pronta entrega), recalculando os descontos por linha do próprio evento. Plano B determinístico
+// pra quando alguma alteração de produto não replicou sozinha (ou pra eventos antigos).
+export async function atualizarPrecosEvento(id) {
+  const ev = state.data.eventos.find(e => e.id === id);
+  if (!ev) return;
+  const descontos = ev.descontosPorLinha || {};
+  const achar = x => state.data.produtos.find(p =>
+    (x.id && p.id === x.id) ||
+    (x.codigoFarmasi && String(p.codigoFarmasi).trim() === String(x.codigoFarmasi).trim()) ||
+    norm(p.nome) === norm(x.nome));
+  let atualizados = 0, semCadastro = 0;
+  const produtosAtualizados = (ev.produtos || []).map(x => {
+    const p = achar(x);
+    if (!p) { semCadastro++; return x; }
+    const linhasProd = linhasDe(p);
+    const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+    const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
+    const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
+    atualizados++;
+    return {
+      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
+      imagem: p.imagem || '', beneficios: p.beneficios || '',
+      precoOriginal, precoComDesconto, prontaEntrega: Number(p.estoqueAtual || 0)
+    };
+  });
+  try {
+    await setDoc(ref('eventos', id), { produtos: produtosAtualizados }, { merge: true });
+    await setDoc(doc(db, 'eventosPublicos', id), { produtos: produtosAtualizados }, { merge: true });
+    ev.produtos = produtosAtualizados;
+    toast(`${atualizados} produto(s) atualizados no link do evento${semCadastro ? ` • ${semCadastro} sem correspondência no catálogo` : ''}`);
+  } catch (e) {
+    toast('Erro ao atualizar o evento: ' + e.message);
   }
 }
 
