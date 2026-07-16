@@ -2,7 +2,7 @@
 
 **Data**: 2026-07-16  
 **Ambiente**: GitHub + Firestore  
-**Status**: 15 commits, sincronização automática de preço validada e funcionando
+**Status**: 25+ commits, sincronização automática de preço validada, datas comemorativas editáveis com ano opcional
 
 ---
 
@@ -21,7 +21,11 @@
 11. **Botão de re-sincronização manual** - "🔄 Atualizar preços" como fallback determinístico
 12. **Correção de fallback em eventos antigos** - Casa produtos por código Farmasi/nome quando `id` não existe (eventos criados antes da mudança)
 13. **Erro visível na replicação** - Falhas de sincronização agora alertam consultora em vez de falhar em silêncio
-14. **Sincronização de código** - Código local sincronizado com GitHub (15 commits no total)
+14. **Sincronização de código** - Código local sincronizado com GitHub (25+ commits no total)
+15. **Restauração de estoque via backup** - Upload de backup JSON e restaura estoqueAtual + custoMedio de cada produto (matching por código Farmasi)
+16. **Datas comemorativas com edição** - ✅ Permite editar datas adicionadas manualmente
+17. **Ano opcional em datas** - ✅ Data sem ano se repete todo ano; com ano definido é data única
+18. **Correção de sugestão de descrição** - ✅ Condição dupla: filtra divergência de benefícios + compara tamanho de descrição
 
 ---
 
@@ -117,26 +121,33 @@ Estas são ideias mencionadas mas ainda não priorizadas:
 
 ## 📋 Checklist de Publicação para Produção
 
-- [ ] **Publicar Firestore rules** (bloqueia sugestão de descrição)
+- [ ] **Publicar Firestore rules** (bloqueia sugestão de descrição) — 🔴 CRÍTICA
 - [ ] **Validar sugestão de descrição** em staging/produção
 - [x] **Validar sync de preço** em staging/produção (✅ Testado e funcionando)
+- [x] **Validar restauração de estoque** (✅ Testado e funcionando)
+- [x] **Validar datas comemorativas** (✅ Automáticas + manuais + edição implementados)
 - [ ] **Testar mobile** em todos os tamanhos
 - [ ] **Testar foto fallback** com URLs quebradas
 - [ ] **Revisar performance** do Firestore (se muitos eventos, sync pode ficar lento)
-- [ ] **Backup dos dados** antes de grandes mudanças
+- [x] **Backup dos dados** (✅ Feature de backup manual implementada)
 - [ ] **Documentar** novas features para consultoras/admins
 
 ---
 
 ## 🔗 Referências
 
-- **Branch principal**: `main` (15 commits após sincronização)
-- **Último commit**: `8aecd91` - Botão "Atualizar preços" no evento + erro visível na replicação
-- **Commits principais**:
+- **Branch principal**: `main` (25+ commits com todas as features)
+- **Último commit**: `34f6e9d` - Permite editar data comemorativa e torna o ano opcional
+- **Commits principais recentes**:
+  - `34f6e9d` - Edição de datas + ano opcional
+  - `da16b9f` - Corrige condição que impedia sugestão de descrição
+  - `1cab972` - Restauração de estoque via backup JSON
+  - `6811c7c` - Divergência de descrição na conferência
+  - `05140aa` - Aumenta foto da consultora
+  - `c72fecc` - Sincronização de preço validada
   - `8aecd91` - Botão re-sincronização + erro visível
   - `39c7071` - Fix cache + fallback em eventos antigos
   - `576279e` - Tag de linha discreta nos cards
-  - `2ce2314` - onSnapshot em tempo real no link
 - **Firestore rules**: `/firestore.rules` (contém nova coleção `sugestoesBeneficios`)
 - **Arquivos-chave**:
   - `js/utils.js` - `canonLinha()`, `combinarLinhas()`
