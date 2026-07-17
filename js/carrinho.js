@@ -51,12 +51,10 @@ export function calcCustoCartao(totalPedido, pagamento, parcelas, jurosPor, perf
     return { taxaTransacao, custoJuros: 0, total: taxaTransacao };
   }
 
-  const taxaBase = Number((ehDebito ? perfil?.taxaBaseDebito : perfil?.taxaBaseTransacao) || 0) / 100;
-  const tarifaFixa = Number((ehDebito ? perfil?.tarifaFixaDebito : perfil?.tarifaFixaTransacao) || 0);
-  const taxaTransacao = totalPedido * taxaBase + tarifaFixa;
-  const taxaJuros = Number(perfil?.taxaJurosCartao || 0) / 100;
-  const custoJuros = (!ehDebito && (jurosPor || 'vendedor') === 'vendedor' && n > 1) ? totalPedido * taxaJuros * (n - 1) : 0;
-  return { taxaTransacao, custoJuros, total: taxaTransacao + custoJuros };
+  // Sem operadora selecionada, não há como estimar o custo real da maquininha — cadastrar uma
+  // operadora em Minha Conta → Pagamento é o único jeito de ver esse número (a taxa fixa genérica
+  // que existia antes foi removida por ser sempre imprecisa perto da tabela real por bandeira/parcela).
+  return { taxaTransacao: 0, custoJuros: 0, total: 0 };
 }
 
 function operadoraBandeiraHtml(id, carr) {

@@ -111,16 +111,12 @@ export function renderPerfil() {
   if (sec === 'pagamento') {
     html += `<div class="panel">
       <h3>Pagamento</h3>
-      <p class="muted">Usado na tela de venda quando o pagamento é por cartão ou link, para calcular parcelas e juros.</p>
+      <p class="muted">Usado na tela de venda quando o pagamento é por cartão ou link. O custo da maquininha (taxa por bandeira/parcela) vem das <b>Operadoras de cartão</b> cadastradas mais abaixo — os campos aqui são só sobre o link de cobrança, o limite de parcelas e o juro que a CLIENTE paga quando ela assume o parcelamento.</p>
       <div class="grid">
         <div class="field full"><label>Link de pagamento (Pix/cartão)</label><input id="perLinkPag" placeholder="https://..." value="${esc(p.linkPagamento || '')}"></div>
         <div class="field"><label>Handle da InfinitePay (@usuário)</label><input id="perInfinitePayHandle" placeholder="Ex: minhaloja" value="${esc(p.infinitePayHandle || '')}"></div>
         <div class="field"><label>Máximo de parcelas</label><input id="perMaxParcelas" type="number" min="1" max="24" value="${p.maxParcelas || 12}"></div>
-        <div class="field"><label>Juros do cartão (% ao mês)</label><input id="perTaxaJuros" value="${p.taxaJurosCartao || 0}"></div>
-        <div class="field"><label>Taxa crédito (%)</label><input id="perTaxaBase" placeholder="Ex: 3,99" value="${p.taxaBaseTransacao || 0}"></div>
-        <div class="field"><label>Tarifa fixa crédito (R$)</label><input id="perTarifaFixa" placeholder="Ex: 0,40" value="${p.tarifaFixaTransacao || 0}"></div>
-        <div class="field"><label>Taxa débito (%)</label><input id="perTaxaDebito" placeholder="Ex: 1,99" value="${p.taxaBaseDebito || 0}"></div>
-        <div class="field"><label>Tarifa fixa débito (R$)</label><input id="perTarifaFixaDebito" placeholder="Ex: 0,20" value="${p.tarifaFixaDebito || 0}"></div>
+        <div class="field"><label>Juros cobrado da cliente (% ao mês)</label><input id="perTaxaJuros" value="${p.taxaJurosCartao || 0}"></div>
       </div>
       <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar cobrança InfinitePay" no carrinho — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
@@ -370,10 +366,6 @@ export async function savePerfil() {
     infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim().replace(/^@/, ''),
     maxParcelas: $('perMaxParcelas') ? Number($('perMaxParcelas').value || 12) : (p.maxParcelas || 12),
     taxaJurosCartao: $('perTaxaJuros') ? parseNum($('perTaxaJuros').value) : (p.taxaJurosCartao || 0),
-    taxaBaseTransacao: $('perTaxaBase') ? parseNum($('perTaxaBase').value) : (p.taxaBaseTransacao || 0),
-    tarifaFixaTransacao: $('perTarifaFixa') ? parseNum($('perTarifaFixa').value) : (p.tarifaFixaTransacao || 0),
-    taxaBaseDebito: $('perTaxaDebito') ? parseNum($('perTaxaDebito').value) : (p.taxaBaseDebito || 0),
-    tarifaFixaDebito: $('perTarifaFixaDebito') ? parseNum($('perTarifaFixaDebito').value) : (p.tarifaFixaDebito || 0),
     limiteParcelasSemJuros: $('perLimiteParcelasSemJuros') ? Number($('perLimiteParcelasSemJuros').value || 3) : (p.limiteParcelasSemJuros ?? 3),
     valorMinimoParcelamento: $('perValorMinimoParcelamento') ? parseNum($('perValorMinimoParcelamento').value) : (p.valorMinimoParcelamento || 0),
     atualizadoEm: serverTimestamp()

@@ -1,8 +1,8 @@
 // Cadastro de operadoras de cartão (Minha Conta → Pagamento) — tabela de taxas por operadora e
-// grupo de bandeira (Visa/Mastercard vs Elo/Amex), débito e crédito 1x-12x. Quando o carrinho tem
-// uma operadora selecionada, o custo da maquininha usa a taxa exata da tabela em vez da fórmula
-// linear genérica (taxaBaseTransacao/taxaJurosCartao do perfil) — que continua sendo o padrão
-// pra quem não cadastrar nenhuma operadora, sem quebrar ninguém.
+// grupo de bandeira (Visa/Mastercard vs Elo/Amex), débito e crédito 1x-12x. É a ÚNICA fonte do
+// custo estimado da maquininha no carrinho (calcCustoCartao em carrinho.js) — os antigos campos de
+// taxa fixa genérica no perfil foram removidos por serem sempre imprecisos perto da tabela real.
+// Sem operadora selecionada no carrinho, o custo simplesmente não é mostrado.
 import { state, col, ref, addDoc, setDoc, deleteDoc, serverTimestamp, showModal, closeModal, toast } from './state.js';
 import { $, esc, iniciarCooldownBotao } from './utils.js';
 import { interpretarTaxasOperadora } from './gemini.js';
@@ -56,7 +56,7 @@ export function renderOperadorasPanel() {
     <div class="panel-head">
       <h3>💳 Operadoras de cartão</h3>
     </div>
-    <p class="muted">Cadastre a maquininha/operadora que você usa (ex: InfinitePay) com a tabela de taxas exata por bandeira e parcela. Selecionando uma operadora no carrinho, o custo mostrado usa essa taxa em vez da taxa genérica acima.</p>
+    <p class="muted">Cadastre a maquininha/operadora que você usa (ex: InfinitePay) com a tabela de taxas exata por bandeira e parcela — é a única fonte do custo estimado da maquininha no carrinho. Sem nenhuma operadora selecionada, esse custo não é mostrado.</p>
     ${lista.length ? `<div class="list" style="margin-top:12px">${lista.map(o => `
       <div class="list-item">
         <div>
