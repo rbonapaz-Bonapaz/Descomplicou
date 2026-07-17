@@ -33,5 +33,5 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 }
 
 /* Ícones do menu lateral — largura fixa pra alinhar os rótulos numa coluna limpa. */
-.nav-ico{display:inline-block;width:20px;margin-right:10px;font-size:15px;text-align:center}
+.nav-ico{display:inline-block;width:20px;overflow:hidden;margin-right:10px;font-size:15px;text-align:center;vertical-align:middle}
 @media(max-width:760px){.nav-ico{margin-right:6px}}
