@@ -51,6 +51,8 @@ function aplicarTemaEvento(perfilPublico) {
     root.setProperty('--btn-dark', sombrearCor(cor, -0.08));
   }
   if (fundo && /^#[0-9a-fA-F]{6}$/.test(fundo)) root.setProperty('--bg', fundo);
+  const texto = perfilPublico?.corTexto;
+  if (texto && /^#[0-9a-fA-F]{6}$/.test(texto)) root.setProperty('--text', texto);
 }
 
 function formatDate(d) {

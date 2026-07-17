@@ -247,6 +247,13 @@ export function aplicarTemaPersonalizado(perfil) {
   }
   if (fundo && /^#[0-9a-fA-F]{6}$/.test(fundo)) root.setProperty('--bg', fundo);
   else root.removeProperty('--bg');
+
+  // Cor do texto — terceiro slot de personalização. Fica de fora da mesma checagem acima porque é
+  // independente das outras duas (dá pra mudar só o texto sem mudar fundo/destaque). O tipo de
+  // fonte (Alegreya/Inter) NÃO é personalizável — só a cor.
+  const texto = perfil?.corTexto;
+  if (texto && /^#[0-9a-fA-F]{6}$/.test(texto)) root.setProperty('--text', texto);
+  else root.removeProperty('--text');
 }
 
 // --- Pix estático (BR Code / EMV, padrão Banco Central) ---

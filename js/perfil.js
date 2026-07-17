@@ -73,7 +73,7 @@ export function renderPerfil() {
 
     <div class="panel">
       <h3>🎨 Personalização visual do sistema</h3>
-      <p class="muted">Escolha as duas cores principais do site — a de fundo e a de destaque (usada em botões, links e títulos). Útil se você atender outra linha de produtos/serviços e quiser um visual diferente do rosa padrão. A prévia muda na hora; só fica valendo de verdade depois de "Salvar".</p>
+      <p class="muted">Escolha as cores principais do site — fundo, destaque (botões, links e títulos) e texto. A fonte (tipo de letra) continua a mesma do sistema, só as cores mudam. Útil se você atender outra linha de produtos/serviços e quiser um visual diferente do rosa padrão. A prévia muda na hora; só fica valendo de verdade depois de "Salvar".</p>
       <div class="grid">
         <div class="field"><label>Cor de fundo</label>
           <div style="display:flex;gap:8px;align-items:center">
@@ -87,7 +87,14 @@ export function renderPerfil() {
             <input id="perCorPrimariaHex" value="${esc(p.corPrimaria || '')}" placeholder="#F72562 (padrão)" oninput="App.sincronizarCorHex('perCorPrimaria',this.value)">
           </div>
         </div>
-      </div><br>
+        <div class="field"><label>Cor do texto</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="perCorTexto" value="${esc(p.corTexto || '#14213D')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorTextoHex" value="${esc(p.corTexto || '')}" placeholder="#14213D (padrão)" oninput="App.sincronizarCorHex('perCorTexto',this.value)">
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:8px">⚠️ Cuidado com combinações de baixo contraste (ex: texto claro num fundo claro) — confira se ainda dá pra ler bem antes de salvar.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
       <button class="btn ghost" style="margin-left:8px" onclick="App.restaurarTemaPadrao()">↩️ Restaurar cores padrão</button>
     </div>
@@ -423,9 +430,11 @@ async function renderBioSecurityBox() {
 export function previewTema() {
   const fundo = $('perCorFundo')?.value || '';
   const cor = $('perCorPrimaria')?.value || '';
+  const texto = $('perCorTexto')?.value || '';
   if ($('perCorFundoHex')) $('perCorFundoHex').value = fundo;
   if ($('perCorPrimariaHex')) $('perCorPrimariaHex').value = cor;
-  aplicarTemaPersonalizado({ corFundo: fundo, corPrimaria: cor });
+  if ($('perCorTextoHex')) $('perCorTextoHex').value = texto;
+  aplicarTemaPersonalizado({ corFundo: fundo, corPrimaria: cor, corTexto: texto });
 }
 
 // O <input type="color"> não aceita digitar hex direto (só o seletor visual) — este campo de texto
@@ -441,8 +450,8 @@ export function sincronizarCorHex(idColorInput, hex) {
 // Remove as cores personalizadas (volta pro rosa/branco padrão do sistema) e já salva — é uma ação
 // explícita de "desfazer a personalização", não faz sentido deixar pendente de outro clique em Salvar.
 export async function restaurarTemaPadrao() {
-  await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', atualizadoEm: serverTimestamp() }, { merge: true });
-  state.profile = { ...state.profile, corFundo: '', corPrimaria: '' };
+  await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', corTexto: '', atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, corFundo: '', corPrimaria: '', corTexto: '' };
   await sincronizarPerfilNosEventos(); // sem isso, os links de evento já publicados ficavam com a cor antiga presa
   window.App.refresh('Cores padrão restauradas');
 }
@@ -474,6 +483,7 @@ export async function savePerfil() {
     pixTitular: ($('perPixTitular')?.value ?? p.pixTitular ?? '').trim(),
     corFundo: $('perCorFundo') ? ($('perCorFundoHex')?.value.trim() || $('perCorFundo').value) : (p.corFundo ?? ''),
     corPrimaria: $('perCorPrimaria') ? ($('perCorPrimariaHex')?.value.trim() || $('perCorPrimaria').value) : (p.corPrimaria ?? ''),
+    corTexto: $('perCorTexto') ? ($('perCorTextoHex')?.value.trim() || $('perCorTexto').value) : (p.corTexto ?? ''),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });

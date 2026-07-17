@@ -262,7 +262,7 @@ function coletarDadosFormEvento() {
     foto: p.fotoPerfil || state.user?.photoURL || '',
     // Cores personalizadas (item de tema visual) — sem isso, o link público de evento sempre ficava
     // no rosa padrão, ignorando a marca que a consultora configurou em Minha Conta.
-    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || ''
+    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || '', corTexto: p.corTexto || ''
   };
 
   return {
@@ -287,7 +287,7 @@ export async function sincronizarPerfilNosEventos() {
     nome: p.nome || '', nomeNegocio: p.nomeNegocio || '', genero: p.genero || '',
     instagram: p.instagram || '', linkLoja: p.linkLoja || '', whatsapp: p.whatsapp || '',
     foto: p.fotoPerfil || state.user?.photoURL || '',
-    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || ''
+    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || '', corTexto: p.corTexto || ''
   };
   for (const ev of eventosAtivos) {
     try {
