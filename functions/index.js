@@ -24,6 +24,15 @@ const db = admin.firestore();
 //   firebase functions:secrets:set WEBHOOK_TOKEN
 const WEBHOOK_TOKEN = defineSecret('WEBHOOK_TOKEN');
 
+// Credenciais da WhatsApp Cloud API (Meta) — token de acesso permanente do System User e o ID do
+// número de telefone da conta WhatsApp Business (WABA). NUNCA vão pro navegador: ficam só aqui no
+// servidor. Configure com:
+//   firebase functions:secrets:set WHATSAPP_TOKEN
+//   firebase functions:secrets:set WHATSAPP_PHONE_ID
+const WHATSAPP_TOKEN = defineSecret('WHATSAPP_TOKEN');
+const WHATSAPP_PHONE_ID = defineSecret('WHATSAPP_PHONE_ID');
+const WHATSAPP_API_VERSION = 'v21.0';
+
 const INFINITEPAY_CHECKOUT_URL = 'https://api.checkout.infinitepay.io/links';
 
 // Gera o link/QR Code de cobrança pra um carrinho já existente. Chamado do navegador via
@@ -176,3 +185,81 @@ exports.webhookInfinitePay = onRequest({ region: 'southamerica-east1', secrets: 
   logger.info('Carrinho atualizado com pagamento InfinitePay', uid, carrinhoId, valorPago);
   return res.status(200).send('ok');
 });
+
+// Normaliza telefone pro formato que a Meta exige: só dígitos, com DDI 55 (Brasil) na frente.
+function normalizarTelefoneWhats(tel) {
+  const n = String(tel || '').replace(/\D/g, '');
+  if (!n) return '';
+  return n.startsWith('55') ? n : '55' + n;
+}
+
+// Envia uma mensagem de WhatsApp pela API oficial da Meta (Cloud API), usando um TEMPLATE já
+// aprovado. Chamado do navegador via httpsCallable — o token da Meta nunca sai do servidor.
+//
+// IMPORTANTE (regra da Meta): mensagens iniciadas pela empresa (as que a automação dispara) SÓ
+// podem usar templates pré-aprovados no painel da Meta. Texto livre só é permitido dentro da janela
+// de 24h depois que a cliente mandou mensagem primeiro — por isso este envio é sempre por template.
+//
+// request.data espera:
+//   { to, templateName, languageCode?, bodyParams? }
+//   - to:           telefone da cliente (com ou sem DDI/DDD — a gente normaliza)
+//   - templateName: nome exato do template aprovado na Meta (ex: "aniversario_cliente")
+//   - languageCode: código de idioma do template (padrão "pt_BR")
+//   - bodyParams:   lista de strings pra preencher as variáveis {{1}}, {{2}}... do corpo do template
+exports.enviarWhatsAppTemplate = onCall(
+  { region: 'southamerica-east1', secrets: [WHATSAPP_TOKEN, WHATSAPP_PHONE_ID] },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Faça login de novo antes de enviar.');
+
+    const token = WHATSAPP_TOKEN.value();
+    const phoneId = WHATSAPP_PHONE_ID.value();
+    if (!token || !phoneId) {
+      throw new HttpsError('failed-precondition', 'A WhatsApp Cloud API ainda não foi configurada (token/ID do número). Veja docs/whatsapp-cloud-api.md.');
+    }
+
+    const { to, templateName, languageCode, bodyParams } = request.data || {};
+    const destino = normalizarTelefoneWhats(to);
+    if (!destino) throw new HttpsError('invalid-argument', 'Telefone da cliente inválido.');
+    if (!templateName) throw new HttpsError('invalid-argument', 'Informe o nome do template aprovado.');
+
+    const params = Array.isArray(bodyParams) ? bodyParams : [];
+    const components = params.length
+      ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p ?? '') })) }]
+      : [];
+
+    const corpo = {
+      messaging_product: 'whatsapp',
+      to: destino,
+      type: 'template',
+      template: {
+        name: String(templateName),
+        language: { code: languageCode || 'pt_BR' },
+        ...(components.length ? { components } : {})
+      }
+    };
+
+    let resposta;
+    try {
+      resposta = await fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${phoneId}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpo)
+      });
+    } catch (e) {
+      logger.error('Falha de rede ao chamar a WhatsApp Cloud API', e);
+      throw new HttpsError('unavailable', 'Não consegui falar com o WhatsApp agora — tente de novo em instantes.');
+    }
+
+    const dados = await resposta.json().catch(() => ({}));
+    if (!resposta.ok) {
+      const msgErro = dados?.error?.message || `HTTP ${resposta.status}`;
+      logger.error('WhatsApp Cloud API recusou o envio', resposta.status, dados);
+      throw new HttpsError('internal', `O WhatsApp recusou o envio: ${msgErro}`);
+    }
+
+    const messageId = dados?.messages?.[0]?.id || '';
+    logger.info('WhatsApp enviado via Cloud API', uid, destino, templateName, messageId);
+    return { ok: true, messageId };
+  }
+);
