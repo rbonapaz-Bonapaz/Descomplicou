@@ -362,12 +362,9 @@ export async function savePerfil() {
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
     // Higienização condicional na origem (mesma regra da Cloud Function): remove "@"/"$" só se
     // estiverem de fato no início, e grava minúsculo — nunca corte cego de posição fixa.
-    infinitePayHandle: (() => {
-      let h = ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim();
-      if (h.startsWith('@')) h = h.substring(1).trim();
-      if (h.startsWith('$')) h = h.substring(1).trim();
-      return h.toLowerCase();
-    })(),
+    // Replace GLOBAL de "@"/"$" (não só no início) — mesma regra da Cloud Function, nunca corta
+    // letra nenhuma do handle real, só remove esses dois símbolos de onde aparecerem.
+    infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').replace(/[@$]/g, '').trim().toLowerCase(),
     infinitePayDoc: ($('perInfinitePayDoc')?.value ?? p.infinitePayDoc ?? '').replace(/\D/g, ''),
     pixChave: ($('perPixChave')?.value ?? p.pixChave ?? '').trim(),
     pixTitular: ($('perPixTitular')?.value ?? p.pixTitular ?? '').trim(),

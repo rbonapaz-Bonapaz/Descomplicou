@@ -35,16 +35,22 @@ const WHATSAPP_API_VERSION = 'v21.0';
 
 const INFINITEPAY_CHECKOUT_URL = 'https://api.checkout.infinitepay.io/links';
 
-// Higienização CONDICIONAL do handle — nunca corta cego (ex: um .substring(1) sem checar antes
-// decepava a primeira letra real de handles que não começavam com "$", virando "fabiula-mariano"
-// em "abiula-mariano" e gerando 404 na InfinitePay). Só remove "@"/"$" se de fato estiverem no
-// início; minúsculo porque a InfinitePay trata handle como case-insensitive internamente, mas
-// alguns clientes cadastram com maiúscula e isso já causou divergência de "usuário não encontrado".
+// Higienização do handle — replace GLOBAL de "@"/"$" (em qualquer posição, não só no início) em vez
+// de substring/corte por posição: um .substring(1) cego decepava a primeira letra real de handles
+// que não começavam com esses símbolos (ex: "fabiula-mariano" virava "abiula-mariano" e a InfinitePay
+// devolvia 404 "usuário não encontrado" mesmo com o handle certo). Replace global nunca corta letra
+// nenhuma: só remove os símbolos específicos, de onde quer que apareçam. Minúsculo porque a
+// InfinitePay trata handle como case-insensitive internamente, mas cadastro com maiúscula já causou
+// divergência de "usuário não encontrado" em conta real.
 function limparHandleInfinitePay(raw) {
-  let h = String(raw || '').trim();
-  if (h.startsWith('@')) h = h.substring(1).trim();
-  if (h.startsWith('$')) h = h.substring(1).trim();
-  return h.toLowerCase();
+  return String(raw || '').replace(/[@$]/g, '').trim().toLowerCase();
+}
+
+// CPF/CNPJ só com dígitos — a InfinitePay (como qualquer API que valida documento) rejeita se vier
+// com pontuação (., -, /). Reaproveitado tanto no payload do checkout quanto em qualquer outro lugar
+// que precise mandar o documento pra API.
+function limparDocumento(raw) {
+  return String(raw || '').replace(/\D/g, '');
 }
 
 // Gera o link/QR Code de cobrança pra um carrinho já existente. Chamado do navegador via
@@ -87,20 +93,32 @@ exports.criarCheckoutInfinitePay = onCall({ region: 'southamerica-east1' }, asyn
 
   const appOrigin = 'https://rbonapaz-bonapaz.github.io/Descomplicou';
   const webhookUrl = `https://southamerica-east1-crm-consultora-de-beleza.cloudfunctions.net/webhookInfinitePay?token=${encodeURIComponent(WEBHOOK_TOKEN.value())}`;
+  const documento = limparDocumento(perfil.infinitePayDoc);
+
+  const payload = {
+    handle,
+    redirect_url: appOrigin,
+    webhook_url: webhookUrl,
+    order_nsu: `${uid}_${carrinhoId}`, // usamos pra reencontrar o carrinho quando o webhook chega
+    items: itensParaCobranca,
+    customer: (carrinho.clienteNome || documento) ? {
+      ...(carrinho.clienteNome ? { name: String(carrinho.clienteNome).slice(0, 120) } : {}),
+      ...(documento ? { document: documento } : {})
+    } : undefined
+  };
+
+  // DEBUG (item 13-C): o corpo exato que sai pra InfinitePay — não aparece no DevTools do navegador
+  // porque essa chamada roda no servidor (Cloud Function), não no browser da consultora (a API da
+  // InfinitePay não libera CORS pra chamar direto do navegador). Pra ver este log: Firebase Console
+  // → Functions → criarCheckoutInfinitePay → Registros, ou `firebase functions:log`.
+  logger.info('PAYLOAD ENVIADO (InfinitePay):', payload);
 
   let resposta;
   try {
     resposta = await fetch(INFINITEPAY_CHECKOUT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        handle,
-        redirect_url: appOrigin,
-        webhook_url: webhookUrl,
-        order_nsu: `${uid}_${carrinhoId}`, // usamos pra reencontrar o carrinho quando o webhook chega
-        items: itensParaCobranca,
-        customer: carrinho.clienteNome ? { name: String(carrinho.clienteNome).slice(0, 120) } : undefined
-      })
+      body: JSON.stringify(payload)
     });
   } catch (e) {
     logger.error('Falha de rede ao chamar a InfinitePay', e);
@@ -109,13 +127,14 @@ exports.criarCheckoutInfinitePay = onCall({ region: 'southamerica-east1' }, asyn
 
   if (!resposta.ok) {
     const corpoErro = await resposta.text().catch(() => '');
-    logger.error('InfinitePay recusou o checkout', resposta.status, corpoErro, 'handle usado:', handle);
-    // 404 é especificamente "esse handle não existe pra InfinitePay" — mensagem direta em vez do
-    // genérico "recusou a cobrança", que deixava a consultora sem saber o que checar.
+    logger.error('ERRO INFINITEPAY:', resposta.status, corpoErro, 'handle usado:', handle, 'payload:', payload);
+    // 404 pode ser handle inexistente/errado OU o recurso "Checkout Integrado" ainda não ativado
+    // na conta InfinitePay do usuário (confirmado via documentação pública da InfinitePay) — a
+    // mensagem cobre os dois casos, já que o handle em si já passou pela sanitização acima.
     if (resposta.status === 404) {
-      throw new HttpsError('not-found', 'Usuário InfinitePay não encontrado. Por favor, verifique se o handle cadastrado nas configurações está correto e sem letras digitadas erradas.');
+      throw new HttpsError('not-found', 'A InfinitePay recusou com "não encontrado" (404). Confira 2 coisas: 1) o handle cadastrado nas configurações está exatamente igual ao @usuário do app InfinitePay (sem espaços/erros de digitação); 2) o recurso "Checkout Integrado" está ativado na sua conta InfinitePay (ajuda.infinitepay.io tem o passo a passo). Detalhe técnico nos registros da função.');
     }
-    throw new HttpsError('internal', `A InfinitePay recusou a cobrança (${resposta.status}) — confira se o handle está certo e ativo.`);
+    throw new HttpsError('internal', `A InfinitePay recusou a cobrança (${resposta.status}) — confira se o handle está certo e ativo. Detalhe técnico nos registros da função.`);
   }
 
   const dados = await resposta.json();

@@ -852,6 +852,11 @@ export async function abrirCheckoutInfinitePay(carrinhoId) {
     await window.App.refresh();
     mostrarModalCheckoutInfinitePay(carrinhoId, resultado.data.url);
   } catch (e) {
+    // DEBUG (item 13-C): a chamada em si acontece no servidor (Cloud Function) — a InfinitePay não
+    // libera CORS pra chamar direto do navegador — então o payload exato enviado só aparece nos
+    // registros da função (Firebase Console → Functions → Logs). O que chega até aqui no F12 é a
+    // mensagem/código de erro que a function repassou (e.code = ex: 'not-found', 'internal').
+    console.error('ERRO INFINITEPAY (client):', { code: e.code, message: e.message, details: e.details });
     toast('Não consegui gerar a cobrança InfinitePay: ' + (e.message || 'erro desconhecido'));
     const btnAtual = $('cInfinitePayBtn');
     if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '💳 Gerar QR CODE do pagamento'; }
