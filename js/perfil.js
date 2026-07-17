@@ -1,6 +1,6 @@
 import { state, SECTIONS, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
   auth, GoogleAuthProvider, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from './state.js';
-import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml, normalizarChavePix } from './utils.js';
+import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml, normalizarChavePix, aplicarTemaPersonalizado } from './utils.js';
 import { biometriaDisponivel, temBiometriaAtiva } from './biometria.js';
 import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
@@ -68,6 +68,27 @@ export function renderPerfil() {
         <div class="field full"><label>Mensagem padrão</label><textarea id="perMsg">${esc(p.mensagemPadrao || '')}</textarea></div>
       </div><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
+    </div>
+
+    <div class="panel">
+      <h3>🎨 Personalização visual do sistema</h3>
+      <p class="muted">Escolha as duas cores principais do site — a de fundo e a de destaque (usada em botões, links e títulos). Útil se você atender outra linha de produtos/serviços e quiser um visual diferente do rosa padrão. A prévia muda na hora; só fica valendo de verdade depois de "Salvar".</p>
+      <div class="grid">
+        <div class="field"><label>Cor de fundo</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="perCorFundo" value="${esc(p.corFundo || '#F5F8FB')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorFundoHex" value="${esc(p.corFundo || '')}" placeholder="#F5F8FB (padrão)" oninput="App.sincronizarCorHex('perCorFundo',this.value)">
+          </div>
+        </div>
+        <div class="field"><label>Cor de destaque (botões, links)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="perCorPrimaria" value="${esc(p.corPrimaria || '#F72562')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorPrimariaHex" value="${esc(p.corPrimaria || '')}" placeholder="#F72562 (padrão)" oninput="App.sincronizarCorHex('perCorPrimaria',this.value)">
+          </div>
+        </div>
+      </div><br>
+      <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
+      <button class="btn ghost" style="margin-left:8px" onclick="App.restaurarTemaPadrao()">↩️ Restaurar cores padrão</button>
     </div>
 
     <div class="panel">
@@ -397,6 +418,33 @@ async function renderBioSecurityBox() {
     : `<button class="btn dark" onclick="App.ativarBiometria().then(()=>App.renderPerfil())">🔒 Ativar biometria neste aparelho</button>`;
 }
 
+// Prévia instantânea das cores personalizadas — aplica direto no :root sem gravar nada, só pra
+// consultora ver o resultado antes de decidir salvar (ou descartar recarregando a página).
+export function previewTema() {
+  aplicarTemaPersonalizado({
+    corFundo: $('perCorFundo')?.value || '',
+    corPrimaria: $('perCorPrimaria')?.value || ''
+  });
+}
+
+// O <input type="color"> não aceita digitar hex direto (só o seletor visual) — este campo de texto
+// ao lado permite colar/digitar um hex e sincroniza pro color picker, mantendo os dois em par.
+export function sincronizarCorHex(idColorInput, hex) {
+  const limpo = hex.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(limpo)) return; // aguarda o hex completo antes de aplicar
+  const input = $(idColorInput);
+  if (input) input.value = limpo;
+  previewTema();
+}
+
+// Remove as cores personalizadas (volta pro rosa/branco padrão do sistema) e já salva — é uma ação
+// explícita de "desfazer a personalização", não faz sentido deixar pendente de outro clique em Salvar.
+export async function restaurarTemaPadrao() {
+  await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, corFundo: '', corPrimaria: '' };
+  window.App.refresh('Cores padrão restauradas');
+}
+
 export async function savePerfil() {
   const p = state.profile || {};
   const parseNum = v => Number(String(v ?? 0).replace(',', '.')) || 0;
@@ -422,6 +470,8 @@ export async function savePerfil() {
     pixChaveTipo: $('perPixTipo')?.value ?? p.pixChaveTipo ?? 'auto',
     pixChave: ($('perPixChave')?.value ?? p.pixChave ?? '').trim(),
     pixTitular: ($('perPixTitular')?.value ?? p.pixTitular ?? '').trim(),
+    corFundo: $('perCorFundo') ? ($('perCorFundoHex')?.value.trim() || $('perCorFundo').value) : (p.corFundo ?? ''),
+    corPrimaria: $('perCorPrimaria') ? ($('perCorPrimariaHex')?.value.trim() || $('perCorPrimaria').value) : (p.corPrimaria ?? ''),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });

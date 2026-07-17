@@ -7,7 +7,7 @@ const templates = {
   aniversario: (nome) =>
     `Olá, ${nome}! Passando para te desejar um feliz aniversário! 🎉\nQue seu dia seja muito especial.\n\nSeparei uma condição especial de presente pra você comemorar — quer que eu te mostre? 🎁`,
   contatoFrio: (nome) =>
-    `Oi, ${nome}! Tudo bem?\nFaz um tempinho que não conversamos e lembrei de você.\nChegaram algumas novidades Farmasi. Quer que eu te envie?`,
+    `Oi, ${nome}! Tudo bem?\nFaz um tempinho que não conversamos e lembrei de você.\nChegaram novidades por aqui. Quer que eu te mostre?`,
   agenda: (nome, hora) =>
     `Oi, ${nome}! Passando para confirmar nosso atendimento de hoje às ${hora || ''}.`,
   posVenda: (nome) =>

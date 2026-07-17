@@ -2,7 +2,7 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   onAuthStateChanged, signOut, getDoc, getDocs, setDoc, doc, serverTimestamp, planoInfo, onSnapshot
 } from './state.js';
-import { $, esc, filtrarSearchPicker, formatDateBR, porGenero, toggleColapsavel } from './utils.js';
+import { $, esc, filtrarSearchPicker, formatDateBR, porGenero, toggleColapsavel, aplicarTemaPersonalizado } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
 import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA, definirOperadoraPadrao } from './operadoras.js';
@@ -37,7 +37,8 @@ import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarF
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,
-  adicionarDataComemorativa, removerDataComemorativa, editarDataComemorativa, cancelarEdicaoDataComemorativa } from './perfil.js';
+  adicionarDataComemorativa, removerDataComemorativa, editarDataComemorativa, cancelarEdicaoDataComemorativa,
+  previewTema, sincronizarCorHex, restaurarTemaPadrao } from './perfil.js';
 import { renderAdmin, carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
@@ -221,6 +222,7 @@ function setupUI() {
   $('brandName').textContent = state.profile.nomeNegocio || 'CRM de Vendas';
   $('sideLogo').textContent = initials(state.profile.nomeNegocio);
   document.title = state.profile.nomeNegocio || 'Descomplicou';
+  aplicarTemaPersonalizado(state.profile);
   document.querySelectorAll('.admin-only').forEach(e =>
     e.classList.toggle('hidden', state.profile.role !== 'admin')
   );
@@ -353,6 +355,7 @@ window.App = {
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,
   adicionarDataComemorativa, removerDataComemorativa, editarDataComemorativa, cancelarEdicaoDataComemorativa,
+  previewTema, sincronizarCorHex, restaurarTemaPadrao,
   // Admin
   carregarConsultoras, editarConsultora, salvarConsultora, salvarConfigPlanos, salvarConfigIpca, marcarIpcaAplicado, togglePromocaoIndicacao,
   readCatalogoMestreFiles, importarCatalogoMestreTexto, confirmarImportCatalogoMestre, editarItemImportMestre, limparCatalogoMestre,

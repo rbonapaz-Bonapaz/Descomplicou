@@ -207,6 +207,42 @@ export function collapsibleHtml(key, headInnerHtml, bodyHtml) {
   </div>`;
 }
 
+// --- Tema visual personalizável (item 21: cor de fundo + cor principal, por consultora) ---
+// Clareia (percent > 0) ou escurece (percent < 0) uma cor hex — usado pra derivar automaticamente o
+// tom "pressionado/hover" (--ps) a partir da cor principal escolhida, sem precisar de um terceiro
+// seletor de cor. Mantém a interface simples: a consultora só escolhe DUAS cores (fundo + principal).
+function sombrearCor(hex, percent) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+  const num = parseInt(h, 16);
+  const ajustar = canal => {
+    const v = (num >> canal) & 0xFF;
+    const novo = percent < 0 ? v * (1 + percent) : v + (255 - v) * percent;
+    return Math.max(0, Math.min(255, Math.round(novo)));
+  };
+  const r = ajustar(16), g = ajustar(8), b = ajustar(0);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+}
+
+// Aplica (ou remove, se vazio) as cores personalizadas do perfil como variáveis CSS no :root —
+// sobrescreve só --p/--ps/--bg, o resto do tema (texto, cinzas, sombras) continua igual pra manter
+// contraste e legibilidade garantidos. Chamado uma vez a cada carregamento/atualização do perfil;
+// nunca mexe em dados salvos, só na aparência da aba já aberta.
+export function aplicarTemaPersonalizado(perfil) {
+  const root = document.documentElement.style;
+  const cor = perfil?.corPrimaria;
+  const fundo = perfil?.corFundo;
+  if (cor && /^#[0-9a-fA-F]{6}$/.test(cor)) {
+    root.setProperty('--p', cor);
+    root.setProperty('--ps', sombrearCor(cor, -0.15));
+  } else {
+    root.removeProperty('--p');
+    root.removeProperty('--ps');
+  }
+  if (fundo && /^#[0-9a-fA-F]{6}$/.test(fundo)) root.setProperty('--bg', fundo);
+  else root.removeProperty('--bg');
+}
+
 // --- Pix estático (BR Code / EMV, padrão Banco Central) ---
 // Monta o payload TLV (tag-length-value) e calcula o CRC16-CCITT final — o mesmo formato que
 // qualquer banco/app de pagamento lê num QR Code Pix "Copia e Cola" estático (sem chamar API
