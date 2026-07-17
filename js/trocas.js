@@ -74,14 +74,28 @@ export async function excluirTroca(trocaId) {
   window.App.refresh('Troca excluída');
 }
 
+// Valor do item na troca = SEMPRE o preço atual do produto; sem preço atual, cai pro preço
+// original (pedido da consultora). A consultora ainda pode editar o valor na mão depois.
+function valorTrocaProduto(p) {
+  return Number(p?.precoAtual || p?.precoOriginal || 0);
+}
+
 export function preencherValorTrocaSaida() {
   const p = prodById($('trProdSai')?.value);
-  if ($('trValorSai') && p) $('trValorSai').value = money(p.precoVenda || p.precoAtual || 0);
+  if ($('trValorSai') && p) $('trValorSai').value = money(valorTrocaProduto(p));
   // Sem estoque disponível pra entregar agora, já deixa selecionado "entrega futura" — evita
   // que a consultora tente confirmar "pronta entrega" e leve o toast de estoque insuficiente.
   if ($('trEntregaSai') && p) {
     $('trEntregaSai').value = estoqueDisponivel(p.id) > 0 ? 'pronta_entrega' : 'entrega_futura';
   }
+}
+
+// Mesma regra do lado que entra: ao escolher um produto já cadastrado, traz o preço atual (ou o
+// original, se não houver atual). Produto novo (id vazio, digitado à mão) não tem preço a puxar —
+// deixa o campo em branco pra consultora informar.
+export function preencherValorTrocaEntrada() {
+  const p = prodById($('trProdEntra')?.value);
+  if ($('trValorEntra')) $('trValorEntra').value = p ? money(valorTrocaProduto(p)) : '';
 }
 
 function itemRowHtml(trocaId, lado, item, idx) {
@@ -118,7 +132,7 @@ export function openTroca(id) {
     p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoVenda || p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()');
   const pickerEntra = searchPickerHtml('trProdEntra',
     [{ id: '', nome: '— Produto novo (digite o nome abaixo) —' }, ...state.data.produtos],
-    p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome);
+    p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome, 'App.preencherValorTrocaEntrada()');
 
   const statusLabel = { aberta: 'Em andamento', parcial: 'Parcial (pendências)', finalizada: 'Finalizada', cancelada: 'Cancelada' }[t.status] || t.status;
   const statusCor = t.status === 'finalizada' ? 'green' : t.status === 'cancelada' ? 'red' : t.status === 'parcial' ? 'orange' : 'blue';
@@ -228,7 +242,7 @@ export async function adicionarItemTroca(trocaId, lado) {
           : 'Estoque insuficiente');
       }
     }
-    const valorUnitario = parseMoney($('trValorSai').value || p.precoVenda || p.precoAtual || 0);
+    const valorUnitario = parseMoney($('trValorSai').value) || valorTrocaProduto(p);
     item = {
       produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
       quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd,

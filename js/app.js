@@ -17,7 +17,7 @@ import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, s
   readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos } from './estoque.js';
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
-  finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
+  finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
   toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca } from './trocas.js';
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
@@ -350,7 +350,7 @@ window.App = {
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
-  finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida,
+  finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
   toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca,
   // Produtos
