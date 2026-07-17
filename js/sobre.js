@@ -338,13 +338,72 @@ export const NOVIDADES_ARQUIVADAS = [
   ] }
 ];
 
+// Aba "Sobre o sistema" — apresentação: o que o sistema é e o que ele faz, em linguagem simples,
+// organizada por módulo em cards colapsáveis (mesmo padrão accordion do Dashboard/Relatórios).
+// Diferente do Manual (passo a passo com telas/gifs), aqui é só a visão geral de capacidades —
+// serve pra quem está conhecendo o sistema agora ou quer relembrar o que ele cobre.
+const APRESENTACAO_MODULOS = [
+  { key: 'aprDashboard', titulo: '1. Dashboard e Relatórios', itens: [
+    'O Painel Inicial resume o seu dia: carrinhos abertos, faturamento e lucro dos últimos 30 dias, aniversariantes próximos, agenda de hoje, contatos frios e recomendações automáticas de reposição/promoção.',
+    'Relatórios mostra faturamento, lucro bruto, lucro real (já descontando taxa de cartão), margem e ticket médio no período que você escolher (7, 30, 90 dias ou tudo).',
+    'Gráficos de faturamento por forma de pagamento, top 5 produtos e curva ABC do estoque vendido — tudo em SVG, sem depender de internet pra carregar.',
+    'Cards de Inteligência: Taxa de Recompra, Curva ABC de Estoque, Taxa de Ruptura, Análise de Descontos, Ticket Médio por Linha e Conversão de Agendamentos — escolha quais aparecer em Minha Conta → Relatórios.',
+    'Exportação de produtos vendidos e clientes do período em Excel/CSV, e relatório completo em PDF, prontos pra imprimir ou guardar.',
+    'Todos os cards e painéis são colapsáveis — clique no título pra recolher/expandir. Útil quando a tela está sendo compartilhada e você quer esconder valores rapidamente sem perder os dados carregados.',
+    'A IA (Gemini, com sua própria chave de API) pode buscar sozinha na internet a tabela de tarifas oficial de uma operadora de cartão só a partir do nome dela, preenchendo os campos de taxa pra você conferir antes de salvar.'
+  ] },
+  { key: 'aprProdutos', titulo: '2. Gestão de Produtos e Estoque', itens: [
+    'Cadastro de produtos com nome, código Farmasi, linha(s), custo médio, preço de venda e foto — sincronizável com a base coletiva mantida pela administração.',
+    'Controle de estoque com entrada/saída manual, importação de PDF de pedido da Farmasi (reconhece kits automaticamente) e reserva automática: um produto num carrinho aberto não pode ser vendido em dobro em outro lugar.',
+    'Histórico de preço: toda vez que você muda o preço de venda de um produto, o sistema guarda a mudança — dá pra consultar quando e de quanto pra quanto o preço já variou.',
+    'Pré-encomenda: lista do que falta comprar no site da Farmasi, com quantidade reservada em carrinhos abertos, e confirmação de chegada que atualiza o estoque e o custo médio automaticamente.',
+    'Curva ABC, alertas de estoque baixo/parado e sugestões de reposição direto no Painel Inicial e nos Relatórios.',
+    'Kits: um kit é montado uma vez na Pré-encomenda e o valor pago é rateado como custo entre os produtos que o compõem.'
+  ] },
+  { key: 'aprClientes', titulo: '3. Clientes', itens: [
+    'Cadastro completo com WhatsApp, endereço, aniversário, origem (evento, indicação, Instagram etc.), tags personalizadas (VIP, Skincare...) e apelido pra mensagens mais próximas.',
+    'Cliente 360°: histórico de compras, lista de interesse permanente, créditos guardados de pagamentos anteriores e sugestão de abordagem gerada por IA a partir do histórico real da cliente.',
+    'Ordenação por qualquer coluna da lista (Cliente, Contato, Última compra, Status) clicando no cabeçalho da tabela.',
+    'Alertas automáticos de contato frio (configurável quantos dias) e de aniversários dos próximos 30 dias, com atalho direto pra WhatsApp.',
+    'Catálogo de Eventos: crie um link público personalizável pra um evento/feira, a visitante monta a lista de desejos sozinha, e você recebe o lead pronto pra atender.'
+  ] },
+  { key: 'aprVendas', titulo: '4. Vendas/Carrinho e Pagamentos', itens: [
+    'Carrinho completo: desconto por item e por pedido, entrega imediata ou futura por item, retorno agendado, e resumo do pedido pronto pra enviar por WhatsApp ou gerar em PDF.',
+    'Pix nativo: com sua Chave Pix cadastrada em Minha Conta, o carrinho gera na hora um QR Code de pagamento (padrão do Banco Central) com o valor exato do pedido — sem taxa nenhuma, sem depender de nenhuma API externa.',
+    'Cartão de crédito parcelado, com cálculo automático do custo real da maquininha por operadora/bandeira/parcela, e opção de "Gerar QR Code do pagamento" via InfinitePay pra cobrança remota.',
+    'Escolha quem assume o juro do parcelamento (você ou a cliente) — o valor repassado é sempre a diferença real que a operadora cobra, nunca um número fixo inventado.',
+    'Gestão de pagamento parcial: registre sinais e pagamentos posteriores, com o status (pendente/parcial/pago) calculado sozinho a partir do que já foi recebido, e créditos do cliente aplicáveis em qualquer venda.',
+    'Trocas com outra consultora: registre o que sai do seu estoque e o que entra, com lucro/prejuízo calculado automaticamente, sem afetar o relatório de vendas.',
+    'Todas as tabelas do sistema (Clientes, Produtos, Itens do Carrinho e mais) podem ser ordenadas clicando no cabeçalho de qualquer coluna.'
+  ] },
+  { key: 'aprConfig', titulo: '5. Configurações', itens: [
+    'Minha Conta reúne seus dados de negócio, chave Pix, integração com a InfinitePay, cadastro de operadoras de cartão (com taxas por bandeira/parcela) e a chave de API do Gemini (sua própria, usada só nas ferramentas de IA).',
+    'Personalize quais Cards de Inteligência e seções de Relatórios aparecem (e em que ordem), o número de dias pra considerar um contato "frio", e o gênero usado nos textos do sistema (Consultora/Consultor).',
+    'Sincronização com o Google Agenda nos dois sentidos: compromissos criados no CRM aparecem no seu celular, e o que você mexe no celular volta pro CRM.',
+    'Segurança: criação de senha para contas que entram com Google, exclusão de dados por categoria (estoque, clientes, vendas) e o direito de eliminação completa da conta (LGPD).',
+    'Meu Plano mostra o plano atual, vencimento e o link de indicação — indique outra consultora e ganhe dias grátis quando ela assinar um plano pago.'
+  ] }
+];
+
+function apresentacaoHtml() {
+  const cfg = state.profile || {};
+  return `<div class="panel">
+    <h3>✨ O que é o ${esc(cfg.nomeNegocio || 'Descomplicou')}</h3>
+    <p class="muted" style="font-size:14px;line-height:1.7">Um CRM completo pensado pra consultoras de vendas diretas (Farmasi e similares): centraliza clientes, produtos, estoque, vendas, agenda e financeiro num só lugar, com automações que tiram trabalho manual do seu dia — reserva de estoque automática, cálculo de lucro real já descontando taxa de cartão, QR Code de pagamento (Pix e cartão) gerado na hora, catálogo com link público pra eventos, e relatórios que mostram exatamente onde focar pra vender mais.</p>
+  </div>
+  ${APRESENTACAO_MODULOS.map(m => collapsibleHtml(m.key, `<h3>${esc(m.titulo)}</h3>`, `
+    <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.7">
+      ${m.itens.map(i => `<li>${esc(i)}</li>`).join('')}
+    </ul>`)).join('')}`;
+}
+
 function dadosSistemaHtml() {
   const p = state.profile || {};
   const u = state.user || {};
   const d = state.data;
   const criadoEm = p.criadoEm?.toDate ? formatDateBR(p.criadoEm.toDate().toISOString().slice(0, 10)) : '-';
   return `<div class="panel">
-      <h3>Sobre o sistema</h3>
+      <h3>Dados do sistema</h3>
       <div class="grid">
         <div class="field"><label>Versão</label><b>${esc(APP_VERSION)}</b></div>
         <div class="field"><label>Conta</label><b>${esc(u.email || '-')}</b></div>
@@ -380,66 +439,20 @@ function novidadesHtml() {
   </div>`;
 }
 
-// Manual do sistema (item 20-A) — documentação das capacidades base, organizada por módulo em
-// cards colapsáveis (mesmo padrão accordion usado em Dashboard/Relatórios). Cada item é uma frase
-// direta do que o sistema faz, sem jargão técnico — pensado pra quem está conhecendo o CRM agora.
-const MANUAL_MODULOS = [
-  { key: 'manDashboard', titulo: '1. Dashboard e Relatórios', itens: [
-    'O Painel Inicial resume o seu dia: carrinhos abertos, faturamento e lucro dos últimos 30 dias, aniversariantes próximos, agenda de hoje, contatos frios e recomendações automáticas de reposição/promoção.',
-    'Relatórios mostra faturamento, lucro bruto, lucro real (já descontando taxa de cartão), margem e ticket médio no período que você escolher (7, 30, 90 dias ou tudo).',
-    'Gráficos de faturamento por forma de pagamento, top 5 produtos e curva ABC do estoque vendido — tudo em SVG, sem depender de internet pra carregar.',
-    'Cards de Inteligência: Taxa de Recompra, Curva ABC de Estoque, Taxa de Ruptura, Análise de Descontos, Ticket Médio por Linha e Conversão de Agendamentos — escolha quais aparecer em Minha Conta → Relatórios.',
-    'Exportação de produtos vendidos e clientes do período em Excel/CSV, e relatório completo em PDF, prontos pra imprimir ou guardar.',
-    'Todos os cards e painéis são colapsáveis — clique no título pra recolher/expandir. Útil quando a tela está sendo compartilhada e você quer esconder valores rapidamente sem perder os dados carregados.',
-    'A IA (Gemini, com sua própria chave de API) pode buscar sozinha na internet a tabela de tarifas oficial de uma operadora de cartão só a partir do nome dela, preenchendo os campos de taxa pra você conferir antes de salvar.'
-  ] },
-  { key: 'manProdutos', titulo: '2. Gestão de Produtos e Estoque', itens: [
-    'Cadastro de produtos com nome, código Farmasi, linha(s), custo médio, preço de venda e foto — sincronizável com a base coletiva mantida pela administração.',
-    'Controle de estoque com entrada/saída manual, importação de PDF de pedido da Farmasi (reconhece kits automaticamente) e reserva automática: um produto num carrinho aberto não pode ser vendido em dobro em outro lugar.',
-    'Histórico de preço: toda vez que você muda o preço de venda de um produto, o sistema guarda a mudança — dá pra consultar quando e de quanto pra quanto o preço já variou.',
-    'Pré-encomenda: lista do que falta comprar no site da Farmasi, com quantidade reservada em carrinhos abertos, e confirmação de chegada que atualiza o estoque e o custo médio automaticamente.',
-    'Curva ABC, alertas de estoque baixo/parado e sugestões de reposição direto no Painel Inicial e nos Relatórios.',
-    'Kits: um kit é montado uma vez na Pré-encomenda e o valor pago é rateado como custo entre os produtos que o compõem.'
-  ] },
-  { key: 'manClientes', titulo: '3. Clientes', itens: [
-    'Cadastro completo com WhatsApp, endereço, aniversário, origem (evento, indicação, Instagram etc.), tags personalizadas (VIP, Skincare...) e apelido pra mensagens mais próximas.',
-    'Cliente 360°: histórico de compras, lista de interesse permanente, créditos guardados de pagamentos anteriores e sugestão de abordagem gerada por IA a partir do histórico real da cliente.',
-    'Ordenação por qualquer coluna da lista (Cliente, Contato, Última compra, Status) clicando no cabeçalho da tabela.',
-    'Alertas automáticos de contato frio (configurável quantos dias) e de aniversários dos próximos 30 dias, com atalho direto pra WhatsApp.',
-    'Catálogo de Eventos: crie um link público personalizável pra um evento/feira, a visitante monta a lista de desejos sozinha, e você recebe o lead pronto pra atender.'
-  ] },
-  { key: 'manVendas', titulo: '4. Vendas/Carrinho e Pagamentos', itens: [
-    'Carrinho completo: desconto por item e por pedido, entrega imediata ou futura por item, retorno agendado, e resumo do pedido pronto pra enviar por WhatsApp ou gerar em PDF.',
-    'Pix nativo: com sua Chave Pix cadastrada em Minha Conta, o carrinho gera na hora um QR Code de pagamento (padrão do Banco Central) com o valor exato do pedido — sem taxa nenhuma, sem depender de nenhuma API externa.',
-    'Cartão de crédito parcelado, com cálculo automático do custo real da maquininha por operadora/bandeira/parcela, e opção de "Gerar QR Code do pagamento" via InfinitePay pra cobrança remota.',
-    'Escolha quem assume o juro do parcelamento (você ou a cliente) — o valor repassado é sempre a diferença real que a operadora cobra, nunca um número fixo inventado.',
-    'Gestão de pagamento parcial: registre sinais e pagamentos posteriores, com o status (pendente/parcial/pago) calculado sozinho a partir do que já foi recebido, e créditos do cliente aplicáveis em qualquer venda.',
-    'Trocas com outra consultora: registre o que sai do seu estoque e o que entra, com lucro/prejuízo calculado automaticamente, sem afetar o relatório de vendas.',
-    'Todas as tabelas do sistema (Clientes, Produtos, Itens do Carrinho e mais) podem ser ordenadas clicando no cabeçalho de qualquer coluna.'
-  ] },
-  { key: 'manConfig', titulo: '5. Configurações', itens: [
-    'Minha Conta reúne seus dados de negócio, chave Pix, integração com a InfinitePay, cadastro de operadoras de cartão (com taxas por bandeira/parcela) e a chave de API do Gemini (sua própria, usada só nas ferramentas de IA).',
-    'Personalize quais Cards de Inteligência e seções de Relatórios aparecem (e em que ordem), o número de dias pra considerar um contato "frio", e o gênero usado nos textos do sistema (Consultora/Consultor).',
-    'Sincronização com o Google Agenda nos dois sentidos: compromissos criados no CRM aparecem no seu celular, e o que você mexe no celular volta pro CRM.',
-    'Segurança: criação de senha para contas que entram com Google, exclusão de dados por categoria (estoque, clientes, vendas) e o direito de eliminação completa da conta (LGPD).',
-    'Meu Plano mostra o plano atual, vencimento e o link de indicação — indique outra consultora e ganhe dias grátis quando ela assinar um plano pago.'
-  ] }
-];
-
+// Manual do sistema — passo a passo de uso com telas/gifs, feito só depois que o sistema estiver
+// 100% concluído (a "Sobre o sistema" acima já cobre a visão geral das capacidades; o Manual vai
+// além, mostrando como usar cada fluxo na prática, com imagens/gifs de procedimentos reais).
 function manualHtml() {
   return `<div class="panel">
     <h3>📖 Manual do sistema</h3>
-    <p class="muted">O que o sistema faz, organizado por módulo. Clique em cada seção para expandir ou recolher.</p>
-  </div>
-  ${MANUAL_MODULOS.map(m => collapsibleHtml(m.key, `<h3>${esc(m.titulo)}</h3>`, `
-    <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.7">
-      ${m.itens.map(i => `<li>${esc(i)}</li>`).join('')}
-    </ul>`)).join('')}`;
+    <p class="muted">Ainda não disponível. O manual completo (passo a passo, com imagens e gifs dos principais procedimentos) será produzido depois que o sistema estiver 100% concluído. Enquanto isso, veja a aba "Sobre o sistema" para conhecer as capacidades gerais.</p>
+  </div>`;
 }
 
 export function renderSobre() {
   const sec = state.section.sobre;
   let html = sectionTabsHtml('sobre', SECTIONS.sobre, sec);
+  if (sec === 'apresentacao') html += apresentacaoHtml();
   if (sec === 'dados') html += dadosSistemaHtml();
   if (sec === 'novidades') html += novidadesHtml();
   if (sec === 'manual') html += manualHtml();

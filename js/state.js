@@ -31,7 +31,7 @@ export const state = {
   data: { clientes: [], produtos: [], vendas: [], carrinhos: [], agendamentos: [], movimentacoesEstoque: [], catalogos: [], eventos: [], trocas: [], preEncomenda: [], despesas: [], operadoras: [] },
   config: { limiteTeste: 5, limiteGratuito: 10, precoMensal: 0, precoSemestral: 0, precoAnual: 0 },
   // Aba ativa (por página) nas telas divididas em seções — ver SECTIONS abaixo.
-  section: { admin: 'consultoras', perfil: 'conta', produtos: 'produtos', estoque: 'estoque', catalogo: 'montar', sobre: 'dados' }
+  section: { admin: 'consultoras', perfil: 'conta', produtos: 'produtos', estoque: 'estoque', catalogo: 'montar', sobre: 'apresentacao' }
 };
 
 // Páginas longas divididas em abas: página -> [[chave, rótulo], ...]. A primeira é a aba padrão.
@@ -41,7 +41,7 @@ export const SECTIONS = {
   produtos: [['produtos', 'Produtos'], ['linhas', 'Linhas']],
   estoque: [['estoque', 'Estoque'], ['importar', 'Importar pedido'], ['trocas', 'Trocas'], ['preEncomenda', 'Pré-encomenda']],
   catalogo: [['montar', 'Montar catálogo']],
-  sobre: [['dados', 'Dados do sistema'], ['novidades', 'Novidades'], ['manual', 'Manual']]
+  sobre: [['apresentacao', 'Sobre o sistema'], ['dados', 'Dados do sistema'], ['manual', 'Manual'], ['novidades', 'Novidades']]
 };
 
 // [título, subtítulo, rótulo do grupo exibido acima do título no topo da página]
@@ -58,7 +58,7 @@ export const titles = {
   perfil: ['Minha Conta', 'Personalização', 'Gestão'],
   admin: ['Admin', 'Gestão de planos', 'Gestão'],
   eventos: ['Catálogo de Eventos', 'Links públicos e listas de desejo', 'Catálogo Farmasi'],
-  sobre: ['Sobre', 'Dados do sistema, novidades e manual', 'Gestão']
+  sobre: ['Sobre', 'Apresentação, dados do sistema, manual e novidades', 'Gestão']
 };
 
 export function path(...p) { return ['users', state.user.uid, ...p]; }
