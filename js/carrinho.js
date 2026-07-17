@@ -10,12 +10,17 @@ import { taxaOperadora, operadoraById, linkPagamentoAtivo } from './operadoras.j
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
 
-// Calcula o valor da parcela. Se o cliente assume os juros, aplica juros simples
-// (taxa % ao mês configurada no perfil) sobre o número de parcelas além da primeira.
-export function calcParcelas(total, parcelas, jurosPor, taxaJurosCartao) {
+// Calcula o valor da parcela. Se o cliente assume os juros, repassa pra ela exatamente a diferença
+// real que a operadora cobra por parcelar (taxa da parcela N menos a taxa à vista da própria tabela
+// da operadora) — não é um número digitado à parte, é o juro de verdade que a maquininha desconta
+// a mais quando parcela. Sem operadora selecionada, não tem como saber essa diferença: cliente não
+// paga juro nenhum nesse caso (mesma regra seria inventar um número).
+export function calcParcelas(total, parcelas, jurosPor, operadoraId, bandeiraGrupo) {
   const n = Math.max(1, Number(parcelas || 1));
-  const taxa = Number(taxaJurosCartao || 0) / 100;
-  const totalComJuros = (jurosPor === 'cliente' && n > 1) ? total * (1 + taxa * (n - 1)) : total;
+  const taxaN = operadoraId ? taxaOperadora(operadoraId, bandeiraGrupo, false, n) : null;
+  const taxa1x = operadoraId ? taxaOperadora(operadoraId, bandeiraGrupo, false, 1) : null;
+  const diferenca = (taxaN != null && taxa1x != null) ? Math.max(0, taxaN - taxa1x) / 100 : 0;
+  const totalComJuros = (jurosPor === 'cliente' && n > 1) ? total * (1 + diferenca) : total;
   return { n, totalComJuros, valorParcela: totalComJuros / n };
 }
 
@@ -157,8 +162,7 @@ function parcelamentoHtml(id, carr) {
   const maxParcelas = Number(operadoraAtiva?.maxParcelas || 12);
   const opts = Array.from({ length: maxParcelas }, (_, i) => i + 1);
   const jurosPor = carr.jurosPor || JUROS_POR_PADRAO;
-  const jurosClientePercent = Number(operadoraAtiva?.jurosClientePercent || 0);
-  const { valorParcela, totalComJuros } = calcParcelas(carr.totalPedido || 0, carr.parcelas || 1, jurosPor, jurosClientePercent);
+  const { valorParcela, totalComJuros } = calcParcelas(carr.totalPedido || 0, carr.parcelas || 1, jurosPor, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo);
   const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas || 1, 'Crédito', carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo);
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
     <h4 style="margin:0 0 8px">Parcelamento</h4>
