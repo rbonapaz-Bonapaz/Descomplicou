@@ -171,7 +171,7 @@ function stockCard(x) {
 // A busca principal do Estoque (qestoque) e a busca da Pré-encomenda (qPreEnc) convivem na mesma
 // função de render, em abas diferentes — preserva foco/cursor de qualquer uma das duas que estiver
 // ativa (mesmo padrão de FOCUS_IDS_PRODUTOS em produtos.js, que resolve o mesmo problema lá).
-const FOCUS_IDS_ESTOQUE = ['qestoque', 'qPreEnc'];
+const FOCUS_IDS_ESTOQUE = ['qestoque', 'qPreEnc', 'qSemLucro'];
 export function renderEstoque() {
   const idAtivo = FOCUS_IDS_ESTOQUE.find(id => document.activeElement?.id === id);
   const elAtivo = idAtivo ? document.getElementById(idAtivo) : null;
@@ -234,6 +234,8 @@ function renderEstoqueInner() {
       </div>`;
     }
 
+    if (sec === 'semLucro') html += semLucroTabHtml();
+
     if (sec === 'importar') {
       html += `<div class="panel">
         <h3>Importar pedido Farmasi (PDF)</h3>
@@ -247,6 +249,56 @@ function renderEstoqueInner() {
     if (sec === 'preEncomenda') html += preEncomendaTabHtml();
 
     $('estoque').innerHTML = html;
+}
+
+// Lista de auditoria: toda saída de estoque que NÃO gera lucro (Brinde, Parceria, Consumo próprio,
+// Perda, Ajuste, Troca) — pra a consultora conferir item a item se o motivo lançado em cada carrinho
+// ou saída manual está certo (ex.: algo marcado "Consumo próprio" que na verdade foi uma venda).
+function semLucroTabHtml() {
+  const q = norm($('qSemLucro')?.value || '');
+  let movs = (state.data.movimentacoesEstoque || []).filter(m => m.tipo === 'saida' && !m.geraLucro);
+
+  const motivosPresentes = Array.from(new Set(movs.map(m => m.motivo || 'Outro'))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const motivoFiltro = state.filters.semLucroMotivo || '';
+  if (motivoFiltro) movs = movs.filter(m => (m.motivo || 'Outro') === motivoFiltro);
+  if (q) movs = movs.filter(m => norm(m.produtoNome || '').includes(q));
+
+  movs = [...movs].sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
+
+  const totalQtd = movs.reduce((s, m) => s + Number(m.quantidade || 0), 0);
+  const totalValor = movs.reduce((s, m) => s + Number(m.valorFinanceiro || 0), 0);
+
+  return `<div class="panel">
+    <div class="panel-head"><h3>Saídas sem lucro (Brinde, Parceria, Consumo próprio, Perda, Ajuste, Troca)</h3></div>
+    <p class="muted">Toda saída de estoque que não vem de uma venda — confira se o motivo lançado em cada uma está certo. Um item marcado errado aqui (ex.: "Consumo próprio" que era venda) infla essa lista e reduz o lucro que aparece nos relatórios.</p>
+    <div class="cards">
+      <div class="card"><span>Registros</span><b>${movs.length}</b></div>
+      <div class="card"><span>Unidades saídas</span><b>${totalQtd}</b></div>
+      <div class="card"><span>Custo envolvido</span><b>${money(totalValor)}</b></div>
+    </div>
+    <div class="toolbar">
+      <input id="qSemLucro" placeholder="Buscar por produto..." oninput="App.renderEstoque()" value="${esc($('qSemLucro')?.value || '')}">
+    </div>
+    <div class="chips">
+      <button class="chip ${!motivoFiltro ? 'active' : ''}" onclick="App.setFilter('semLucroMotivo','')">Todos</button>
+      ${motivosPresentes.map(m => `<button class="chip ${motivoFiltro === m ? 'active' : ''}" onclick="App.setFilter('semLucroMotivo','${esc(m)}')">${esc(m)}</button>`).join('')}
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Data</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Custo</th><th>Origem</th></tr></thead>
+        <tbody>
+          ${movs.length ? movs.map(m => `<tr>
+            <td data-label="Data">${esc((m.data || '').split('-').reverse().join('/'))}</td>
+            <td data-label="Produto">${esc(m.produtoNome || '-')}</td>
+            <td data-label="Motivo">${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
+            <td data-label="Qtd">${m.quantidade || 0}</td>
+            <td data-label="Custo">${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</td>
+            <td data-label="Origem">${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</td>
+          </tr>`).join('') : '<tr><td colspan="6" class="muted">Nenhuma saída sem lucro para este filtro.</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 // Ativa "pronta entrega" de uma vez para todos os produtos que têm estoque > 0 — evita ter que

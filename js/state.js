@@ -27,7 +27,7 @@ export const ADMINS = ADMIN_EMAILS;
 export const state = {
   user: null,
   profile: null,
-  filters: { prod: 'todos', estoque: 'todos', rel: '30', vendas: 'todos', prodSort: 'nome_asc', estoqueSort: 'nome_asc', vendasSort: '', prodLinha: '', relProdSort: '', estoqueLinha: '', clientesSort: '', carrinhoItensSort: '' },
+  filters: { prod: 'todos', estoque: 'todos', rel: '30', vendas: 'todos', prodSort: 'nome_asc', estoqueSort: 'nome_asc', vendasSort: '', prodLinha: '', relProdSort: '', estoqueLinha: '', clientesSort: '', carrinhoItensSort: '', semLucroMotivo: '' },
   data: { clientes: [], produtos: [], vendas: [], carrinhos: [], agendamentos: [], movimentacoesEstoque: [], catalogos: [], eventos: [], trocas: [], preEncomenda: [], despesas: [], operadoras: [] },
   config: { limiteTeste: 5, limiteGratuito: 10, precoMensal: 0, precoSemestral: 0, precoAnual: 0 },
   // Aba ativa (por página) nas telas divididas em seções — ver SECTIONS abaixo.
@@ -39,7 +39,7 @@ export const SECTIONS = {
   admin: [['consultoras', 'Consultoras'], ['financeiro', 'Financeiro'], ['catalogoMestre', 'Catálogo mestre'], ['planos', 'Planos']],
   perfil: [['conta', 'Conta'], ['pagamento', 'Pagamentos'], ['integracoes', 'Integrações'], ['relatorios', 'Relatórios'], ['plano', 'Meu plano'], ['seguranca', 'Segurança']],
   produtos: [['produtos', 'Produtos'], ['linhas', 'Linhas']],
-  estoque: [['estoque', 'Estoque'], ['importar', 'Importar pedido'], ['trocas', 'Trocas'], ['preEncomenda', 'Pré-encomenda']],
+  estoque: [['estoque', 'Estoque'], ['semLucro', 'Saídas sem lucro'], ['importar', 'Importar pedido'], ['trocas', 'Trocas'], ['preEncomenda', 'Pré-encomenda']],
   catalogo: [['montar', 'Montar catálogo']],
   sobre: [['apresentacao', 'Sobre o sistema'], ['dados', 'Dados do sistema'], ['manual', 'Manual'], ['novidades', 'Novidades']]
 };
