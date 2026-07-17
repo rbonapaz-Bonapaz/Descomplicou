@@ -1,6 +1,6 @@
 import { state, SECTIONS, col, ref, db, prodById, showModal, closeModal, toast,
   runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, setDoc } from './state.js';
-import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleBareHtml, linhasDe, labelLinha } from './utils.js';
+import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
 
@@ -288,7 +288,7 @@ function semLucroTabHtml() {
         <thead><tr><th>Data</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Custo</th><th>Origem</th></tr></thead>
         <tbody>
           ${movs.length ? movs.map(m => `<tr>
-            <td data-label="Data">${esc((m.data || '').split('-').reverse().join('/'))}</td>
+            <td data-label="Data">${esc(formatDateBR(m.data))}</td>
             <td data-label="Produto">${esc(m.produtoNome || '-')}</td>
             <td data-label="Motivo">${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
             <td data-label="Qtd">${m.quantidade || 0}</td>
