@@ -5,7 +5,7 @@
 // Sem operadora selecionada no carrinho, o custo simplesmente não é mostrado.
 import { state, col, ref, db, addDoc, setDoc, deleteDoc, writeBatch, serverTimestamp, showModal, closeModal, toast } from './state.js';
 import { $, esc, pill, iniciarCooldownBotao } from './utils.js';
-import { interpretarTaxasOperadora } from './gemini.js';
+import { buscarTaxasOperadoraPorNome } from './gemini.js';
 
 const PARCELAS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -127,9 +127,8 @@ export function abrirOperadoraForm(id = '') {
     <p class="muted" style="margin:-8px 0 0;font-size:12px">Se preenchido, é esse link que o botão "💳 Enviar link de pagamento" do carrinho manda pra cliente quando essa operadora estiver selecionada. Quando você escolher "Cliente assume o juro" no carrinho, o juro repassado é calculado sozinho pela diferença entre a taxa da parcela escolhida e a taxa à vista aqui embaixo — não precisa digitar juro à parte.</p>
     <div class="panel" style="background:#F7FAFC;margin:14px 0">
       <h4 style="margin:0 0 8px">✨ Atualizar com IA</h4>
-      <p class="muted" style="margin:0 0 8px">Cole aqui o texto/tabela de taxas copiado do app da maquininha (débito, crédito à vista, 2x a 12x, por bandeira) — a IA preenche os campos abaixo sozinha. Nada é salvo automaticamente: confira e clique em "Salvar" no fim da tela pra confirmar.</p>
-      <textarea id="opIaTexto" rows="4" placeholder="Ex: Débito 1,37% (Visa/Master) / 2,58% (Elo/Amex). Crédito à vista 3,15% / 4,91%. 2x 5,39% / 6,47%..."></textarea>
-      <button class="btn" id="opIaBtn" style="margin-top:8px" onclick="App.atualizarOperadoraComIA()">✨ Atualizar campos com IA</button>
+      <p class="muted" style="margin:0 0 8px">Preencha o nome da operadora acima e clique no botão — a IA busca sozinha na internet a tabela de tarifas oficial vigente (débito, crédito à vista, 2x a 12x, por bandeira) e preenche os campos abaixo. Nada é salvo automaticamente: confira, ajuste se precisar, e clique em "Salvar" no fim da tela pra confirmar.</p>
+      <button class="btn" id="opIaBtn" style="margin-top:4px" onclick="App.atualizarOperadoraComIA()">✨ Buscar taxas com IA</button>
     </div>
     <h4 style="margin:16px 0 8px">Débito (%)</h4>
     <div class="grid">
@@ -149,22 +148,23 @@ function parseNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Preenche os campos do formulário já aberto a partir de texto livre (colado do app da
-// maquininha) via IA — só sobrescreve o que a IA reconheceu no texto, mantém o resto como estava.
-// Não grava nada sozinho: quem confirma é a consultora clicando "Salvar" depois de conferir.
+// Preenche os campos do formulário já aberto buscando sozinha na internet (via IA, a partir do
+// NOME digitado) a tabela de tarifas oficial vigente da operadora — só sobrescreve o que a IA
+// encontrou, mantém o resto como estava. Não grava nada sozinho: quem confirma é a consultora
+// clicando "Salvar" depois de conferir.
 let atualizandoComIA = false;
 
 export async function atualizarOperadoraComIA() {
   if (atualizandoComIA) return;
-  const texto = $('opIaTexto')?.value.trim();
-  if (!texto) return toast('Cole ou digite as taxas antes de atualizar.');
+  const nome = $('opNome')?.value.trim();
+  if (!nome) return toast('Preencha o nome da operadora antes de buscar com IA.');
 
   atualizandoComIA = true;
   const btn = $('opIaBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Atualizando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
   let cooldown = false;
   try {
-    const dados = await interpretarTaxasOperadora(texto);
+    const dados = await buscarTaxasOperadoraPorNome(nome);
     if (dados.prazoRecebimentoDias != null && $('opPrazo')) $('opPrazo').value = dados.prazoRecebimentoDias;
     if (dados.taxaDebito.visaMaster != null && $('opDebVM')) $('opDebVM').value = dados.taxaDebito.visaMaster;
     if (dados.taxaDebito.eloAmex != null && $('opDebEA')) $('opDebEA').value = dados.taxaDebito.eloAmex;
@@ -173,7 +173,7 @@ export async function atualizarOperadoraComIA() {
       if (l.visaMaster != null && $(`opCredVM${l.parcelas}`)) { $(`opCredVM${l.parcelas}`).value = l.visaMaster; preenchidos++; }
       if (l.eloAmex != null && $(`opCredEA${l.parcelas}`)) { $(`opCredEA${l.parcelas}`).value = l.eloAmex; preenchidos++; }
     });
-    toast(preenchidos ? 'Campos preenchidos pela IA — confira e clique "Salvar" para confirmar' : 'Não encontrei nenhuma taxa reconhecível nesse texto — tente colar de outra forma');
+    toast(preenchidos ? 'Campos preenchidos pela IA — confira e clique "Salvar" para confirmar' : `Não encontrei taxas confiáveis pra "${nome}" — confira o nome ou preencha manualmente`);
   } catch (e) {
     toast(e.message);
     if (e.tipoGemini === 'limite_por_minuto') cooldown = e.segundosEspera || 30;
@@ -181,8 +181,8 @@ export async function atualizarOperadoraComIA() {
     atualizandoComIA = false;
     const btnAtual = $('opIaBtn');
     if (btnAtual) {
-      if (cooldown) iniciarCooldownBotao(btnAtual, cooldown, '✨ Atualizar campos com IA');
-      else { btnAtual.disabled = false; btnAtual.textContent = '✨ Atualizar campos com IA'; }
+      if (cooldown) iniciarCooldownBotao(btnAtual, cooldown, '✨ Buscar taxas com IA');
+      else { btnAtual.disabled = false; btnAtual.textContent = '✨ Buscar taxas com IA'; }
     }
   }
 }

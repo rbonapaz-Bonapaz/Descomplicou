@@ -67,12 +67,15 @@ function erroGemini(status, body) {
 // 2. Retry por modelo — 429/503 com espera curta (rajada transitória) reenvia até 3x respeitando
 //    o retryDelay do Google, sem incomodar a consultora.
 // Erros de chave (400/403) interrompem tudo na hora: trocar de modelo não conserta chave.
-async function chamarGemini(prompt, { json = false } = {}) {
+async function chamarGemini(prompt, { json = false, busca = false } = {}) {
   const apiKey = (state.profile?.geminiApiKey || '').trim();
   if (!apiKey) throw new Error('Cadastre sua chave do Gemini em Minha Conta primeiro.');
 
   const corpo = { contents: [{ parts: [{ text: prompt }] }] };
-  if (json) corpo.generationConfig = { responseMimeType: 'application/json' };
+  // responseMimeType:'application/json' não é compatível com a tool de busca (google_search) —
+  // quando busca=true, o JSON vem só por instrução no prompt e é extraído do texto na volta.
+  if (json && !busca) corpo.generationConfig = { responseMimeType: 'application/json' };
+  if (busca) corpo.tools = [{ google_search: {} }];
 
   const candidatos = modeloAtivo ? [modeloAtivo, ...MODELOS.filter(m => m !== modeloAtivo)] : [...MODELOS];
   let ultimoErroBody = null, ultimoStatus = 0;
@@ -120,26 +123,29 @@ export async function gerarBeneficios(nomeProduto, linha = '') {
   return chamarGemini(prompt);
 }
 
-// Interpretação de tabela de taxas de operadora de cartão (Minha Conta → Pagamento → Operadoras)
-// — a consultora cola o texto copiado do app da maquininha (débito, crédito à vista, 2x a 12x,
-// por bandeira) e a IA devolve só os números que reconheceu, sem inventar o que não veio no texto.
-// Preenche os campos do formulário; quem confirma e grava é a consultora ao clicar "Salvar".
-export async function interpretarTaxasOperadora(texto) {
-  if (!texto?.trim()) throw new Error('Cole ou digite as taxas antes de interpretar.');
+// Busca autônoma de taxas (Minha Conta → Pagamento → Operadoras → "Atualizar com IA") — a partir
+// só do NOME já digitado no formulário, usa a tool de busca do Gemini (google_search) pra achar a
+// tabela de tarifas oficial vigente daquela operadora na internet, sem a consultora precisar
+// copiar/colar nada. Mesma garantia das outras funções de IA: só preenche o formulário em tela,
+// quem grava é a consultora clicando "Salvar" depois de conferir.
+export async function buscarTaxasOperadoraPorNome(nome) {
+  if (!nome?.trim()) throw new Error('Preencha o nome da operadora antes de buscar com IA.');
 
-  const prompt = `Extraia taxas de uma tabela de operadora de cartão (maquininha/gateway), com valores separados por dois grupos de bandeira: "visaMaster" (Visa/Mastercard) e "eloAmex" (Elo/Amex ou Elo sozinho). Texto:
-"""
-${texto.replace(/"""/g, "'")}
-"""
+  const prompt = `Pesquise agora na internet a tabela de tarifas/taxas oficial e vigente da operadora de pagamento (maquininha/gateway) "${nome.trim()}" para pessoa física/MEI, no plano de recebimento padrão (não o mais lento nem o antecipado, salvo se só houver um plano). Preciso das taxas percentuais de: Débito, Crédito à vista (1x), e Crédito parcelado de 2x a 12x — separadas em dois grupos de bandeira: "visaMaster" (Visa/Mastercard) e "eloAmex" (Elo/Amex, ou só Elo se Amex não for informado).
 
-Responda SOMENTE em JSON válido, neste formato exato (use null nos campos que não aparecerem no texto, não invente valor):
+Responda SOMENTE com um JSON válido, sem markdown, sem texto antes ou depois, neste formato exato (use null nos campos que você não encontrar, não invente valor):
 {"prazoRecebimentoDias":numero_ou_null,"taxaDebito":{"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},"taxaCredito":[{"parcelas":1,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":2,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":3,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":4,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":5,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":6,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":7,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":8,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":9,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":10,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":11,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null},{"parcelas":12,"visaMaster":numero_ou_null,"eloAmex":numero_ou_null}]}
 
-"Crédito à vista" conta como parcelas=1. Números são percentuais (ex: "1,37%" vira 1.37). Se o texto só tiver uma coluna de bandeira (sem separar grupos), use o mesmo valor pros dois grupos.`;
+Números são percentuais (ex: "1,37%" vira 1.37). Se só houver uma coluna de bandeira (sem separar grupos), use o mesmo valor pros dois grupos. Se não encontrar a operadora ou nenhuma taxa confiável, retorne todos os campos como null.`;
 
-  const texto2 = await chamarGemini(prompt, { json: true });
+  const texto = await chamarGemini(prompt, { json: true, busca: true });
+  // Com busca ativa o modelo às vezes envolve o JSON em ```json ... ``` ou texto ao redor —
+  // extrai só o trecho entre a primeira { e a última } antes de parsear.
+  const inicio = texto.indexOf('{');
+  const fim = texto.lastIndexOf('}');
+  if (inicio === -1 || fim === -1) throw new Error('Não consegui interpretar a resposta da IA — tente novamente.');
   let obj;
-  try { obj = JSON.parse(texto2); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente colar o texto de outra forma.'); }
+  try { obj = JSON.parse(texto.slice(inicio, fim + 1)); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente novamente.'); }
   const numOrNull = v => (v === null || v === undefined || v === '') ? null : Number(v);
   return {
     prazoRecebimentoDias: numOrNull(obj.prazoRecebimentoDias),
