@@ -10,6 +10,7 @@
     }
   ],
   "hosting": {
+    "target": "principal",
     "public": ".",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "functions/**"]
   }
