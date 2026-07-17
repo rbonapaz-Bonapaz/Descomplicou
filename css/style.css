@@ -22,7 +22,7 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
    logado (#app sem .hidden); some no login e no desktop. O menu completo de cima continua existindo. */
 .bottom-nav,.fab{display:none}
 @media(max-width:760px){
-  #app:not(.hidden)~.bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;background:#fff;border-top:1px solid var(--line);justify-content:space-around;padding:6px 2px;box-shadow:0 -2px 12px rgba(15,30,60,.06)}
+  #app:not(.hidden)~.bottom-nav{display:flex;flex-direction:row;position:fixed;left:0;right:0;bottom:0;z-index:70;background:#fff;border-top:1px solid var(--line);justify-content:space-around;padding:6px 2px;box-shadow:0 -2px 12px rgba(15,30,60,.06)}
   .bottom-nav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:900;color:var(--muted);cursor:pointer;padding:4px 0;border-radius:10px;min-width:0}
   .bottom-nav button span{font-size:20px;line-height:1}
   .bottom-nav button.active{color:var(--p)}
