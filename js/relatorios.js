@@ -1,5 +1,5 @@
 import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agendaAgg, lastBuy, diasContatoFrio, toast } from './state.js';
-import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, barChartSvg, donutChartSvg, downloadCSV, thSort, norm, linhasDe } from './utils.js';
+import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, barChartSvg, donutChartSvg, downloadCSV, thSort, norm, linhasDe, collapsibleHtml } from './utils.js';
 import { recommendations } from './dashboard.js';
 
 // Registro dos "Cards de Inteligência" — cada consultora escolhe quais quer ver (Minha Conta →
@@ -39,36 +39,11 @@ export const SECOES_RELATORIO = [
   { key: 'recomendacoes', label: 'Recomendações automáticas' }
 ];
 
-// Cards colapsáveis (efeito accordion) dentro de Relatórios — estado só em memória da sessão
-// (não precisa persistir no Firestore: é preferência de tela, não dado de negócio). O cabeçalho do
-// card continua sempre visível; só o conteúdo interno (métricas/linhas) é escondido, sem perder
-// nenhum dado carregado. Chave é o mesmo `key` de SECOES_RELATORIO (ex: 'origem', 'produtos').
-const cardsColapsados = new Set();
-
-// Alterna o card sem re-renderizar a página inteira (troca de classe direto no DOM) — clique tanto
-// no chevron quanto em qualquer parte da barra de título aciona o mesmo toggle.
-export function toggleCardRelatorio(key) {
-  const body = document.getElementById('relCardBody-' + key);
-  const chevron = document.getElementById('relCardChevron-' + key);
-  if (!body) return;
-  const vaiColapsar = !cardsColapsados.has(key);
-  if (vaiColapsar) cardsColapsados.add(key); else cardsColapsados.delete(key);
-  body.classList.toggle('report-card-collapsed', vaiColapsar);
-  if (chevron) chevron.textContent = vaiColapsar ? '▸' : '▾';
-}
-
-// Monta um painel com cabeçalho clicável (título + chevron) e corpo recolhível — usado nos cards
-// de "Novas clientes por origem", "Produtos", "Clientes" e "Trocas" (os que mais acumulam linhas e
-// mais fazem sentido esconder rapidamente por privacidade, ex: tela compartilhada com a cliente do lado).
+// Wrapper de conveniência: card colapsável de Relatórios com o `key` de SECOES_RELATORIO como
+// chave (prefixado 'rel' pra nunca colidir com as chaves do Dashboard, que usam o mesmo helper
+// genérico em utils.js) e o título simples num <h3>.
 function collapsibleCardHtml(key, titulo, bodyHtml) {
-  const colapsado = cardsColapsados.has(key);
-  return `<div class="panel">
-    <div class="panel-head report-card-head" onclick="App.toggleCardRelatorio('${key}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleCardRelatorio('${key}')}">
-      <h3>${titulo}</h3>
-      <span class="report-card-chevron" id="relCardChevron-${key}">${colapsado ? '▸' : '▾'}</span>
-    </div>
-    <div id="relCardBody-${key}" class="report-card-body${colapsado ? ' report-card-collapsed' : ''}">${bodyHtml}</div>
-  </div>`;
+  return collapsibleHtml('rel' + key, `<h3>${titulo}</h3>`, bodyHtml);
 }
 
 export function secaoAtiva(key) {
@@ -309,8 +284,7 @@ export function renderRelatorios() {
       </div>
     </div>
 
-    <div class="panel">
-      <h3>Lucro líquido consolidado</h3>
+    ${collapsibleHtml('relLucroLiquido', '<h3>Lucro líquido consolidado</h3>', `
       <p class="muted">Lucro real das vendas, já descontando taxa de cartão, o custo de brindes/parcerias/consumo/perdas, o frete pago à Farmasi e as despesas operacionais — o número mais próximo do que realmente sobra no bolso.</p>
       <div class="pedido-totais" style="width:100%;margin:10px 0 0">
         <div class="pedido-total-line"><span>Lucro real das vendas</span><b>${money(r.lucReal)}</b></div>
@@ -319,28 +293,25 @@ export function renderRelatorios() {
         ${despesasOperacionais > 0 ? `<div class="pedido-total-line"><span>Despesas operacionais</span><b style="color:var(--error)">- ${money(despesasOperacionais)}</b></div>` : ''}
         <div class="pedido-total-line" style="font-size:11pt;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span><b>Lucro líquido</b></span><b>${money(lucroLiquido)}</b></div>
       </div>
-      ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}
-    </div>
+      ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}`)}
 
-    <div class="panel">
-      <h3>Tendência de faturamento</h3>
+    ${collapsibleHtml('relTendencia', '<h3>Tendência de faturamento</h3>', `
       <p class="muted">Faturamento por dia${d === 'all' || Number(d) > 30 ? ' (últimos 30 dias)' : ''}.</p>
-      ${lineChartSvg(trend)}
-    </div>
+      ${lineChartSvg(trend)}`)}
 
-    <div class="cards">
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Faturamento</span><b>${money(r.fat)}${anterior ? variacaoBadge(r.fat, anterior.fat) : ''}</b></div>
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Lucro bruto</span><b>${money(r.luc)}</b></div>
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Lucro real (após taxas de cartão)</span><b>${money(r.lucReal)}${anterior ? variacaoBadge(r.lucReal, anterior.lucReal) : ''}</b></div>
-      <div class="card clickable" onclick="App.goto('perfil');App.setSection('perfil','pagamento')"><span>Custo de cartão/maquininha</span><b>${money(r.custoCartaoTotal)}</b></div>
-      <div class="card clickable" onclick="App.goto('estoque')"><span>Custo produtos vendidos</span><b>${money(r.custo)}</b></div>
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Margem real</span><b>${r.margemReal.toFixed(1)}%</b></div>
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Ticket médio</span><b>${money(r.ticket)}</b></div>
-      <div class="card clickable" onclick="App.goto('relatorios');document.getElementById('relPorProduto')?.scrollIntoView({behavior:'smooth'})"><span>Unidades vendidas</span><b>${r.itens}</b></div>
-    </div>
+    ${collapsibleHtml('relKpis', '<h3>Indicadores do período</h3>', `
+      <div class="cards">
+        <div class="card clickable" onclick="App.goto('vendas')"><span>Faturamento</span><b>${money(r.fat)}${anterior ? variacaoBadge(r.fat, anterior.fat) : ''}</b></div>
+        <div class="card clickable" onclick="App.goto('vendas')"><span>Lucro bruto</span><b>${money(r.luc)}</b></div>
+        <div class="card clickable" onclick="App.goto('vendas')"><span>Lucro real (após taxas de cartão)</span><b>${money(r.lucReal)}${anterior ? variacaoBadge(r.lucReal, anterior.lucReal) : ''}</b></div>
+        <div class="card clickable" onclick="App.goto('perfil');App.setSection('perfil','pagamento')"><span>Custo de cartão/maquininha</span><b>${money(r.custoCartaoTotal)}</b></div>
+        <div class="card clickable" onclick="App.goto('estoque')"><span>Custo produtos vendidos</span><b>${money(r.custo)}</b></div>
+        <div class="card clickable" onclick="App.goto('vendas')"><span>Margem real</span><b>${r.margemReal.toFixed(1)}%</b></div>
+        <div class="card clickable" onclick="App.goto('vendas')"><span>Ticket médio</span><b>${money(r.ticket)}</b></div>
+        <div class="card clickable" onclick="App.goto('relatorios');document.getElementById('relPorProduto')?.scrollIntoView({behavior:'smooth'})"><span>Unidades vendidas</span><b>${r.itens}</b></div>
+      </div>`)}
 
-    <div class="panel">
-      <div class="panel-head"><h3>🧠 Cards de Inteligência</h3><button class="linkbtn" onclick="App.goto('perfil');App.setSection('perfil','relatorios')">Configurar</button></div>
+    ${collapsibleHtml('relCardsIA', '<h3>🧠 Cards de Inteligência</h3><button class="linkbtn" onclick="event.stopPropagation();App.goto(\'perfil\');App.setSection(\'perfil\',\'relatorios\')">Configurar</button>', `
       ${nenhumCardAtivo ? '<p class="muted">Todos os cards de inteligência estão desligados — ative em Minha Conta → Relatórios.</p>' : `
       <div class="cards">
         ${recompra ? `<div class="card clickable" onclick="App.goto('clientes')" title="${esc(CARDS_INTELIGENCIA[0].desc)}"><span>Taxa de Recompra</span><b>${recompra.pct.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">${recompra.recompraram} de ${recompra.clientesComCompra} clientes</small></div>` : ''}
@@ -349,8 +320,7 @@ export function renderRelatorios() {
         ${descontosInfo ? `<div class="card clickable" onclick="App.goto('vendas')" title="${esc(CARDS_INTELIGENCIA[3].desc)}"><span>Vendas com Desconto</span><b>${descontosInfo.pctComDesconto.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">média ${money(descontosInfo.mediaDesconto)}</small></div>` : ''}
         ${ticketLinha ? `<div class="card clickable" onclick="App.goto('vendas')" title="${esc(CARDS_INTELIGENCIA[4].desc)}"><span>Melhor Ticket Médio</span><b>${ticketLinha[0] ? money(ticketLinha[0].valor) : '-'}</b><small class="muted" style="display:block;margin-top:2px">${ticketLinha[0] ? esc(ticketLinha[0].nome) : 'sem vendas no período'}</small></div>` : ''}
         ${cardAtivo('conversaoAgenda') ? `<div class="card clickable" onclick="App.goto('agenda')" title="${esc(CARDS_INTELIGENCIA[5].desc)}"><span>Conversão de Agendamentos</span><b>${ag.conversaoVenda.toFixed(0)}%</b><small class="muted" style="display:block;margin-top:2px">${ag.taxaComparecimento.toFixed(0)}% de comparecimento</small></div>` : ''}
-      </div>`}
-    </div>
+      </div>`}`)}
 
     ${(() => {
       // Cada seção "grande" vira um bloco no mapa, montado uma vez — a ordem/visibilidade final vem
@@ -358,19 +328,13 @@ export function renderRelatorios() {
       const abcDetalhe = curvaAbcDetalhada(r.prod);
       const abcResumo = curvaAbc(r.prod);
       const secoesHtml = {
-        graficos: `<div class="panel">
-          <h3>📊 Faturamento por forma de pagamento</h3>
-          ${barChartSvg(Object.entries(r.pay).sort((a, b) => b[1] - a[1]).map(([label, valor]) => ({ label, valor })), { valueFmt: money })}
-        </div>
-        <div class="panel">
-          <h3>📊 Top 5 produtos por faturamento</h3>
-          ${barChartSvg(r.top5FatProd.map(x => ({ label: x.nome, valor: x.rec })), { valueFmt: money })}
-        </div>
-        <div class="panel">
-          <h3>🍩 Curva ABC do estoque vendido</h3>
+        graficos: collapsibleHtml('relGraficoPag', '<h3>📊 Faturamento por forma de pagamento</h3>',
+          barChartSvg(Object.entries(r.pay).sort((a, b) => b[1] - a[1]).map(([label, valor]) => ({ label, valor })), { valueFmt: money }))
+          + collapsibleHtml('relGraficoTop5', '<h3>📊 Top 5 produtos por faturamento</h3>',
+          barChartSvg(r.top5FatProd.map(x => ({ label: x.nome, valor: x.rec })), { valueFmt: money }))
+          + collapsibleHtml('relGraficoAbc', '<h3>🍩 Curva ABC do estoque vendido</h3>', `
           <p class="muted" style="margin:0 0 8px">Quantos produtos (não valor) caem em cada classe — A é quem puxa até 80% do faturamento.</p>
-          ${donutChartSvg([{ label: 'Classe A', valor: abcResumo.A }, { label: 'Classe B', valor: abcResumo.B }, { label: 'Classe C', valor: abcResumo.C }], { valueFmt: v => v + ' produto(s)' })}
-        </div>`,
+          ${donutChartSvg([{ label: 'Classe A', valor: abcResumo.A }, { label: 'Classe B', valor: abcResumo.B }, { label: 'Classe C', valor: abcResumo.C }], { valueFmt: v => v + ' produto(s)' })}`),
         origem: collapsibleCardHtml('origem', 'Novas clientes por origem', `
           <p class="muted">De onde vieram as clientes cadastradas no período — ajuda a saber onde vale mais investir tempo captando gente nova.</p>
           ${totalNovas ? `<div class="list" style="margin-top:8px">${origemList.map(([o, n]) => `
@@ -387,16 +351,14 @@ export function renderRelatorios() {
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Estoque baixo</b><small>Produtos para repor</small></div><span class="tag orange">${s.baixo.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','parados')"><div><b>Parados (90+ dias)</b><small>Sem venda</small></div><span class="tag pink">${s.parados.length}</span></div>
           </div>`),
-        estoque: `<div class="panel">
-          <h3>Estoque</h3>
+        estoque: collapsibleHtml('relEstoque', '<h3>Estoque</h3>', `
           <div class="list">
             <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Valor investido</b><small>${s.un} unidades em estoque</small></div><span class="tag blue">${money(s.invest)}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Lucro potencial</b><small>Se vender pelo preço atual</small></div><span class="tag green">${money(s.pot)} (${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque')"><div><b>Saúde do estoque</b><small>Baixo, parado e sem custo</small></div><span class="tag ${s.saude === 'Boa' ? 'green' : 'orange'}">${s.saude}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','semcusto')"><div><b>Sem custo médio</b><small>Corrigir antes de vender</small></div><span class="tag orange">${s.sem.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Sugestões de reposição</b><small>Produtos abaixo do mínimo</small></div><span class="tag orange">${s.baixo.length}</span></div>
-          </div>
-        </div>`,
+          </div>`),
         clientes: collapsibleCardHtml('clientes', 'Clientes', `
           <div class="list">
             ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras', 'Cliente com mais compras no período (não considera valor em R$)')}
@@ -406,8 +368,7 @@ export function renderRelatorios() {
             <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes frios</b><small>${diasContatoFrio()}+ dias sem contato</small></div><span class="tag orange">${clientesFrios.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Sem compra</b><small>Nunca compraram</small></div><span class="tag pink">${clientesSemCompra.length}</span></div>
           </div>`),
-        agenda: `<div class="panel">
-          <h3>Agenda</h3>
+        agenda: collapsibleHtml('relAgenda', '<h3>Agenda</h3>', `
           <div class="list">
             <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Agendamentos</b><small>No período</small></div><span class="tag blue">${ag.total}</span></div>
             <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Realizados</b><small>Concluídos</small></div><span class="tag green">${ag.realizados}</span></div>
@@ -415,15 +376,12 @@ export function renderRelatorios() {
             <div class="list-item clickable" onclick="App.goto('agenda')"><div><b>Cancelados</b></div><span class="tag pink">${ag.cancelados}</span></div>
             <div class="list-item"><div><b>Taxa comparecimento</b></div><span class="tag blue">${ag.taxaComparecimento.toFixed(0)}%</span></div>
             <div class="list-item"><div><b>Conversão em venda</b></div><span class="tag green">${ag.conversaoVenda.toFixed(0)}%</span></div>
-          </div>
-        </div>`,
-        pagamentos: `<div class="panel">
-          <h3>Pagamentos</h3>
+          </div>`),
+        pagamentos: collapsibleHtml('relPagamentos', '<h3>Pagamentos</h3>', `
           <div class="list">
             ${Object.entries(r.pay).map(([k, v]) => `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>${esc(k)}</b></div><span class="tag blue">${money(v)}</span></div>`).join('') || '<p class="muted">Sem vendas no período.</p>'}
             ${pedidosPgtoPendente.length ? `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>Pedidos com pgto pendente</b></div><span class="tag orange">${pedidosPgtoPendente.length}</span></div>` : ''}
-          </div>
-        </div>`,
+          </div>`),
         trocas: collapsibleCardHtml('trocas', 'Trocas', `
           <div class="list">
             <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
@@ -433,15 +391,12 @@ export function renderRelatorios() {
             <div class="list-item"><div><b>Valor total recebido</b><small>${tr.itensEntrada} item(ns)</small></div><span class="tag green">${money(tr.valorEntrada)}</span></div>
             <div class="list-item"><div><b>Diferença</b><small>Recebido - saído</small></div><span class="tag ${tr.valorEntrada - tr.valorSaida >= 0 ? 'green' : 'pink'}">${money(tr.valorEntrada - tr.valorSaida)}</span></div>
           </div>`),
-        saidas: `<div class="panel">
-          <h3>Saídas de estoque (sem venda)</h3>
+        saidas: collapsibleHtml('relSaidas', '<h3>Saídas de estoque (sem venda)</h3>', `
           <p class="muted" style="margin:0 0 8px">Brinde, parceria, consumo próprio, perda e ajuste — o que sai do estoque sem virar receita.</p>
           <div class="list">
             ${saidasList.length ? saidasList.map(([motivo, x]) => `<div class="list-item clickable" onclick="App.goto('estoque')"><div><b>${esc(motivo)}</b><small>${x.qtd} un.</small></div><span class="tag orange">${money(x.valor)}</span></div>`).join('') : '<p class="muted">Nenhuma saída sem venda nesse período.</p>'}
-          </div>
-        </div>`,
-        curvaAbc: `<div class="panel">
-          <h3>Curva ABC detalhada</h3>
+          </div>`),
+        curvaAbc: collapsibleHtml('relCurvaAbc', '<h3>Curva ABC detalhada</h3>', `
           <p class="muted" style="margin:0 0 8px">Produtos ordenados por faturamento no período — classe A é quem puxa até 80% do total, B até 95%, C o resto. Foco de reposição/promoção deve ser nos produtos A.</p>
           ${abcDetalhe.length ? `<div class="table"><table><thead><tr>
             <th>Produto</th><th>Faturamento</th><th>% do total</th><th>% acumulado</th><th>Classe</th>
@@ -451,20 +406,16 @@ export function renderRelatorios() {
             <td data-label="% do total">${x.pct.toFixed(1)}%</td>
             <td data-label="% acumulado">${x.pctAcumulado.toFixed(1)}%</td>
             <td data-label="Classe">${pill(x.classe, x.classe === 'A' ? 'green' : x.classe === 'B' ? 'blue' : 'gray')}</td>
-          </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}
-        </div>`,
-        recomendacoes: `<div class="panel">
-          <h3>Recomendações automáticas</h3>
-          <div class="list">${recommendations().join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>
-        </div>`
+          </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}`),
+        recomendacoes: collapsibleHtml('relRecomendacoes', '<h3>Recomendações automáticas</h3>', `
+          <div class="list">${recommendations().join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>`)
       };
       const ativas = ordemSecoes().filter(secaoAtiva);
       if (!ativas.length) return '<div class="panel"><p class="muted">Todas as seções do relatório estão ocultas — reative em Minha Conta → Relatórios.</p></div>';
       return `<div class="report-grid">${ativas.map(k => secoesHtml[k]).join('')}</div>`;
     })()}
 
-    <div class="panel" id="relPorProduto">
-      <h3>Relatório completo por produto</h3>
+    <div id="relPorProduto">${collapsibleHtml('relPorProdutoCard', '<h3>Relatório completo por produto</h3>', `
       <p class="muted">Todos os produtos vendidos no período — clique no cabeçalho pra ordenar.</p>
       ${produtosVendidos.length ? `<div class="table"><table><thead><tr>
         ${thSort('Produto', 'nome', relProdSort, 'relProdSort')}
@@ -478,8 +429,7 @@ export function renderRelatorios() {
         <td data-label="Preço médio">${money(x.precoMedio)}</td>
         <td data-label="Faturamento">${money(x.rec)}</td>
         <td data-label="Lucro">${money(x.luc)}</td>
-      </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}
-    </div>`;
+      </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}`)}</div>`;
 }
 
 // Rótulo do período atual (mesmos chips de state.filters.rel) — usado nos nomes de arquivo

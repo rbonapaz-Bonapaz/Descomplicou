@@ -2,7 +2,7 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   onAuthStateChanged, signOut, getDoc, getDocs, setDoc, doc, serverTimestamp, planoInfo, onSnapshot
 } from './state.js';
-import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
+import { $, esc, filtrarSearchPicker, formatDateBR, porGenero, toggleColapsavel } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
 import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA, definirOperadoraPadrao } from './operadoras.js';
@@ -31,7 +31,7 @@ import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
-import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleCardRelatorio } from './relatorios.js';
+import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
@@ -343,7 +343,7 @@ window.App = {
   selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo, excluirTodoCatalogo,
   toggleOcultarAtual, toggleBeneficiosPdf,
   // Relatórios
-  renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleCardRelatorio,
+  renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleColapsavel,
   // Perfil
   renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,

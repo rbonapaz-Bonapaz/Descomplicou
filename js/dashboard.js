@@ -1,5 +1,5 @@
 import { state, salesAgg, stockAgg, lastBuy, lastSaleDate, openCarrinhosForClient, diasContatoFrio, nomeAtualDoCliente, nomeChamado, planoInfo } from './state.js';
-import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero, addDias } from './utils.js';
+import { $, esc, money, today, daysToBirthday, daysSince, pill, formatBirthDate, ageOnNextBirthday, formatDateBR, porGenero, addDias, collapsibleHtml } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { novosLeadsResumo, verificarNovosLeads, marcarLeadsVistos } from './eventos.js';
 import { datasComemorativasResumo, carregarDatasComemorativas } from './datasComemorativas.js';
@@ -126,6 +126,7 @@ export function renderDashboard() {
       </div>
     </div>
 
+    ${collapsibleHtml('dashKpis', '<h3>Indicadores</h3>', `
     <div class="cards">
       <div class="card clickable" onclick="App.goto('vendas')"><span>Carrinhos abertos</span><b>${carrAbertos.length}</b></div>
       <div class="card clickable" onclick="App.goto('relatorios')"><span>Faturamento 30d</span><b>${money(r.fat)}</b></div>
@@ -133,11 +134,10 @@ export function renderDashboard() {
       <div class="card clickable" onclick="App.goto('estoque')"><span>Valor em estoque</span><b>${money(s.invest)}</b></div>
       <div class="card clickable" onclick="App.goto('estoque')"><span>Lucro potencial</span><b>${money(s.pot)} <span class="muted" style="font-size:11px;font-weight:700">(${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></b></div>
       <div class="card clickable" onclick="App.goto('vendas')"><span>Entregas futuras</span><b>${entregasFuturas.length}</b></div>
-    </div>
+    </div>`)}
 
     <div class="dash-grid">
-      <div class="panel">
-        <div class="panel-head"><h3>🎂 Aniversariantes próximos</h3><button class="linkbtn" onclick="App.goto('clientes')">Ver todos</button></div>
+      ${collapsibleHtml('dashAniversariantes', '<h3>🎂 Aniversariantes próximos</h3><button class="linkbtn" onclick="event.stopPropagation();App.goto(\'clientes\')">Ver todos</button>', `
         <div class="list">${birth.length ? birth.map(c => {
           const dataStr = formatBirthDate(c.nascimento);
           const idade = ageOnNextBirthday(c.nascimento);
@@ -152,22 +152,16 @@ export function renderDashboard() {
             <button class="btn small" onclick="App.openCarrinhoForCliente('${c.id}')">🛒</button>
           </div>
         </div>`;
-        }).join('') : '<p class="muted">Nenhum aniversário nos próximos 30 dias.</p>'}</div>
-      </div>
+        }).join('') : '<p class="muted">Nenhum aniversário nos próximos 30 dias.</p>'}</div>`)}
 
-      <div class="panel">
-        <div class="panel-head"><h3>🎁 Datas comemorativas</h3></div>
-        <div class="list" id="datasComemorativas">${datasComemorativasHtml()}</div>
-      </div>
+      ${collapsibleHtml('dashDatas', '<h3>🎁 Datas comemorativas</h3>', `
+        <div class="list" id="datasComemorativas">${datasComemorativasHtml()}</div>`)}
 
-      <div class="panel">
-        <div class="panel-head">
-          <h3>📅 Agenda de hoje</h3>
-          <div style="display:flex;gap:10px;align-items:center">
+      ${collapsibleHtml('dashAgenda', `<h3>📅 Agenda de hoje</h3>
+          <div style="display:flex;gap:10px;align-items:center" onclick="event.stopPropagation()">
             <button class="btn small" title="${state.profile?.googleCalendarId ? 'Sincronizar Google Agenda' : 'Conectar Google Agenda'}" onclick="${state.profile?.googleCalendarId ? 'App.importarDoGoogleAgenda()' : 'App.conectarGoogleAgendaUI()'}">🔄${state.profile?.googleCalendarId ? '' : ' Conectar Google Agenda'}</button>
             <button class="linkbtn" onclick="App.openAgendamentoForm()">Novo</button>
-          </div>
-        </div>
+          </div>`, `
         <div class="list">${agenda.length ? agenda.map(a => {
           const cli = state.data.clientes.find(c => c.id === a.clienteId);
           return `<div class="list-item">
@@ -199,11 +193,9 @@ export function renderDashboard() {
               </div>
             </details>`;
           }).join('')}</div>
-        </details>` : ''}
-      </div>
+        </details>` : ''}`)}
 
-      <div class="panel">
-        <div class="panel-head"><h3>⚠️ Contatos frios</h3><button class="linkbtn" onclick="App.goto('clientes')">Reaquecer</button></div>
+      ${collapsibleHtml('dashFrios', '<h3>⚠️ Contatos frios</h3><button class="linkbtn" onclick="event.stopPropagation();App.goto(\'clientes\')">Reaquecer</button>', `
         <div class="list">${cold.length ? cold.map(c => `<div class="list-item">
           <div>
             <b class="cli-link" onclick="App.openCliente360('${c.id}')">${esc(c.nome)}</b>
@@ -215,22 +207,18 @@ export function renderDashboard() {
             <button class="btn small" onclick="App.marcarContatado('${c.id}')">✓</button>
             <button class="btn small" onclick="App.openCarrinhoForCliente('${c.id}')">🛒</button>
           </div>
-        </div>`).join('') : '<p class="muted">Nenhum contato frio.</p>'}</div>
-      </div>
+        </div>`).join('') : '<p class="muted">Nenhum contato frio.</p>'}</div>`)}
 
-      ${carrAbertos.length ? `<div class="panel">
-        <div class="panel-head"><h3>🛒 Carrinhos pendentes</h3><button class="linkbtn" onclick="App.goto('vendas')">Ver todos</button></div>
+      ${carrAbertos.length ? collapsibleHtml('dashCarrPendentes', '<h3>🛒 Carrinhos pendentes</h3><button class="linkbtn" onclick="event.stopPropagation();App.goto(\'vendas\')">Ver todos</button>', `
         <div class="list">${carrAbertos.slice(0, 5).map(c => `<div class="list-item">
           <div>
             <b class="cli-link" onclick="App.openCarrinho('${c.id}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
             <small>${(c.itens || []).length} itens • ${money(c.totalPedido || 0)}</small>
           </div>
           <button class="btn small dark" onclick="App.openCarrinho('${c.id}')">Abrir</button>
-        </div>`).join('')}</div>
-      </div>` : ''}
+        </div>`).join('')}</div>`) : ''}
 
-      ${retornos.length ? `<div class="panel">
-        <div class="panel-head"><h3>🔔 Retornos agendados</h3></div>
+      ${retornos.length ? collapsibleHtml('dashRetornos', '<h3>🔔 Retornos agendados</h3>', `
         <div class="list">${retornos.map(c => {
           const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
           const atraso = daysSince(c.dataRetorno);
@@ -245,13 +233,10 @@ export function renderDashboard() {
               <button class="btn small" onclick="App.marcarRetornoFeito('${c.id}')">✓ Feito</button>
             </div>
           </div>`;
-        }).join('')}</div>
-      </div>` : ''}
+        }).join('')}</div>`) : ''}
 
-      <div class="panel">
-        <div class="panel-head"><h3>📦 Recomendações</h3><button class="linkbtn" onclick="App.goto('relatorios')">Ver relatórios</button></div>
-        <div class="list">${recommendations().slice(0, 6).join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>
-      </div>
+      ${collapsibleHtml('dashRecomendacoes', '<h3>📦 Recomendações</h3><button class="linkbtn" onclick="event.stopPropagation();App.goto(\'relatorios\')">Ver relatórios</button>', `
+        <div class="list">${recommendations().slice(0, 6).join('') || '<p class="muted">Nenhuma recomendação crítica.</p>'}</div>`)}
     </div>`;
 
   // Verifica leads novos só uma vez por sessão (novosLeadsResumo null = ainda não checado) — o

@@ -173,6 +173,40 @@ export function sortBarHtml(current, filterKey) {
 // Cabeçalho <th> clicável de ordenação para tabelas de verdade (Vendas, Clientes etc — diferente
 // de sortBarHtml, que simula isso com botões pra telas de cards). field = chave do campo,
 // current = valor salvo em state.filters[filterKey] (ex: "cliente_asc"), filterKey = nome do filtro.
+// Cards colapsáveis (efeito accordion) — usado em TODOS os painéis do Dashboard e de Relatórios
+// (item 15: privacidade de tela compartilhada, ex: mostrar o app pra cliente do lado sem expor
+// valores). Estado só em memória da sessão (não precisa persistir no Firestore: é preferência de
+// tela, não dado de negócio, e os dados continuam carregados — só o container interno some
+// visualmente). O cabeçalho (título + botões de ação como "Ver todos"/"Configurar") continua
+// sempre visível; um clique em qualquer parte da barra de título (ou no chevron) alterna o corpo,
+// exceto em botões/links internos do cabeçalho, que usam stopPropagation pra não conflitar.
+const colapsados = new Set();
+
+export function toggleColapsavel(key) {
+  const body = document.getElementById('colBody-' + key);
+  const chevron = document.getElementById('colChevron-' + key);
+  if (!body) return;
+  const vaiColapsar = !colapsados.has(key);
+  if (vaiColapsar) colapsados.add(key); else colapsados.delete(key);
+  body.classList.toggle('report-card-collapsed', vaiColapsar);
+  if (chevron) chevron.textContent = vaiColapsar ? '▸' : '▾';
+}
+
+// Monta um <div class="panel"> com cabeçalho clicável (título/ações + chevron) e corpo recolhível.
+// `key` precisa ser único na tela inteira (ex: 'dashAniversariantes', 'relOrigem'). `headInnerHtml`
+// é o conteúdo do cabeçalho (título, badges, botões de ação) — botões que não devem alternar o
+// card precisam do próprio onclick com `event.stopPropagation()` antes da ação.
+export function collapsibleHtml(key, headInnerHtml, bodyHtml) {
+  const colapsado = colapsados.has(key);
+  return `<div class="panel">
+    <div class="panel-head report-card-head" onclick="App.toggleColapsavel('${key}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleColapsavel('${key}')}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${headInnerHtml}</div>
+      <span class="report-card-chevron" id="colChevron-${key}">${colapsado ? '▸' : '▾'}</span>
+    </div>
+    <div id="colBody-${key}" class="report-card-body${colapsado ? ' report-card-collapsed' : ''}">${bodyHtml}</div>
+  </div>`;
+}
+
 export function thSort(label, field, current, filterKey) {
   const [f, dir] = String(current || '').split('_');
   const active = f === field;
