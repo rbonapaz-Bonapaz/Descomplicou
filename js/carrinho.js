@@ -1,6 +1,6 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
-  proximoNumeroPedido, proximaSequenciaCliente } from './state.js';
+  proximoNumeroPedido, proximaSequenciaCliente, functions, httpsCallable } from './state.js';
 import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
@@ -83,6 +83,21 @@ function prazoRecebimentoHtml(carr) {
   return `<p class="muted" style="margin:4px 0 0">💰 Recebe da ${esc(op.nome)} em ${dias} dia${dias === 1 ? '' : 's'} útil${dias === 1 ? '' : 'eis'}</p>`;
 }
 
+// Botão/estado do checkout online da InfinitePay — só aparece se a consultora cadastrou o handle
+// dela em Minha Conta → Pagamento. Sem handle, o carrinho continua funcionando normalmente com o
+// link de pagamento manual de sempre (nada quebra pra quem não usa essa integração).
+function infinitePayCheckoutHtml(id, carr) {
+  if (!state.profile?.infinitePayHandle) return '';
+  const check = carr.infinitePay;
+  if (check?.status === 'pago') {
+    return `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">✅ Pago via InfinitePay</div>`;
+  }
+  if (check?.status === 'pendente' && check?.url) {
+    return `<div style="margin-top:10px"><button class="btn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Ver cobrança InfinitePay (aguardando pagamento)</button></div>`;
+  }
+  return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar cobrança InfinitePay</button></div>`;
+}
+
 function parcelamentoHtml(id, carr) {
   if (carr.pagamento !== 'Cartão' && carr.pagamento !== 'Link de pagamento') return '';
   const cfg = state.profile || {};
@@ -103,6 +118,7 @@ function parcelamentoHtml(id, carr) {
       <p class="muted" style="margin:8px 0 0">Débito é sempre à vista, sem parcelamento.</p>
       ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
       ${prazoRecebimentoHtml(carr)}
+    ${infinitePayCheckoutHtml(id, carr)}
     </div>`;
   }
 
@@ -130,6 +146,7 @@ function parcelamentoHtml(id, carr) {
     <p class="muted" style="margin:8px 0 0">${carr.parcelas > 1 ? `${carr.parcelas}x de ${money(valorParcela)}` : 'À vista'}${jurosPor === 'cliente' && carr.parcelas > 1 ? ` — total com juros: ${money(totalComJuros)}` : ''}</p>
     ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> (taxa ${money(custoCartao.taxaTransacao)}${custoCartao.custoJuros > 0 ? ` + juro parcelamento ${money(custoCartao.custoJuros)}` : ''}) — sai do seu lucro</p>` : ''}
     ${prazoRecebimentoHtml(carr)}
+    ${infinitePayCheckoutHtml(id, carr)}
   </div>`;
 }
 
@@ -732,6 +749,78 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
     await window.App.refresh();
     openCarrinho(id);
   }
+}
+
+// Checkout online InfinitePay: gera (ou reabre) o link/QR Code de cobrança via Cloud Function —
+// a API da InfinitePay não libera CORS pro navegador chamar direto, por isso passa pela function
+// criarCheckoutInfinitePay. Enquanto o modal está aberto, faz um poll leve no state.data.carrinhos
+// (já mantido em tempo real pelo onSnapshot global) pra avisar assim que o webhook confirmar o
+// pagamento, sem precisar a consultora ficar dando refresh.
+let pollCheckoutInfinitePay = null;
+
+export async function abrirCheckoutInfinitePay(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+
+  // Já existe uma cobrança pendente pra esse carrinho — reabre o mesmo QR/link em vez de gerar
+  // outro (evitar cobranças duplicadas pro mesmo pedido).
+  if (carr.infinitePay?.status === 'pendente' && carr.infinitePay?.url) {
+    return mostrarModalCheckoutInfinitePay(carrinhoId, carr.infinitePay.url);
+  }
+
+  const btn = $('cInfinitePayBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando cobrança...'; }
+  try {
+    const criar = httpsCallable(functions, 'criarCheckoutInfinitePay');
+    const resultado = await criar({ carrinhoId });
+    await window.App.refresh();
+    mostrarModalCheckoutInfinitePay(carrinhoId, resultado.data.url);
+  } catch (e) {
+    toast('Não consegui gerar a cobrança InfinitePay: ' + (e.message || 'erro desconhecido'));
+    const btnAtual = $('cInfinitePayBtn');
+    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '💳 Gerar cobrança InfinitePay'; }
+  }
+}
+
+function mostrarModalCheckoutInfinitePay(carrinhoId, url) {
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=${encodeURIComponent(url)}`;
+  const ehMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  showModal(`<h3>💳 Cobrança InfinitePay</h3>
+    <p class="muted">Mostre o QR Code pra cliente escanear, ou envie o link. Essa tela avisa sozinha quando o pagamento cair — pode deixar aberta ou fechar e conferir depois.</p>
+    <div style="text-align:center;margin:16px 0"><img src="${qrSrc}" alt="QR Code de pagamento" style="border-radius:12px;border:1px solid var(--line)"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="btn" onclick="App.copiarLinkInfinitePay('${esc(url)}')">📋 Copiar link</button>
+      <a class="btn dark" href="${esc(url)}" target="_blank" rel="noopener">Abrir cobrança</a>
+      ${ehMobile ? `<a class="btn green-btn" href="infinitepay://checkout?url=${encodeURIComponent(url)}">📲 Cobrar via InfiniteTap</a>` : ''}
+    </div>
+    <p id="cInfinitePayStatus" class="muted" style="text-align:center;margin-top:14px">⏳ Aguardando pagamento...</p>
+    <br><button class="btn ghost" style="width:100%" onclick="App.fecharModalCheckoutInfinitePay()">Fechar</button>`);
+
+  if (pollCheckoutInfinitePay) clearInterval(pollCheckoutInfinitePay);
+  pollCheckoutInfinitePay = setInterval(() => {
+    const statusEl = $('cInfinitePayStatus');
+    if (!statusEl) { clearInterval(pollCheckoutInfinitePay); pollCheckoutInfinitePay = null; return; } // modal foi fechado
+    const carrAtual = state.data.carrinhos.find(c => c.id === carrinhoId);
+    if (carrAtual?.infinitePay?.status === 'pago') {
+      statusEl.textContent = '✅ Pagamento confirmado!';
+      statusEl.style.color = 'var(--success)';
+      clearInterval(pollCheckoutInfinitePay);
+      pollCheckoutInfinitePay = null;
+      toast('Pagamento confirmado pela InfinitePay!');
+    }
+  }, 3000);
+}
+
+export function copiarLinkInfinitePay(url) {
+  navigator.clipboard.writeText(url).then(
+    () => toast('Link copiado!'),
+    () => toast('Não consegui copiar — selecione e copie manualmente: ' + url)
+  );
+}
+
+export function fecharModalCheckoutInfinitePay() {
+  if (pollCheckoutInfinitePay) { clearInterval(pollCheckoutInfinitePay); pollCheckoutInfinitePay = null; }
+  closeModal();
 }
 
 export async function finalizarCarrinho(id) {

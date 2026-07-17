@@ -9,3 +9,10 @@ Arquivos para consulta/
 # SO / editor
 .DS_Store
 Thumbs.db
+
+# Cloud Functions — dependências instaladas (reconstrói com `cd functions && npm install`) e logs
+# locais do emulador/CLI. package-lock.json FICA versionado (garante o build reproduzível no
+# deploy do Firebase).
+functions/node_modules/
+firebase-debug.log
+.firebase/

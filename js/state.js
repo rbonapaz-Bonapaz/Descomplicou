@@ -5,11 +5,16 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
   updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential,
   reauthenticateWithPopup, deleteUser } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { $, daysSince, inPeriod, today } from './utils.js';
 
 const fb = initializeApp(firebaseConfig);
 export const auth = getAuth(fb);
 export const db = getFirestore(fb);
+// As Cloud Functions rodam na mesma região declarada em functions/index.js — precisa bater aqui
+// senão o SDK tenta chamar a região padrão (us-central1) e cai em 404.
+export const functions = getFunctions(fb, 'southamerica-east1');
+export { httpsCallable };
 
 export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
