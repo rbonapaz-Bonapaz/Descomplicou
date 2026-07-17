@@ -274,6 +274,32 @@ function coletarDadosFormEvento() {
   };
 }
 
+// Mesmo princípio de sincronizarProdutoNosEventos, mas pro RETRATO do perfil (nome, foto, cores
+// personalizadas etc.) — ele também é congelado no evento na hora de criar/editar. Sem isso, mudar
+// a cor de tema ou restaurar o padrão em Minha Conta nunca aparecia nos links já publicados, só na
+// próxima vez que a consultora reabrisse e salvasse o evento manualmente. Chamada depois de savePerfil
+// e restaurarTemaPadrao (perfil.js) — silenciosa, não bloqueia o salvamento do perfil se falhar.
+export async function sincronizarPerfilNosEventos() {
+  const eventosAtivos = (state.data.eventos || []).filter(e => e.ativo !== false);
+  if (!eventosAtivos.length) return;
+  const p = state.profile || {};
+  const perfilPublico = {
+    nome: p.nome || '', nomeNegocio: p.nomeNegocio || '', genero: p.genero || '',
+    instagram: p.instagram || '', linkLoja: p.linkLoja || '', whatsapp: p.whatsapp || '',
+    foto: p.fotoPerfil || state.user?.photoURL || '',
+    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || ''
+  };
+  for (const ev of eventosAtivos) {
+    try {
+      await setDoc(ref('eventos', ev.id), { perfilPublico }, { merge: true });
+      await setDoc(doc(db, 'eventosPublicos', ev.id), { perfilPublico }, { merge: true });
+      ev.perfilPublico = perfilPublico;
+    } catch (e) {
+      console.error('Falha ao replicar perfil no evento', ev.id, e);
+    }
+  }
+}
+
 // O link de evento congela nome/preço/desconto/estoque/imagem dos produtos no momento de
 // criar/editar (senão a página pública precisaria ler o catálogo privado da consultora, o que as
 // regras do Firestore não permitem). Isso significa que uma alteração de preço/estoque/imagem no

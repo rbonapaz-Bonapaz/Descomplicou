@@ -10,6 +10,7 @@ import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRe
 import { NOMES_DATAS_AUTOMATICAS, carregarDatasComemorativas } from './datasComemorativas.js';
 import { renderOperadorasPanel } from './operadoras.js';
 import { WA_CONTEXTOS_AUTOMATIZAVEIS } from './whatsapp.js';
+import { sincronizarPerfilNosEventos } from './eventos.js';
 
 const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -442,6 +443,7 @@ export function sincronizarCorHex(idColorInput, hex) {
 export async function restaurarTemaPadrao() {
   await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, corFundo: '', corPrimaria: '' };
+  await sincronizarPerfilNosEventos(); // sem isso, os links de evento já publicados ficavam com a cor antiga presa
   window.App.refresh('Cores padrão restauradas');
 }
 
@@ -477,6 +479,7 @@ export async function savePerfil() {
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });
   state.profile = { ...state.profile, ...d };
   aplicarTemaPersonalizado(state.profile); // aplica na hora, sem depender do ciclo de refresh
+  await sincronizarPerfilNosEventos(); // replica nome/foto/cores nos links de evento já publicados
   window.App.refresh('Personalização salva');
 }
 
