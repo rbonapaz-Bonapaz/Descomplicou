@@ -51,6 +51,7 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, ordenarItensCarrinhoUI } from './carrinho.js';
 import { sendWhatsApp, enviarWhatsAppAuto, toggleWaAutomatico } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
+import { renderResultadosBusca, fecharResultadosBusca } from './buscaGlobal.js';
 import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle, precisaCriarSenhaGoogle } from './auth.js';
 import { biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria, desbloquearBiometria } from './biometria.js';
 import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, excluirEvento,
@@ -159,6 +160,11 @@ async function checkAutoSyncBaseColetiva() {
 
 // --- Navigation ---
 document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => goto(b.dataset.page));
+
+// Busca global: fecha o dropdown de resultados ao clicar fora do campo/lista.
+document.addEventListener('click', e => {
+  if (!e.target.closest('.busca-global')) fecharResultadosBusca();
+});
 
 function goto(p) {
   paginaAtiva = p;
@@ -325,6 +331,7 @@ function setSection(pagina, secao) {
 // --- Global API ---
 window.App = {
   goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker,
+  renderResultadosBusca, fecharResultadosBusca,
   // Auth
   switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle,
   tentarDesbloqueio, logoutFromLock,

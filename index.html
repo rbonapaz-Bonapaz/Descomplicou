@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=64">
+  <link rel="stylesheet" href="css/style.css?v=65">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -123,6 +123,10 @@
           <h2 id="title">Painel Inicial</h2>
           <p id="subtitle">Visão geral da consultoria</p>
         </div>
+        <div class="busca-global">
+          <input id="buscaGlobalInput" placeholder="🔎 Buscar em tudo (telas, clientes, produtos)..." oninput="App.renderResultadosBusca()" onfocus="App.renderResultadosBusca()">
+          <div id="buscaGlobalResultados" class="busca-global-resultados hidden"></div>
+        </div>
         <div class="user">
           <img id="photo">
           <div><b id="uname"></b><span id="uemail"></span></div>
@@ -160,6 +164,6 @@
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=154"></script>
+  <script type="module" src="js/app.js?v=155"></script>
 </body>
 </html>
