@@ -111,9 +111,8 @@ export function renderPerfil() {
   if (sec === 'pagamento') {
     html += `<div class="panel">
       <h3>Pagamento</h3>
-      <p class="muted">Usado na tela de venda quando o pagamento é por cartão ou link. O custo da maquininha (taxa por bandeira/parcela) vem das <b>Operadoras de cartão</b> cadastradas mais abaixo — os campos aqui são só sobre o link de cobrança, o limite de parcelas e o juro que a CLIENTE paga quando ela assume o parcelamento.</p>
+      <p class="muted">Usado na tela de venda quando o pagamento é por cartão ou link. O custo da maquininha (taxa por bandeira/parcela) e o link de cobrança de cada forma de pagamento vêm das <b>Operadoras de cartão</b> cadastradas mais abaixo — os campos aqui são só sobre o checkout automático da InfinitePay, o limite de parcelas e o juro que a CLIENTE paga quando ela assume o parcelamento.</p>
       <div class="grid">
-        <div class="field full"><label>Link de pagamento (Pix/cartão)</label><input id="perLinkPag" placeholder="https://..." value="${esc(p.linkPagamento || '')}"></div>
         <div class="field"><label>Handle da InfinitePay (@usuário)</label><input id="perInfinitePayHandle" placeholder="Ex: minhaloja" value="${esc(p.infinitePayHandle || '')}"></div>
         <div class="field"><label>Máximo de parcelas</label><input id="perMaxParcelas" type="number" min="1" max="24" value="${p.maxParcelas || 12}"></div>
         <div class="field"><label>Juros cobrado da cliente (% ao mês)</label><input id="perTaxaJuros" value="${p.taxaJurosCartao || 0}"></div>
@@ -362,7 +361,6 @@ export async function savePerfil() {
     diasContatoFrio: $('perDiasFrio') ? Number($('perDiasFrio').value || 30) : (p.diasContatoFrio || 30),
     diasAgendaPainel: $('perDiasAgenda') ? Number($('perDiasAgenda').value || 0) : (p.diasAgendaPainel || 0),
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
-    linkPagamento: $('perLinkPag')?.value ?? p.linkPagamento ?? '',
     infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim().replace(/^@/, ''),
     maxParcelas: $('perMaxParcelas') ? Number($('perMaxParcelas').value || 12) : (p.maxParcelas || 12),
     taxaJurosCartao: $('perTaxaJuros') ? parseNum($('perTaxaJuros').value) : (p.taxaJurosCartao || 0),

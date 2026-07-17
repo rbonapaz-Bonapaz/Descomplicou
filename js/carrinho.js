@@ -5,7 +5,7 @@ import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
-import { taxaOperadora, operadoraById } from './operadoras.js';
+import { taxaOperadora, operadoraById, linkPagamentoAtivo } from './operadoras.js';
 
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
@@ -320,7 +320,7 @@ export function openCarrinho(id) {
       <button class="btn dark" onclick="App.finalizarCarrinho('${id}')">✓ Finalizar venda</button>
       <button class="btn small" onclick="App.salvarCarrinhoOpt('${id}');App.closeModal();App.refresh('Carrinho salvo')">💾 Salvar</button>
       <button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${id}')">${WA_ICON} Enviar pedido</button>
-      ${state.profile?.linkPagamento ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${id}')">💳 Enviar link de pagamento</button>` : ''}
+      ${linkPagamentoAtivo(carr) ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${id}')">💳 Enviar link de pagamento</button>` : ''}
       <button class="btn small" style="color:var(--error)" onclick="App.cancelarCarrinho('${id}')">✗ Cancelar</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>
@@ -393,7 +393,7 @@ function pagamentoResumoHtml(carr) {
     </tbody></table></div>` : ''}
     ${restante > 0.004 ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn dark small" onclick="App.registrarPagamento('${carr.id}')">💰 Registrar pagamento recebido</button>
-      ${state.profile?.linkPagamento ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${carr.id}')">💳 Enviar link de pagamento</button>` : ''}
+      ${linkPagamentoAtivo(carr) ? `<button class="btn small green-btn" onclick="App.enviarLinkPagamento('${carr.id}')">💳 Enviar link de pagamento</button>` : ''}
     </div>` : ''}
   </div>`;
 }
@@ -1022,13 +1022,14 @@ export function enviarResumoWhatsApp(carrinhoId) {
   window.App.sendWhatsApp('resumoPedido', { nome: cli.apelido || carr.clienteNome, telefone: cli.whatsapp, carrinho: carr });
 }
 
-// Envia o link de pagamento configurado em Minha Conta → Pagamento, junto do valor que falta
-// receber (ou o total, se ainda nada foi pago) — só aparece quando a consultora cadastrou um link.
+// Envia o link de pagamento cadastrado na operadora (prioriza a selecionada neste carrinho),
+// junto do valor que falta receber (ou o total, se ainda nada foi pago) — só aparece quando pelo
+// menos uma operadora tem link cadastrado.
 export function enviarLinkPagamento(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  const link = state.profile?.linkPagamento;
-  if (!link) return toast('Cadastre um link de pagamento em Minha Conta → Pagamento primeiro.');
+  const link = linkPagamentoAtivo(carr);
+  if (!link) return toast('Cadastre um link de pagamento numa operadora em Minha Conta → Pagamento → Operadoras primeiro.');
   const cli = cliById(carr.clienteId);
   if (!cli?.whatsapp) return toast('Cliente sem WhatsApp');
   const valor = Math.max(0, Number(carr.totalPedido || 0) - Number(carr.valorPago || 0));

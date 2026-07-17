@@ -50,6 +50,16 @@ export function operadoraById(id) {
   return state.data.operadoras.find(o => o.id === id) || null;
 }
 
+// Link de pagamento pra usar no botão "Enviar link de pagamento" do carrinho: prioriza a operadora
+// selecionada naquele carrinho; sem seleção (ou sem link nela), cai na primeira operadora cadastrada
+// que tenha um link preenchido — assim funciona mesmo antes da consultora escolher operadora no
+// carrinho (ex: pagamento ainda não é Cartão), contanto que alguma operadora tenha link cadastrado.
+export function linkPagamentoAtivo(carr) {
+  const selecionada = carr?.cartaoOperadoraId ? operadoraById(carr.cartaoOperadoraId) : null;
+  if (selecionada?.linkPagamento) return selecionada.linkPagamento;
+  return state.data.operadoras.find(o => o.linkPagamento)?.linkPagamento || '';
+}
+
 export function renderOperadorasPanel() {
   const lista = state.data.operadoras;
   return `<div class="panel">
@@ -61,7 +71,7 @@ export function renderOperadorasPanel() {
       <div class="list-item">
         <div>
           <b>${esc(o.nome)}</b>
-          <small class="muted" style="display:block">Recebe em ${o.prazoRecebimentoDias || 1} dia(s) útil(eis) · Débito V/M ${(o.taxaDebito?.visaMaster ?? 0)}% · Crédito 1x V/M ${(o.taxaCredito?.[0]?.visaMaster ?? 0)}%</small>
+          <small class="muted" style="display:block">Recebe em ${o.prazoRecebimentoDias || 1} dia(s) útil(eis) · Débito V/M ${(o.taxaDebito?.visaMaster ?? 0)}% · Crédito 1x V/M ${(o.taxaCredito?.[0]?.visaMaster ?? 0)}%${o.linkPagamento ? ' · 🔗 com link de pagamento' : ''}</small>
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn small" onclick="App.abrirOperadoraForm('${o.id}')">✏️ Editar</button>
@@ -90,7 +100,9 @@ export function abrirOperadoraForm(id = '') {
     <div class="grid">
       <div class="field full"><label>Nome</label><input id="opNome" placeholder="Ex: InfinitePay" value="${esc(o?.nome || '')}"></div>
       <div class="field"><label>Prazo de recebimento (dias úteis)</label><input id="opPrazo" type="number" min="0" value="${o?.prazoRecebimentoDias ?? 1}"></div>
+      <div class="field full"><label>Link de pagamento (opcional)</label><input id="opLink" placeholder="https://..." value="${esc(o?.linkPagamento || '')}"></div>
     </div>
+    <p class="muted" style="margin:-8px 0 0;font-size:12px">Se preenchido, é esse link que o botão "💳 Enviar link de pagamento" do carrinho manda pra cliente quando essa operadora estiver selecionada.</p>
     <div class="panel" style="background:#F7FAFC;margin:14px 0">
       <h4 style="margin:0 0 8px">✨ Atualizar com IA</h4>
       <p class="muted" style="margin:0 0 8px">Cole aqui o texto/tabela de taxas copiado do app da maquininha (débito, crédito à vista, 2x a 12x, por bandeira) — a IA preenche os campos abaixo sozinha. Nada é salvo automaticamente: confira e clique em "Salvar" no fim da tela pra confirmar.</p>
@@ -159,6 +171,7 @@ export async function salvarOperadora(id = '') {
   const d = {
     nome,
     prazoRecebimentoDias: Number($('opPrazo')?.value || 1),
+    linkPagamento: ($('opLink')?.value || '').trim(),
     taxaDebito: { visaMaster: parseNum($('opDebVM')?.value), eloAmex: parseNum($('opDebEA')?.value) },
     taxaCredito: PARCELAS.map(n => ({
       parcelas: n,
