@@ -39,6 +39,38 @@ export const SECOES_RELATORIO = [
   { key: 'recomendacoes', label: 'Recomendações automáticas' }
 ];
 
+// Cards colapsáveis (efeito accordion) dentro de Relatórios — estado só em memória da sessão
+// (não precisa persistir no Firestore: é preferência de tela, não dado de negócio). O cabeçalho do
+// card continua sempre visível; só o conteúdo interno (métricas/linhas) é escondido, sem perder
+// nenhum dado carregado. Chave é o mesmo `key` de SECOES_RELATORIO (ex: 'origem', 'produtos').
+const cardsColapsados = new Set();
+
+// Alterna o card sem re-renderizar a página inteira (troca de classe direto no DOM) — clique tanto
+// no chevron quanto em qualquer parte da barra de título aciona o mesmo toggle.
+export function toggleCardRelatorio(key) {
+  const body = document.getElementById('relCardBody-' + key);
+  const chevron = document.getElementById('relCardChevron-' + key);
+  if (!body) return;
+  const vaiColapsar = !cardsColapsados.has(key);
+  if (vaiColapsar) cardsColapsados.add(key); else cardsColapsados.delete(key);
+  body.classList.toggle('report-card-collapsed', vaiColapsar);
+  if (chevron) chevron.textContent = vaiColapsar ? '▸' : '▾';
+}
+
+// Monta um painel com cabeçalho clicável (título + chevron) e corpo recolhível — usado nos cards
+// de "Novas clientes por origem", "Produtos", "Clientes" e "Trocas" (os que mais acumulam linhas e
+// mais fazem sentido esconder rapidamente por privacidade, ex: tela compartilhada com a cliente do lado).
+function collapsibleCardHtml(key, titulo, bodyHtml) {
+  const colapsado = cardsColapsados.has(key);
+  return `<div class="panel">
+    <div class="panel-head report-card-head" onclick="App.toggleCardRelatorio('${key}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();App.toggleCardRelatorio('${key}')}">
+      <h3>${titulo}</h3>
+      <span class="report-card-chevron" id="relCardChevron-${key}">${colapsado ? '▸' : '▾'}</span>
+    </div>
+    <div id="relCardBody-${key}" class="report-card-body${colapsado ? ' report-card-collapsed' : ''}">${bodyHtml}</div>
+  </div>`;
+}
+
 export function secaoAtiva(key) {
   const cfg = state.profile?.relSecoesAtivas;
   return !cfg || cfg[key] !== false;
@@ -339,17 +371,14 @@ export function renderRelatorios() {
           <p class="muted" style="margin:0 0 8px">Quantos produtos (não valor) caem em cada classe — A é quem puxa até 80% do faturamento.</p>
           ${donutChartSvg([{ label: 'Classe A', valor: abcResumo.A }, { label: 'Classe B', valor: abcResumo.B }, { label: 'Classe C', valor: abcResumo.C }], { valueFmt: v => v + ' produto(s)' })}
         </div>`,
-        origem: `<div class="panel">
-          <div class="panel-head"><h3>Novas clientes por origem</h3></div>
+        origem: collapsibleCardHtml('origem', 'Novas clientes por origem', `
           <p class="muted">De onde vieram as clientes cadastradas no período — ajuda a saber onde vale mais investir tempo captando gente nova.</p>
           ${totalNovas ? `<div class="list" style="margin-top:8px">${origemList.map(([o, n]) => `
             <div class="list-item clickable" onclick="App.goto('clientes')">
               <div><b>${esc(o)}</b>${o === 'Evento' ? '<small>Cadastradas pela lista de desejos de eventos</small>' : ''}</div>
               <span class="tag ${o === 'Evento' ? 'green' : 'blue'}">${n} (${pctOrigem(n)}%)</span>
-            </div>`).join('')}</div>` : '<p class="muted" style="margin-top:8px">Nenhuma cliente nova nesse período.</p>'}
-        </div>`,
-        produtos: `<div class="panel">
-          <h3>Produtos</h3>
+            </div>`).join('')}</div>` : '<p class="muted" style="margin-top:8px">Nenhuma cliente nova nesse período.</p>'}`),
+        produtos: collapsibleCardHtml('produtos', 'Produtos', `
           <div class="list">
             ${rankList('Mais vendido', r.top5Vend, x => x.q + ' un.', 'Produto com mais unidades vendidas no período (não considera valor em R$)')}
             ${rankList('Mais lucrativo', r.top5LucProd, x => money(x.luc), 'Produto com maior lucro no período (valor vendido menos o custo)')}
@@ -357,8 +386,7 @@ export function renderRelatorios() {
             ${rankList('Maior valor em estoque', prodPorEstoque, x => money(x.valor), 'Produto com maior valor parado em estoque hoje (quantidade × custo)')}
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Estoque baixo</b><small>Produtos para repor</small></div><span class="tag orange">${s.baixo.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','parados')"><div><b>Parados (90+ dias)</b><small>Sem venda</small></div><span class="tag pink">${s.parados.length}</span></div>
-          </div>
-        </div>`,
+          </div>`),
         estoque: `<div class="panel">
           <h3>Estoque</h3>
           <div class="list">
@@ -369,8 +397,7 @@ export function renderRelatorios() {
             <div class="list-item clickable" onclick="App.goto('estoque');App.setFilter('estoque','baixo')"><div><b>Sugestões de reposição</b><small>Produtos abaixo do mínimo</small></div><span class="tag orange">${s.baixo.length}</span></div>
           </div>
         </div>`,
-        clientes: `<div class="panel">
-          <h3>Clientes</h3>
+        clientes: collapsibleCardHtml('clientes', 'Clientes', `
           <div class="list">
             ${rankList('Mais assídua', r.top5CliFreq, x => x.q + ' compras', 'Cliente com mais compras no período (não considera valor em R$)')}
             ${rankList('Mais lucrativa', r.top5CliLuc, x => money(x.luc), 'Cliente que gerou mais lucro no período (valor comprado menos o custo)')}
@@ -378,8 +405,7 @@ export function renderRelatorios() {
             <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes VIP</b><small>Top 10% por faturamento</small></div><span class="tag green">${vips.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Clientes frios</b><small>${diasContatoFrio()}+ dias sem contato</small></div><span class="tag orange">${clientesFrios.length}</span></div>
             <div class="list-item clickable" onclick="App.goto('clientes')"><div><b>Sem compra</b><small>Nunca compraram</small></div><span class="tag pink">${clientesSemCompra.length}</span></div>
-          </div>
-        </div>`,
+          </div>`),
         agenda: `<div class="panel">
           <h3>Agenda</h3>
           <div class="list">
@@ -398,8 +424,7 @@ export function renderRelatorios() {
             ${pedidosPgtoPendente.length ? `<div class="list-item clickable" onclick="App.goto('vendas')"><div><b>Pedidos com pgto pendente</b></div><span class="tag orange">${pedidosPgtoPendente.length}</span></div>` : ''}
           </div>
         </div>`,
-        trocas: `<div class="panel">
-          <h3>Trocas</h3>
+        trocas: collapsibleCardHtml('trocas', 'Trocas', `
           <div class="list">
             <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
             <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Em andamento / pendentes</b></div><span class="tag orange">${tr.pendentes}</span></div>
@@ -407,8 +432,7 @@ export function renderRelatorios() {
             <div class="list-item"><div><b>Valor total saído</b><small>${tr.itensSaida} item(ns)</small></div><span class="tag pink">${money(tr.valorSaida)}</span></div>
             <div class="list-item"><div><b>Valor total recebido</b><small>${tr.itensEntrada} item(ns)</small></div><span class="tag green">${money(tr.valorEntrada)}</span></div>
             <div class="list-item"><div><b>Diferença</b><small>Recebido - saído</small></div><span class="tag ${tr.valorEntrada - tr.valorSaida >= 0 ? 'green' : 'pink'}">${money(tr.valorEntrada - tr.valorSaida)}</span></div>
-          </div>
-        </div>`,
+          </div>`),
         saidas: `<div class="panel">
           <h3>Saídas de estoque (sem venda)</h3>
           <p class="muted" style="margin:0 0 8px">Brinde, parceria, consumo próprio, perda e ajuste — o que sai do estoque sem virar receita.</p>

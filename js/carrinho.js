@@ -5,7 +5,7 @@ import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
-import { taxaOperadora, operadoraById, linkPagamentoAtivo } from './operadoras.js';
+import { taxaOperadora, operadoraById, linkPagamentoAtivo, operadoraPadrao } from './operadoras.js';
 
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
@@ -53,20 +53,37 @@ export function calcCustoCartao(totalPedido, pagamento, parcelas, cartaoTipo = '
   return { taxaTransacao: 0, custoJuros: 0, total: 0 };
 }
 
+// Com uma operadora marcada como padrão (Minha Conta → Pagamento), o checkout usa ela sozinha —
+// não mostra dropdown com todas as maquininhas do histórico da consultora. Só volta a mostrar a
+// lista de escolha se: (a) não existe nenhuma padrão definida ainda, ou (b) a consultora clicou
+// em "Trocar operadora" pra usar outra manualmente só nesta venda (carr.cartaoTrocarOperadora).
 function operadoraBandeiraHtml(id, carr) {
   if (!state.data.operadoras.length) return '';
-  return `<div class="field"><label>Operadora</label>
-      <select id="cOperadora" onchange="App.salvarCarrinhoOpt('${id}',true)">
-        <option value="">— Taxa padrão (Minha Conta) —</option>
-        ${state.data.operadoras.map(o => `<option value="${o.id}" ${carr.cartaoOperadoraId === o.id ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
-      </select>
-    </div>
-    <div class="field"><label>Bandeira</label>
+  const padrao = operadoraPadrao();
+  const bandeiraHtml = `<div class="field"><label>Bandeira</label>
       <select id="cBandeira" onchange="App.salvarCarrinhoOpt('${id}',true)">
         <option value="visaMaster" ${carr.cartaoBandeiraGrupo !== 'eloAmex' ? 'selected' : ''}>Visa / Mastercard</option>
         <option value="eloAmex" ${carr.cartaoBandeiraGrupo === 'eloAmex' ? 'selected' : ''}>Elo / Amex</option>
       </select>
     </div>`;
+
+  if (padrao && !carr.cartaoTrocarOperadora) {
+    return `<div class="field"><label>Operadora</label>
+        <div style="display:flex;align-items:center;gap:8px;padding-top:6px">
+          <b>${esc(padrao.nome)}</b>${pill('★ Padrão', 'green')}
+          <button type="button" class="linkbtn" style="margin-left:auto" onclick="App.toggleCarrinhoOpt('${id}','cartaoTrocarOperadora',true)">Trocar</button>
+        </div>
+      </div>
+      ${bandeiraHtml}`;
+  }
+
+  return `<div class="field"><label>Operadora${padrao ? '' : ' <small class="muted">(nenhuma padrão definida em Minha Conta → Pagamento)</small>'}</label>
+      <select id="cOperadora" onchange="App.salvarCarrinhoOpt('${id}',true)">
+        <option value="">— Taxa padrão (Minha Conta) —</option>
+        ${state.data.operadoras.map(o => `<option value="${o.id}" ${carr.cartaoOperadoraId === o.id ? 'selected' : ''}>${esc(o.nome)}${o.padrao ? ' ★' : ''}</option>`).join('')}
+      </select>
+    </div>
+    ${bandeiraHtml}`;
 }
 
 function prazoRecebimentoHtml(carr) {
@@ -774,12 +791,13 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
   if ($('cPag')) {
     const pagamentoNovo = $('cPag').value;
     updates.pagamento = pagamentoNovo;
-    // Auto-seleciona InfinitePay quando Cartão é escolhido — se nenhuma operadora foi selecionada ainda
+    // Auto-seleciona a operadora marcada como padrão (Minha Conta → Pagamento) quando "Cartão" é
+    // escolhido — se nenhuma operadora foi selecionada ainda pra este carrinho.
     if (pagamentoNovo === 'Cartão') {
       const carr = state.data.carrinhos.find(c => c.id === id);
       if (!carr?.cartaoOperadoraId) {
-        const infinitepay = state.data.operadoras.find(o => o.nome === 'InfinitePay');
-        if (infinitepay) updates.cartaoOperadoraId = infinitepay.id;
+        const padrao = operadoraPadrao();
+        if (padrao) updates.cartaoOperadoraId = padrao.id;
       }
     }
   }

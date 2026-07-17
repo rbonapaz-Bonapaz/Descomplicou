@@ -5,7 +5,7 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
 import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
-import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA } from './operadoras.js';
+import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA, definirOperadoraPadrao } from './operadoras.js';
 import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
   gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem, removerInteresseCliente } from './clientes.js';
 import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, updateAgendamento,
@@ -31,7 +31,7 @@ import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
-import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio } from './relatorios.js';
+import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleCardRelatorio } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
@@ -310,7 +310,7 @@ window.App = {
   reagendarAgendamento, confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
   abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo,
   // Operadoras de cartão
-  abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA,
+  abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA, definirOperadoraPadrao,
   // Carrinho
   openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForCliente,
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
@@ -342,7 +342,7 @@ window.App = {
   selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo, excluirTodoCatalogo,
   toggleOcultarAtual, toggleBeneficiosPdf,
   // Relatórios
-  renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio,
+  renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleCardRelatorio,
   // Perfil
   renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,

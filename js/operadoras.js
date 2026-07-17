@@ -3,8 +3,8 @@
 // custo estimado da maquininha no carrinho (calcCustoCartao em carrinho.js) — os antigos campos de
 // taxa fixa genérica no perfil foram removidos por serem sempre imprecisos perto da tabela real.
 // Sem operadora selecionada no carrinho, o custo simplesmente não é mostrado.
-import { state, col, ref, addDoc, setDoc, deleteDoc, serverTimestamp, showModal, closeModal, toast } from './state.js';
-import { $, esc, iniciarCooldownBotao } from './utils.js';
+import { state, col, ref, db, addDoc, setDoc, deleteDoc, writeBatch, serverTimestamp, showModal, closeModal, toast } from './state.js';
+import { $, esc, pill, iniciarCooldownBotao } from './utils.js';
 import { interpretarTaxasOperadora } from './gemini.js';
 
 const PARCELAS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -50,6 +50,26 @@ export function operadoraById(id) {
   return state.data.operadoras.find(o => o.id === id) || null;
 }
 
+// Operadora marcada como padrão (única possível por vez — ver definirOperadoraPadrao) — é ela que
+// o carrinho usa sozinho assim que "Cartão" é selecionado, sem precisar escolher entre as
+// maquininhas antigas do histórico. Sem nenhuma marcada ainda, retorna null (carrinho cai no
+// comportamento antigo de dropdown pra escolher manualmente).
+export function operadoraPadrao() {
+  return state.data.operadoras.find(o => o.padrao === true) || null;
+}
+
+// Marca uma operadora como padrão e desmarca todas as outras num único lote — Firestore não tem
+// "unique constraint" nativa, então a exclusividade (só uma padrão por vez) é garantida aqui,
+// gravando padrao:false explícito nas demais junto com padrao:true na escolhida.
+export async function definirOperadoraPadrao(id) {
+  const batch = writeBatch(db);
+  state.data.operadoras.forEach(o => {
+    batch.set(ref('operadoras', o.id), { padrao: o.id === id }, { merge: true });
+  });
+  await batch.commit();
+  window.App.refresh('Operadora padrão definida — o carrinho já usa essa maquininha automaticamente');
+}
+
 // Link de pagamento pra usar no botão "Enviar link de pagamento" do carrinho: prioriza a operadora
 // selecionada naquele carrinho; sem seleção (ou sem link nela), cai na primeira operadora cadastrada
 // que tenha um link preenchido — assim funciona mesmo antes da consultora escolher operadora no
@@ -66,14 +86,15 @@ export function renderOperadorasPanel() {
     <div class="panel-head">
       <h3>💳 Operadoras de cartão</h3>
     </div>
-    <p class="muted">Cadastre a maquininha/operadora que você usa (ex: InfinitePay) com a tabela de taxas exata por bandeira e parcela — é a única fonte do custo estimado da maquininha no carrinho. Sem nenhuma operadora selecionada, esse custo não é mostrado.</p>
+    <p class="muted">Cadastre a maquininha/operadora que você usa (ex: InfinitePay) com a tabela de taxas exata por bandeira e parcela — é a única fonte do custo estimado da maquininha no carrinho. Marque uma como <b>padrão</b> pra ela ser usada sozinha no carrinho assim que "Cartão" for selecionado, sem precisar escolher entre as maquininhas antigas do histórico.</p>
     ${lista.length ? `<div class="list" style="margin-top:12px">${lista.map(o => `
       <div class="list-item">
         <div>
-          <b>${esc(o.nome)}</b>
+          <b>${esc(o.nome)}</b>${o.padrao ? pill('★ Padrão', 'green') : ''}
           <small class="muted" style="display:block">Recebe em ${o.prazoRecebimentoDias || 1} dia(s) útil(eis) · Débito V/M ${(o.taxaDebito?.visaMaster ?? 0)}% · Crédito 1x V/M ${(o.taxaCredito?.[0]?.visaMaster ?? 0)}%${o.linkPagamento ? ' · 🔗 com link de pagamento' : ''}</small>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${o.padrao ? '' : `<button class="btn small" onclick="App.definirOperadoraPadrao('${o.id}')" title="Usar essa operadora automaticamente no carrinho">☆ Definir como padrão</button>`}
           <button class="btn small" onclick="App.abrirOperadoraForm('${o.id}')">✏️ Editar</button>
           <button class="btn small" style="color:var(--error)" onclick="App.excluirOperadora('${o.id}')">🗑️</button>
         </div>
@@ -182,8 +203,14 @@ export async function salvarOperadora(id = '') {
     })),
     atualizadoEm: serverTimestamp()
   };
-  if (id) await setDoc(ref('operadoras', id), d, { merge: true });
-  else await addDoc(col('operadoras'), { ...d, criadoEm: serverTimestamp() });
+  if (id) {
+    await setDoc(ref('operadoras', id), d, { merge: true });
+  } else {
+    // Primeira operadora cadastrada já nasce padrão — mesma lógica do seed automático da
+    // InfinitePay, pra nunca deixar o carrinho sem nenhuma marcada até a consultora lembrar.
+    const primeira = state.data.operadoras.length === 0;
+    await addDoc(col('operadoras'), { ...d, padrao: primeira, criadoEm: serverTimestamp() });
+  }
   closeModal();
   window.App.refresh(id ? 'Operadora atualizada' : 'Operadora cadastrada');
 }
@@ -193,10 +220,19 @@ export async function excluirOperadora(id) {
   if (!o) return;
   if (!confirm(`Excluir a operadora "${o.nome}"? Carrinhos que já usam essa operadora voltam a usar a taxa padrão.`)) return;
   await deleteDoc(ref('operadoras', id));
+  // Excluiu a que era padrão: promove a próxima que sobrou (se houver) — sem isso, o carrinho
+  // ficaria sem nenhuma operadora padrão até a consultora lembrar de configurar de novo.
+  if (o.padrao) {
+    const proxima = state.data.operadoras.find(x => x.id !== id);
+    if (proxima) await setDoc(ref('operadoras', proxima.id), { padrao: true }, { merge: true });
+  }
   window.App.refresh('Operadora excluída');
 }
 
 export async function semearInfinitePay() {
-  await addDoc(col('operadoras'), { ...SEED_INFINITEPAY, criadoEm: serverTimestamp() });
+  // Primeira operadora cadastrada já nasce padrão — sem isso, o carrinho ficaria sem nenhuma
+  // marcada até a consultora lembrar de ir configurar manualmente.
+  const primeira = state.data.operadoras.length === 0;
+  await addDoc(col('operadoras'), { ...SEED_INFINITEPAY, padrao: primeira, criadoEm: serverTimestamp() });
   window.App.refresh('InfinitePay cadastrada com as taxas padrão — confira e ajuste se precisar');
 }
