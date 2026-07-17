@@ -341,3 +341,82 @@ export function lineChartSvg(pontos, opts = {}) {
     ${circles}
   </svg>`;
 }
+
+// Paleta compartilhada dos gráficos de barra/rosca — mesma cor de marca (--p) para o item #1,
+// tons complementares pros seguintes, sem depender de nenhuma lib externa de gráficos.
+const CHART_CORES = ['#F72562', '#4C6FFF', '#0E9F6E', '#F5A623', '#8E44AD', '#17A2B8', '#E67E22', '#6C757D'];
+
+// Gráfico de barras horizontal simples (SVG puro) — recebe [{label, valor}], já ordenado como
+// deve aparecer. valueFmt formata o número exibido ao lado de cada barra (padrão: inteiro).
+export function barChartSvg(pontos, opts = {}) {
+  if (!pontos.length) return '<p class="muted">Sem dados no período.</p>';
+  const valueFmt = opts.valueFmt || (v => String(v));
+  const max = Math.max(1, ...pontos.map(p => Number(p.valor) || 0));
+  return `<div class="bar-chart">${pontos.map((p, i) => {
+    const pct = max ? Math.max(2, (Number(p.valor) || 0) / max * 100) : 0;
+    const cor = CHART_CORES[i % CHART_CORES.length];
+    return `<div class="bar-chart-row">
+      <span class="bar-chart-label" title="${esc(p.label)}">${esc(p.label)}</span>
+      <div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>
+      <span class="bar-chart-value">${esc(valueFmt(p.valor))}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// Gráfico de rosca (donut) em SVG puro — recebe [{label, valor}]. Sem lib externa: monta os arcos
+// manualmente via coordenadas polares. Legenda vem embaixo com a cor de cada fatia e o % do total.
+export function donutChartSvg(pontos, opts = {}) {
+  const dados = pontos.filter(p => Number(p.valor) > 0);
+  if (!dados.length) return '<p class="muted">Sem dados no período.</p>';
+  const valueFmt = opts.valueFmt || (v => String(v));
+  const total = dados.reduce((s, p) => s + Number(p.valor), 0);
+  const cx = 60, cy = 60, r = 50, rInner = 28;
+  let anguloAtual = -90; // começa no topo (12h)
+  const polar = (ang, raio) => {
+    const rad = (ang * Math.PI) / 180;
+    return [cx + raio * Math.cos(rad), cy + raio * Math.sin(rad)];
+  };
+  const fatias = dados.map((p, i) => {
+    const fatiaAngulo = (Number(p.valor) / total) * 360;
+    const inicio = anguloAtual, fim = anguloAtual + fatiaAngulo;
+    anguloAtual = fim;
+    const largeArc = fatiaAngulo > 180 ? 1 : 0;
+    const [x1, y1] = polar(inicio, r), [x2, y2] = polar(fim, r);
+    const [x1i, y1i] = polar(fim, rInner), [x2i, y2i] = polar(inicio, rInner);
+    const cor = CHART_CORES[i % CHART_CORES.length];
+    const d = dados.length === 1
+      ? `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`
+      : `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x1i.toFixed(2)} ${y1i.toFixed(2)} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x2i.toFixed(2)} ${y2i.toFixed(2)} Z`;
+    return { d, cor, p, pct: (Number(p.valor) / total) * 100 };
+  });
+  return `<div class="donut-chart">
+    <svg viewBox="0 0 120 120" style="width:140px;height:140px;flex:0 0 auto">
+      ${fatias.map(f => `<path d="${f.d}" fill="${f.cor}"><title>${esc(f.p.label)}: ${esc(valueFmt(f.p.valor))}</title></path>`).join('')}
+    </svg>
+    <div class="donut-legend">${fatias.map(f => `<div class="donut-legend-item">
+      <span class="donut-dot" style="background:${f.cor}"></span>
+      <span>${esc(f.p.label)}</span>
+      <b>${f.pct.toFixed(0)}%</b>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+// Gera e baixa um CSV a partir de linhas de dados — abre certinho no Excel/Google Sheets (BOM UTF-8
+// evita acento quebrado no Excel). headers = ['Coluna 1', 'Coluna 2', ...], rows = [[v1, v2], ...].
+export function downloadCSV(filename, headers, rows) {
+  const escapeCsv = v => {
+    const s = String(v ?? '');
+    return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const linhas = [headers, ...rows].map(row => row.map(escapeCsv).join(';'));
+  const conteudo = '﻿' + linhas.join('\r\n'); // BOM garante acentuação certa ao abrir no Excel
+  const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.csv') ? filename : filename + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

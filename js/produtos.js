@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 import { sincronizarProdutoNosEventos } from './eventos.js';
@@ -41,6 +41,7 @@ function productCard(x) {
       ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)') : ''}
       ${btnAdicionarPreEncomenda(x.p.id)}
       <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
+      ${(x.p.historicoPrecos || []).length ? `<button class="btn small" onclick="App.abrirHistoricoPrecos('${x.p.id}')" title="Histórico de preços">📈</button>` : ''}
       <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>
     </div>
   </div>`;
@@ -359,7 +360,26 @@ export function atualizarLinhasProdutoForm() {
   if ($('pLinha')) $('pLinha').value = marcadas.join(', ');
 }
 
+// Histórico de alteração de preço (venda/atual) — guarda só a mudança de verdade, não toda vez que
+// o formulário é salvo com o mesmo valor. Limitado às últimas 50 entradas pra não crescer sem fim
+// no documento do produto (isso já é mais que suficiente pra qualquer análise de tendência real).
+function registrarHistoricoPrecos(anterior, d) {
+  if (!anterior) return d.historicoPrecos || [];
+  const historico = [...(anterior.historicoPrecos || [])];
+  const mudouVenda = Number(anterior.precoVenda || 0) !== d.precoVenda;
+  const mudouAtual = Number(anterior.precoAtual || 0) !== d.precoAtual;
+  if (mudouVenda || mudouAtual) {
+    historico.push({
+      data: today(),
+      precoVendaAnterior: Number(anterior.precoVenda || 0), precoVendaNovo: d.precoVenda,
+      precoAtualAnterior: Number(anterior.precoAtual || 0), precoAtualNovo: d.precoAtual
+    });
+  }
+  return historico.slice(-50);
+}
+
 export async function saveProduto(id = '') {
+  const anterior = id ? prodById(id) : null;
   const d = {
     nome: $('pNome').value,
     codigoFarmasi: $('pCodigo').value,
@@ -382,6 +402,7 @@ export async function saveProduto(id = '') {
     atualizadoEm: serverTimestamp()
   };
   if (id) {
+    d.historicoPrecos = registrarHistoricoPrecos(anterior, d);
     await setDoc(ref('produtos', id), d, { merge: true });
     await sincronizarProdutoNosEventos({ id, ...d });
   } else {
@@ -389,6 +410,23 @@ export async function saveProduto(id = '') {
   }
   closeModal();
   window.App.refresh('Produto salvo');
+}
+
+// Modal com o histórico de mudanças de preço do produto — mais recente primeiro. Só existe pra
+// produtos editados pelo menos uma vez com preço diferente (ver registrarHistoricoPrecos).
+export function abrirHistoricoPrecos(id) {
+  const p = prodById(id);
+  if (!p) return toast('Produto não encontrado');
+  const historico = [...(p.historicoPrecos || [])].reverse();
+  showModal(`<h3>📈 Histórico de preços — ${esc(p.nome)}</h3>
+    ${historico.length ? `<div class="table"><table><thead><tr>
+      <th>Data</th><th>Preço de venda</th><th>Preço atual</th>
+    </tr></thead><tbody>${historico.map(h => `<tr>
+      <td data-label="Data">${formatDateBR(h.data)}</td>
+      <td data-label="Preço de venda">${h.precoVendaAnterior !== h.precoVendaNovo ? `<del>${money(h.precoVendaAnterior)}</del> → ${money(h.precoVendaNovo)}` : money(h.precoVendaNovo)}</td>
+      <td data-label="Preço atual">${h.precoAtualAnterior !== h.precoAtualNovo ? `<del>${money(h.precoAtualAnterior)}</del> → ${money(h.precoAtualNovo)}` : money(h.precoAtualNovo)}</td>
+    </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma alteração de preço registrada ainda — o histórico começa a partir da próxima vez que você editar o preço deste produto.</p>'}
+    <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
 }
 
 // Remove duplicados por código (fallback nome) dentro do próprio catálogo mestre, combinando linhas.

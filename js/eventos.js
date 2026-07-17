@@ -18,6 +18,7 @@ export function novosLeadsResumo() {
 // salvo no próprio doc do evento) — o dashboard chama isso uma vez por sessão e se atualiza
 // sozinho quando o resultado chega, sem precisar recarregar todos os dados do app.
 export async function verificarNovosLeads() {
+  await desativarEventosExpirados();
   const eventosAtivos = (state.data.eventos || []).filter(e => e.ativo !== false);
   const resultados = [];
   for (const ev of eventosAtivos) {
@@ -92,7 +93,33 @@ function statusVigencia(ev) {
   return { label: 'Ativo', cor: 'green' };
 }
 
+// Auto-desativação: o link público já bloqueia sozinho o acesso depois de vigenciaFim (ver
+// evento-publico.js), mas o campo `ativo` no Firestore continuava true pra sempre — o que deixava
+// esse evento contando como "ativo" em qualquer lugar que confie nesse campo (ex: verificarNovosLeads
+// só varre eventos ativos). Aqui a gente torna esse estado verdadeiro: assim que a vigência
+// expira, grava ativo:false de vez (uma vez por sessão por evento, pra não ficar regravando).
+const eventosJaChecados = new Set();
+export async function desativarEventosExpirados() {
+  const agora = new Date();
+  const expirados = (state.data.eventos || []).filter(ev => {
+    if (ev.ativo === false || !ev.vigenciaFim || eventosJaChecados.has(ev.id)) return false;
+    const fim = new Date(ev.vigenciaFim);
+    return !isNaN(fim) && agora > fim;
+  });
+  for (const ev of expirados) {
+    eventosJaChecados.add(ev.id);
+    try {
+      await setDoc(ref('eventos', ev.id), { ativo: false }, { merge: true });
+      await setDoc(doc(db, 'eventosPublicos', ev.id), { ativo: false }, { merge: true });
+      ev.ativo = false;
+    } catch (e) {
+      eventosJaChecados.delete(ev.id); // falhou — tenta de novo no próximo render
+    }
+  }
+}
+
 export function renderEventos() {
+  desativarEventosExpirados();
   const eventos = [...state.data.eventos].sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
   $('eventos').innerHTML = `
     <div class="panel">

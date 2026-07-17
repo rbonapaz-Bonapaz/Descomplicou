@@ -1,5 +1,5 @@
-import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agendaAgg, lastBuy, diasContatoFrio } from './state.js';
-import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, thSort, norm, linhasDe } from './utils.js';
+import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agendaAgg, lastBuy, diasContatoFrio, toast } from './state.js';
+import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, barChartSvg, donutChartSvg, downloadCSV, thSort, norm, linhasDe } from './utils.js';
 import { recommendations } from './dashboard.js';
 
 // Registro dos "Cards de Inteligência" — cada consultora escolhe quais quer ver (Minha Conta →
@@ -26,6 +26,7 @@ function cardAtivo(key) {
 // Período, Lucro líquido, Tendência, os KPIs principais e o relatório completo por produto ficam de
 // fora (são a base fixa da tela); só o "miolo" configurável entra aqui.
 export const SECOES_RELATORIO = [
+  { key: 'graficos', label: 'Gráficos' },
   { key: 'origem', label: 'Novas clientes por origem' },
   { key: 'produtos', label: 'Produtos' },
   { key: 'estoque', label: 'Estoque' },
@@ -267,6 +268,16 @@ export function renderRelatorios() {
     </div>
 
     <div class="panel">
+      <div class="panel-head"><h3>Exportar</h3></div>
+      <p class="muted">Exporta os dados do período selecionado acima.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn small" onclick="App.exportarProdutosVendidosCSV()">📊 Produtos vendidos (Excel/CSV)</button>
+        <button class="btn small" onclick="App.exportarClientesCSV()">📊 Clientes do período (Excel/CSV)</button>
+        <button class="btn small" onclick="App.gerarPdfRelatorio()">📄 Relatório em PDF</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h3>Lucro líquido consolidado</h3>
       <p class="muted">Lucro real das vendas, já descontando taxa de cartão, o custo de brindes/parcerias/consumo/perdas, o frete pago à Farmasi e as despesas operacionais — o número mais próximo do que realmente sobra no bolso.</p>
       <div class="pedido-totais" style="width:100%;margin:10px 0 0">
@@ -313,7 +324,21 @@ export function renderRelatorios() {
       // Cada seção "grande" vira um bloco no mapa, montado uma vez — a ordem/visibilidade final vem
       // de ordemSecoes()/secaoAtiva() (configurável em Minha Conta → Relatórios, com drag-and-drop).
       const abcDetalhe = curvaAbcDetalhada(r.prod);
+      const abcResumo = curvaAbc(r.prod);
       const secoesHtml = {
+        graficos: `<div class="panel">
+          <h3>📊 Faturamento por forma de pagamento</h3>
+          ${barChartSvg(Object.entries(r.pay).sort((a, b) => b[1] - a[1]).map(([label, valor]) => ({ label, valor })), { valueFmt: money })}
+        </div>
+        <div class="panel">
+          <h3>📊 Top 5 produtos por faturamento</h3>
+          ${barChartSvg(r.top5FatProd.map(x => ({ label: x.nome, valor: x.rec })), { valueFmt: money })}
+        </div>
+        <div class="panel">
+          <h3>🍩 Curva ABC do estoque vendido</h3>
+          <p class="muted" style="margin:0 0 8px">Quantos produtos (não valor) caem em cada classe — A é quem puxa até 80% do faturamento.</p>
+          ${donutChartSvg([{ label: 'Classe A', valor: abcResumo.A }, { label: 'Classe B', valor: abcResumo.B }, { label: 'Classe C', valor: abcResumo.C }], { valueFmt: v => v + ' produto(s)' })}
+        </div>`,
         origem: `<div class="panel">
           <div class="panel-head"><h3>Novas clientes por origem</h3></div>
           <p class="muted">De onde vieram as clientes cadastradas no período — ajuda a saber onde vale mais investir tempo captando gente nova.</p>
@@ -431,4 +456,75 @@ export function renderRelatorios() {
         <td data-label="Lucro">${money(x.luc)}</td>
       </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}
     </div>`;
+}
+
+// Rótulo do período atual (mesmos chips de state.filters.rel) — usado nos nomes de arquivo
+// exportados e no cabeçalho do PDF do relatório.
+function periodoLabel(d) {
+  return d === 'all' ? 'tudo' : `${d}dias`;
+}
+
+export function exportarProdutosVendidosCSV() {
+  const d = state.filters.rel;
+  const r = salesAgg(d);
+  const produtos = Object.values(r.prod).map(x => ({ ...x, precoMedio: x.q ? x.rec / x.q : 0 })).sort((a, b) => b.rec - a.rec);
+  if (!produtos.length) return toastVazio();
+  downloadCSV(`produtos-vendidos-${periodoLabel(d)}`,
+    ['Produto', 'Qtd vendida', 'Preço médio', 'Faturamento', 'Lucro'],
+    produtos.map(x => [x.nome, x.q, x.precoMedio.toFixed(2), x.rec.toFixed(2), x.luc.toFixed(2)]));
+}
+
+export function exportarClientesCSV() {
+  const d = state.filters.rel;
+  const r = salesAgg(d);
+  const clientes = Object.values(r.cli).sort((a, b) => b.rec - a.rec);
+  if (!clientes.length) return toastVazio();
+  downloadCSV(`clientes-${periodoLabel(d)}`,
+    ['Cliente', 'Compras', 'Faturamento', 'Lucro'],
+    clientes.map(x => [x.nome, x.q, x.rec.toFixed(2), x.luc.toFixed(2)]));
+}
+
+function toastVazio() {
+  toast('Nenhum dado no período selecionado para exportar.');
+}
+
+// PDF do relatório: reaproveita o mesmo mecanismo de impressão dos pedidos (monta HTML dentro de
+// #printArea e chama window.print()) — sem lib externa, o navegador já sabe gerar PDF a partir
+// de "Salvar como PDF" na caixa de impressão.
+export function gerarPdfRelatorio() {
+  const d = state.filters.rel;
+  const r = salesAgg(d);
+  const p = state.profile || {};
+  const produtos = Object.values(r.prod).map(x => ({ ...x, precoMedio: x.q ? x.rec / x.q : 0 })).sort((a, b) => b.rec - a.rec);
+  const periodoTexto = d === 'all' ? 'Todo o histórico' : `Últimos ${d} dias`;
+
+  const html = `<section class="pdf-page pedido-pdf">
+    <header class="pdf-header">
+      <div class="pdf-brand">${esc(p.nomeNegocio || 'CRM de Vendas')}</div>
+      <div class="pdf-sub">RELATÓRIO DE VENDAS</div>
+      <div class="pdf-consult">${esc(p.nome || '')}<br>${esc(periodoTexto)}<br>Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+    </header>
+    <main class="pdf-content" style="top:35mm;bottom:26mm;left:8mm;right:8mm">
+      <div class="pedido-totais" style="width:100%;margin:0 0 6mm">
+        <div class="pedido-total-line"><span>Faturamento</span><b>${money(r.fat)}</b></div>
+        <div class="pedido-total-line"><span>Lucro bruto</span><b>${money(r.luc)}</b></div>
+        <div class="pedido-total-line"><span>Lucro real (após taxas de cartão)</span><b>${money(r.lucReal)}</b></div>
+        <div class="pedido-total-line"><span>Ticket médio</span><b>${money(r.ticket)}</b></div>
+        <div class="pedido-total-line"><span>Unidades vendidas</span><b>${r.itens}</b></div>
+      </div>
+      <h3 class="pedido-section-title">Produtos vendidos no período</h3>
+      <table class="pedido-table">
+        <thead><tr><th>Produto</th><th>Qtd</th><th>Preço médio</th><th>Faturamento</th><th>Lucro</th></tr></thead>
+        <tbody>${produtos.length ? produtos.map(x => `<tr>
+          <td>${esc(x.nome)}</td><td>${x.q}</td><td>${money(x.precoMedio)}</td><td>${money(x.rec)}</td><td>${money(x.luc)}</td>
+        </tr>`).join('') : '<tr><td colspan="5">Nenhum produto vendido nesse período.</td></tr>'}</tbody>
+      </table>
+    </main>
+    <footer class="pdf-footer">
+      <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || '')}</div>
+    </footer>
+  </section>`;
+
+  $('printArea').innerHTML = html;
+  setTimeout(() => window.print(), 350);
 }
