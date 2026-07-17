@@ -938,6 +938,11 @@ export async function finalizarCarrinho(id) {
         await saidaEstoque(item.produtoId, item.quantidade, item.motivo || 'Venda', id, item.totalItem);
         item.baixouEstoque = true;
       } catch (e) {
+        // A baixa dos itens ANTERIORES no loop já aconteceu de verdade no Firestore (saidaEstoque já
+        // rodou a transação) — sem persistir esse progresso parcial aqui, uma nova tentativa de
+        // finalizar trataria esses itens como "ainda não baixados" e baixaria o estoque DE NOVO,
+        // duplicando a saída. Salva o que já foi processado antes de abortar.
+        await setDoc(ref('carrinhos', id), { itens: carr.itens, atualizadoEm: serverTimestamp() }, { merge: true });
         toast(`Erro ao baixar estoque de ${item.produtoNome}: ${e.message}`);
         return;
       }
