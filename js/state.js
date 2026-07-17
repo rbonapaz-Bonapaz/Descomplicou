@@ -47,7 +47,7 @@ export const SECTIONS = {
 // [título, subtítulo, rótulo do grupo exibido acima do título no topo da página]
 export const titles = {
   dashboard: ['Painel Inicial', 'Visão geral da consultoria', 'Seu dia hoje'],
-  catalogo: ['Catálogo', 'Filtros, preços e QR Code', 'Catálogo Farmasi'],
+  catalogo: ['Catálogo', 'Filtros, preços e QR Code', 'Catálogo'],
   clientes: ['Clientes', 'Relacionamento e contatos', 'Operação'],
   agenda: ['Agenda', 'Atendimentos e follow-ups', 'Operação'],
   vendas: ['Vendas / Carrinhos', 'Carrinhos pendentes e pedidos finalizados', 'Operação'],
@@ -57,7 +57,7 @@ export const titles = {
   relatorios: ['Relatórios', 'Vendas, estoque, produtos, clientes e agenda', 'Gestão'],
   perfil: ['Minha Conta', 'Personalização', 'Gestão'],
   admin: ['Admin', 'Gestão de planos', 'Gestão'],
-  eventos: ['Catálogo de Eventos', 'Links públicos e listas de desejo', 'Catálogo Farmasi'],
+  eventos: ['Catálogo de Eventos', 'Links públicos e listas de desejo', 'Catálogo'],
   sobre: ['Sobre', 'Apresentação, dados do sistema, manual e novidades', 'Gestão']
 };
 
