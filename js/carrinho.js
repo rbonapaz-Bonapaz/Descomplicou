@@ -108,13 +108,14 @@ function cobrarPorAproximacaoHtml(id, carr) {
 }
 
 // Esquema e parâmetros conferidos em 17/07/2026 (doc oficial via busca cruzada) — exemplo real:
-// infinitepaydash://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=3262
+// infinitepay://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=3262
 // &result_url=...&app_client_referrer=...&handle=...&doc_number=...&af_force_deeplink=true
+// Tenta abrir o app; se não conseguir em 1.5s, mostra mensagem pedindo instalação.
 export function cobrarPorAproximacao(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  const handle = state.profile?.infinitePayHandle;
-  const doc = state.profile?.infinitePayDoc;
+  let handle = (state.profile?.infinitePayHandle || '').trim().replace(/^[\$@]+/, '');
+  const doc = (state.profile?.infinitePayDoc || '').trim();
   if (!handle || !doc) return toast('Cadastre o handle e o CPF/CNPJ da InfinitePay em Minha Conta → Pagamento primeiro.');
   const amount = Math.round(Number(carr.totalPedido || 0) * 100);
   if (amount <= 0) return toast('Este carrinho não tem valor a cobrar.');
@@ -130,7 +131,15 @@ export function cobrarPorAproximacao(carrinhoId) {
     doc_number: doc,
     af_force_deeplink: 'true'
   });
-  window.location.href = `infinitepaydash://infinitetap-app?${params.toString()}`;
+  const deepLinkUrl = `infinitepay://infinitetap-app?${params.toString()}`;
+  const inicioTentativa = Date.now();
+  window.location.href = deepLinkUrl;
+  // Se o app não abriu em 1.5s (user deixou a aba visível), mostra mensagem de ajuda
+  setTimeout(() => {
+    if (Date.now() - inicioTentativa < 2000) {
+      toast('O app da InfinitePay não abriu — confira se está instalado no seu celular.');
+    }
+  }, 1500);
 }
 
 function parcelamentoHtml(id, carr) {
@@ -762,7 +771,18 @@ export async function toggleCarrinhoOpt(id, campo, valor) {
 
 export async function salvarCarrinhoOpt(id, reabrir = false) {
   const updates = { atualizadoEm: serverTimestamp() };
-  if ($('cPag')) updates.pagamento = $('cPag').value;
+  if ($('cPag')) {
+    const pagamentoNovo = $('cPag').value;
+    updates.pagamento = pagamentoNovo;
+    // Auto-seleciona InfinitePay quando Cartão é escolhido — se nenhuma operadora foi selecionada ainda
+    if (pagamentoNovo === 'Cartão') {
+      const carr = state.data.carrinhos.find(c => c.id === id);
+      if (!carr?.cartaoOperadoraId) {
+        const infinitepay = state.data.operadoras.find(o => o.nome === 'InfinitePay');
+        if (infinitepay) updates.cartaoOperadoraId = infinitepay.id;
+      }
+    }
+  }
   if ($('cCartaoTipo')) updates.cartaoTipo = $('cCartaoTipo').value;
   if ($('cOperadora')) updates.cartaoOperadoraId = $('cOperadora').value;
   if ($('cBandeira')) updates.cartaoBandeiraGrupo = $('cBandeira').value;

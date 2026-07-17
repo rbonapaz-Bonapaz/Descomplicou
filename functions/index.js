@@ -45,7 +45,7 @@ exports.criarCheckoutInfinitePay = onCall({ region: 'southamerica-east1' }, asyn
   const carrinho = carrinhoSnap.data();
   const perfil = perfilSnap.data() || {};
 
-  const handle = (perfil.infinitePayHandle || '').trim().replace(/^@/, '');
+  const handle = (perfil.infinitePayHandle || '').trim().replace(/^[\$@]+/, '');
   if (!handle) throw new HttpsError('failed-precondition', 'Cadastre seu handle (@usuário) da InfinitePay em Minha Conta → Pagamento antes de gerar cobranças.');
 
   const total = Number(carrinho.totalPedido || 0);
