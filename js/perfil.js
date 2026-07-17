@@ -9,6 +9,7 @@ import { gerarBeneficios } from './gemini.js';
 import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRelatorios } from './relatorios.js';
 import { NOMES_DATAS_AUTOMATICAS, carregarDatasComemorativas } from './datasComemorativas.js';
 import { renderOperadorasPanel } from './operadoras.js';
+import { WA_CONTEXTOS_AUTOMATIZAVEIS } from './whatsapp.js';
 
 const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -153,6 +154,21 @@ export function renderPerfil() {
     </div>
 
     ${renderOperadorasPanel()}`;
+  }
+
+  if (sec === 'whatsapp') {
+    const auto = p.waAutomatico || {};
+    html += `<div class="panel">
+      <h3>💬 WhatsApp — automático ou manual</h3>
+      <p class="muted">Escolha, mensagem por mensagem, se o botão de WhatsApp manda sozinho (API oficial da Meta, sem abrir nada) ou abre o WhatsApp Web/app pra você revisar e enviar na mão. Fica desligado até você ligar — e automático só funciona depois que a WhatsApp Cloud API estiver configurada (veja <code>docs/whatsapp-cloud-api.md</code>) e o template correspondente aprovado na Meta; sem isso, cai sozinho pro manual com um aviso.</p>
+      <div class="list" style="margin-top:12px">
+        ${WA_CONTEXTOS_AUTOMATIZAVEIS.map(c => `<div class="list-item">
+          <div><b>${esc(c.label)}</b></div>
+          ${toggleHtml('waAuto_' + c.key, !!auto[c.key], `App.toggleWaAutomatico('${c.key}',this.checked)`, auto[c.key] ? 'Automático' : 'Manual')}
+        </div>`).join('')}
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:12px">Resumo do pedido e link de pagamento não entram aqui — o conteúdo muda a cada pedido (itens, valores), o que não cabe num template fixo aprovado pela Meta. Esses dois continuam sempre manuais.</p>
+    </div>`;
   }
 
   if (sec === 'plano') {

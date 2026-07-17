@@ -1,4 +1,4 @@
-import { state, functions, httpsCallable, toast } from './state.js';
+import { state, functions, httpsCallable, toast, setDoc, doc, db, serverTimestamp } from './state.js';
 
 // Ícone oficial do WhatsApp (bolha + fone), inline SVG — substitui o emoji 💬 em todos os botões.
 export const WA_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;flex:0 0 auto"><circle cx="12" cy="12" r="12" fill="#25D366"/><path fill="#fff" d="M12.004 4.6c-4.087 0-7.4 3.313-7.4 7.4 0 1.301.34 2.577.986 3.7L4.6 19.4l3.8-.997a7.37 7.37 0 0 0 3.604.94h.003c4.087 0 7.4-3.313 7.4-7.4s-3.313-7.343-7.403-7.343zm0 13.53a6.1 6.1 0 0 1-3.113-.85l-.223-.132-2.318.608.619-2.26-.146-.232a6.12 6.12 0 0 1-.94-3.264c0-3.38 2.75-6.13 6.13-6.13 3.38 0 6.13 2.75 6.13 6.13 0 3.38-2.75 6.13-6.14 6.13z"/><path fill="#fff" d="M15.188 13.746c-.163-.082-.965-.476-1.115-.53-.15-.055-.259-.082-.368.082-.109.163-.42.53-.516.639-.095.109-.19.123-.353.041-.163-.082-.688-.254-1.311-.809-.485-.432-.812-.966-.907-1.129-.095-.163-.01-.251.072-.333.074-.073.163-.19.245-.285.082-.096.109-.164.163-.273.055-.109.027-.204-.014-.286-.041-.082-.368-.885-.504-1.212-.133-.319-.269-.276-.368-.28h-.313c-.109 0-.286.041-.436.204-.15.163-.572.559-.572 1.363 0 .803.586 1.579.667 1.688.082.109 1.153 1.76 2.793 2.467.39.168.694.269.931.344.391.124.747.107 1.03.065.314-.047.965-.395 1.101-.777.136-.382.136-.708.095-.777-.041-.068-.15-.109-.313-.191z"/></svg>`;
@@ -65,8 +65,14 @@ export function onclickArg(data) {
 
 export function whatsAppBtn(telefone, context, data = {}) {
   if (!telefone) return '';
-  const onclick = `App.sendWhatsApp('${context}',${onclickArg(data)})`;
-  return `<button class="btn small green-btn" onclick="${onclick}" title="WhatsApp">${WA_ICON}</button>`;
+  // Automação só entra se o contexto TEM template (ver WA_TEMPLATES/WA_CONTEXTOS_AUTOMATIZAVEIS
+  // abaixo) E a consultora ligou explicitamente esse tipo em Minha Conta → WhatsApp — sem isso,
+  // continua sempre manual (padrão seguro, funciona mesmo sem a Cloud API configurada).
+  const automatico = !!(WA_TEMPLATES[context] && state.profile?.waAutomatico?.[context]);
+  const onclick = automatico
+    ? `App.enviarWhatsAppAuto('${context}',${onclickArg(data)})`
+    : `App.sendWhatsApp('${context}',${onclickArg(data)})`;
+  return `<button class="btn small green-btn" onclick="${onclick}" title="${automatico ? 'Enviar automático (WhatsApp)' : 'WhatsApp'}">${WA_ICON}</button>`;
 }
 
 // Mapa dos contextos de relacionamento para os TEMPLATES aprovados na Meta (WhatsApp Cloud API).
@@ -81,6 +87,29 @@ const WA_TEMPLATES = {
   posVenda:     { name: 'pos_venda',           lang: 'pt_BR', params: d => [d.nome || ''] },
   retorno:      { name: 'retorno_cliente',     lang: 'pt_BR', params: d => [d.nome || ''] }
 };
+
+// Contextos com automação disponível (têm template correspondente em WA_TEMPLATES, acima) — cada
+// consultora escolhe, por tipo de mensagem, se o botão de WhatsApp manda sozinho pela API oficial da
+// Meta ou abre o WhatsApp Web/app pra ela revisar e mandar na mão. Resumo de pedido e link de
+// pagamento ficam de fora de propósito: o conteúdo muda a cada pedido (itens, valores), o que não
+// cabe num template fixo aprovado pela Meta — continuam só manuais.
+export const WA_CONTEXTOS_AUTOMATIZAVEIS = [
+  { key: 'aniversario', label: 'Aniversário' },
+  { key: 'contatoFrio', label: 'Contato frio' },
+  { key: 'agenda', label: 'Confirmação de agendamento' },
+  { key: 'posVenda', label: 'Pós-venda' },
+  { key: 'retorno', label: 'Retorno agendado' }
+];
+
+// Liga/desliga o envio automático de um tipo de mensagem — grava direto (sem precisar de botão
+// "Salvar" separado), igual a outros toggles simples do sistema.
+export async function toggleWaAutomatico(contexto, ligado) {
+  const atual = state.profile?.waAutomatico || {};
+  const novo = { ...atual, [contexto]: !!ligado };
+  await setDoc(doc(db, 'users', state.user.uid), { waAutomatico: novo, atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, waAutomatico: novo };
+  window.App.refresh();
+}
 
 // Envio AUTOMÁTICO pela API oficial da Meta: dispara sozinho, sem abrir o WhatsApp e sem a
 // consultora apertar "enviar". Só funciona depois que a WhatsApp Cloud API estiver configurada

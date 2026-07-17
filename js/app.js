@@ -48,7 +48,7 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
   aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, ordenarItensCarrinhoUI } from './carrinho.js';
-import { sendWhatsApp, enviarWhatsAppAuto } from './whatsapp.js';
+import { sendWhatsApp, enviarWhatsAppAuto, toggleWaAutomatico } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
 import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle, precisaCriarSenhaGoogle } from './auth.js';
 import { biometriaDisponivel, temBiometriaAtiva, ativarBiometria, desativarBiometria, desbloquearBiometria } from './biometria.js';
@@ -359,7 +359,7 @@ window.App = {
   filtrarCatalogoMestre, editarProdutoMestre, salvarProdutoMestre, excluirProdutoMestre,
   adicionarLinhaColetiva, removerLinhaColetiva, aprovarSugestaoBeneficio, rejeitarSugestaoBeneficio,
   // WhatsApp
-  sendWhatsApp, enviarWhatsAppAuto,
+  sendWhatsApp, enviarWhatsAppAuto, toggleWaAutomatico,
   // PDF Pedido
   gerarPdfCliente, gerarPdfInterno,
   // Eventos
