@@ -1,6 +1,6 @@
 import { state, carrinhoById, cliById, numeroPedidoLabel } from './state.js';
 import { $, esc, money, normStatusPag, descontoPercent } from './utils.js';
-import { calcCustoCartao, jurosAutomatico } from './carrinho.js';
+import { calcCustoCartao } from './carrinho.js';
 
 export function gerarPdfCliente(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
@@ -111,7 +111,7 @@ function gerarPdf(carr, interno) {
   // Bloco de resultado só no PDF interno — o do cliente já tem tudo no resumo do topo.
   if (interno) {
     const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
-    const custoCartao = venda ? Number(venda.custoCartao || 0) : calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, jurosAutomatico(carr.totalPedido || 0, carr.parcelas || 1, state.profile), state.profile, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
+    const custoCartao = venda ? Number(venda.custoCartao || 0) : calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
     const lucroReal = venda?.lucroReal != null ? Number(venda.lucroReal) : carr.lucroTotal - custoCartao;
     html += `<div class="pedido-totais">
       <div class="pedido-total-line"><span>Resultado (interno)</span><b>${money(carr.totalPedido)}</b></div>

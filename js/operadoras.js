@@ -101,8 +101,10 @@ export function abrirOperadoraForm(id = '') {
       <div class="field full"><label>Nome</label><input id="opNome" placeholder="Ex: InfinitePay" value="${esc(o?.nome || '')}"></div>
       <div class="field"><label>Prazo de recebimento (dias úteis)</label><input id="opPrazo" type="number" min="0" value="${o?.prazoRecebimentoDias ?? 1}"></div>
       <div class="field full"><label>Link de pagamento (opcional)</label><input id="opLink" placeholder="https://..." value="${esc(o?.linkPagamento || '')}"></div>
+      <div class="field"><label>Máximo de parcelas</label><input id="opMaxParcelas" type="number" min="1" max="24" value="${o?.maxParcelas ?? 12}"></div>
+      <div class="field"><label>Juros cobrado da cliente (% ao mês)</label><input id="opJurosCliente" value="${o?.jurosClientePercent ?? 0}"></div>
     </div>
-    <p class="muted" style="margin:-8px 0 0;font-size:12px">Se preenchido, é esse link que o botão "💳 Enviar link de pagamento" do carrinho manda pra cliente quando essa operadora estiver selecionada.</p>
+    <p class="muted" style="margin:-8px 0 0;font-size:12px">Se preenchido, é esse link que o botão "💳 Enviar link de pagamento" do carrinho manda pra cliente quando essa operadora estiver selecionada. O juro cobrado da cliente só entra quando você escolher manualmente "Cliente assume o juro" naquele carrinho — por padrão você absorve o juro do parcelamento.</p>
     <div class="panel" style="background:#F7FAFC;margin:14px 0">
       <h4 style="margin:0 0 8px">✨ Atualizar com IA</h4>
       <p class="muted" style="margin:0 0 8px">Cole aqui o texto/tabela de taxas copiado do app da maquininha (débito, crédito à vista, 2x a 12x, por bandeira) — a IA preenche os campos abaixo sozinha. Nada é salvo automaticamente: confira e clique em "Salvar" no fim da tela pra confirmar.</p>
@@ -172,6 +174,8 @@ export async function salvarOperadora(id = '') {
     nome,
     prazoRecebimentoDias: Number($('opPrazo')?.value || 1),
     linkPagamento: ($('opLink')?.value || '').trim(),
+    maxParcelas: Number($('opMaxParcelas')?.value || 12),
+    jurosClientePercent: parseNum($('opJurosCliente')?.value),
     taxaDebito: { visaMaster: parseNum($('opDebVM')?.value), eloAmex: parseNum($('opDebEA')?.value) },
     taxaCredito: PARCELAS.map(n => ({
       parcelas: n,

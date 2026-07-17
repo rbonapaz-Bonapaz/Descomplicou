@@ -111,24 +111,11 @@ export function renderPerfil() {
   if (sec === 'pagamento') {
     html += `<div class="panel">
       <h3>Pagamento</h3>
-      <p class="muted">Usado na tela de venda quando o pagamento é por cartão ou link. O custo da maquininha (taxa por bandeira/parcela) e o link de cobrança de cada forma de pagamento vêm das <b>Operadoras de cartão</b> cadastradas mais abaixo — os campos aqui são só sobre o checkout automático da InfinitePay, o limite de parcelas e o juro que a CLIENTE paga quando ela assume o parcelamento.</p>
+      <p class="muted">Máximo de parcelas, juro cobrado da cliente, custo da maquininha e link de cobrança agora ficam no cadastro de cada <b>operadora</b> (abaixo) — quem assume o juro em cada venda é escolhido direto no carrinho. Aqui só fica o checkout automático da InfinitePay.</p>
       <div class="grid">
         <div class="field"><label>Handle da InfinitePay (@usuário)</label><input id="perInfinitePayHandle" placeholder="Ex: minhaloja" value="${esc(p.infinitePayHandle || '')}"></div>
-        <div class="field"><label>Máximo de parcelas</label><input id="perMaxParcelas" type="number" min="1" max="24" value="${p.maxParcelas || 12}"></div>
-        <div class="field"><label>Juros cobrado da cliente (% ao mês)</label><input id="perTaxaJuros" value="${p.taxaJurosCartao || 0}"></div>
       </div>
       <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar cobrança InfinitePay" no carrinho — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar.</p><br>
-      <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
-    </div>
-
-    <div class="panel">
-      <h3>Regras de quem assume o juro do cartão</h3>
-      <p class="muted">Define automaticamente, sem precisar escolher em cada venda, quando o juro do parcelamento fica por sua conta e quando fica por conta da cliente.</p>
-      <div class="grid">
-        <div class="field"><label>Até quantas parcelas você assume o juro</label><input id="perLimiteParcelasSemJuros" type="number" min="1" max="24" value="${p.limiteParcelasSemJuros ?? 3}"></div>
-        <div class="field"><label>Valor mínimo do pedido para parcelar (R$)</label><input id="perValorMinimoParcelamento" placeholder="Ex: 450,00" value="${p.valorMinimoParcelamento || 0}"></div>
-      </div>
-      <p class="muted" style="font-size:12px;margin-top:8px">Ex: com 3 e R$450 — pedidos parcelados em até 3x você assume o juro; acima de 3x o juro fica com a cliente. Pedidos abaixo de R$450 que forem parcelados sempre têm o juro por conta da cliente.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
     </div>
 
@@ -362,10 +349,6 @@ export async function savePerfil() {
     diasAgendaPainel: $('perDiasAgenda') ? Number($('perDiasAgenda').value || 0) : (p.diasAgendaPainel || 0),
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
     infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim().replace(/^@/, ''),
-    maxParcelas: $('perMaxParcelas') ? Number($('perMaxParcelas').value || 12) : (p.maxParcelas || 12),
-    taxaJurosCartao: $('perTaxaJuros') ? parseNum($('perTaxaJuros').value) : (p.taxaJurosCartao || 0),
-    limiteParcelasSemJuros: $('perLimiteParcelasSemJuros') ? Number($('perLimiteParcelasSemJuros').value || 3) : (p.limiteParcelasSemJuros ?? 3),
-    valorMinimoParcelamento: $('perValorMinimoParcelamento') ? parseNum($('perValorMinimoParcelamento').value) : (p.valorMinimoParcelamento || 0),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });
