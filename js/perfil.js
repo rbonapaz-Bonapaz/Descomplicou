@@ -281,11 +281,11 @@ export function renderPerfil() {
       <button class="btn" style="margin-top:8px" onclick="App.restaurarEstoqueDoBackup()">♻️ Restaurar estoque deste arquivo</button>
     </div>
 
-    <div class="panel" style="border:1px solid #FBE4E4">
-      <h3 style="color:var(--error)">♻️ Restaurar backup completo</h3>
-      <p class="muted">Restaura clientes, produtos, vendas, carrinhos, agenda, movimentações de estoque, catálogos, eventos, trocas, pré-encomendas e despesas — tudo exatamente como estava no arquivo. Registros apagados desde o backup voltam a existir; registros que mudaram são sobrescritos por completo. Nada criado depois do backup é apagado. Use com cuidado.</p>
+    <div class="panel">
+      <h3>♻️ Restaurar backup completo</h3>
+      <p class="muted">Restaura clientes, produtos, vendas, carrinhos, agenda, movimentações de estoque, catálogos, eventos, trocas, pré-encomendas e despesas — tudo exatamente como estava no arquivo. Registros apagados desde o backup voltam a existir; registros que mudaram são sobrescritos por completo. Nada criado depois do backup é apagado. <b>Use com cuidado.</b></p>
       <input type="file" id="restaurarBackupArquivo" accept="application/json">
-      <button class="btn ghost" style="margin-top:8px;color:var(--error);border-color:var(--error)" onclick="App.restaurarBackupCompleto()">♻️ Restaurar backup completo deste arquivo</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="App.restaurarBackupCompleto()">♻️ Restaurar backup completo deste arquivo</button>
     </div>
 
     <div class="panel" style="border:1px solid #FBE4E4">
