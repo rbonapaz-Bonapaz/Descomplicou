@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=58">
+  <link rel="stylesheet" href="css/style.css?v=59">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -144,11 +144,22 @@
     </main>
   </section>
 
+  <!-- Navegação inferior + botão de ação (só aparecem no celular, via CSS) — atalho de polegar pros
+       destinos mais usados e pra ação que mais gera venda, sem tirar o menu completo de cima. -->
+  <button id="fabNovoCarrinho" class="fab" title="Novo carrinho" onclick="App.openNovoCarrinho()">＋</button>
+  <nav id="bottomNav" class="bottom-nav">
+    <button data-page="dashboard" class="active"><span>🏠</span>Painel</button>
+    <button data-page="clientes"><span>👥</span>Clientes</button>
+    <button data-page="vendas"><span>🛒</span>Vendas</button>
+    <button data-page="agenda"><span>📅</span>Agenda</button>
+    <button data-page="produtos"><span>📦</span>Produtos</button>
+  </nav>
+
   <div id="modal" class="modal hidden"><div id="modalCard"></div></div>
   <button id="modalMinBar" class="hidden" onclick="App.restaurarModal()">🗔 Janela minimizada — clique para voltar</button>
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=141"></script>
+  <script type="module" src="js/app.js?v=142"></script>
 </body>
 </html>

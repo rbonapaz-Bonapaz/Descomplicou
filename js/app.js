@@ -158,15 +158,16 @@ async function checkAutoSyncBaseColetiva() {
 }
 
 // --- Navigation ---
-document.querySelectorAll('#nav button').forEach(b => b.onclick = () => goto(b.dataset.page));
+document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => goto(b.dataset.page));
 
 function goto(p) {
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   $(p).classList.add('active');
   $('eyebrow').textContent = titles[p]?.[2] || '';
   $('title').textContent = titles[p]?.[0] || p;
   $('subtitle').textContent = titles[p]?.[1] || '';
+  window.scrollTo({ top: 0 }); // no celular, trocar de página deve voltar ao topo do conteúdo
 }
 
 // Captura o "?ref=uid" da URL de indicação assim que a página carrega (antes do login terminar)
