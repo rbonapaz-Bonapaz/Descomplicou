@@ -252,14 +252,21 @@ function teardownListeners() {
 }
 
 async function loadAll() {
-  for (const n of Object.keys(state.data)) {
-    const s = await getDocs(col(n));
-    state.data[n] = s.docs.map(d => ({ id: d.id, ...d.data() }));
-  }
-  try {
-    const cfg = await getDoc(doc(db, 'config', 'planos'));
-    if (cfg.exists()) state.config = { ...state.config, ...cfg.data() };
-  } catch (e) { /* config global pode não existir ainda ou sem permissão até deploy das regras */ }
+  // Todas as coleções (+ a config global) são buscadas EM PARALELO, não uma de cada vez — na
+  // abertura, o tempo total passa a ser o da coleção mais lenta, não a soma das 13 idas ao servidor
+  // em fila. É o maior ganho de agilidade na inicialização, sem mudar nada do que é carregado.
+  const nomes = Object.keys(state.data);
+  // A config global entra no MESMO lote paralelo das coleções (getDoc protegido pra não derrubar o
+  // lote se ela não existir/sem permissão) — assim nada espera na fila de ninguém.
+  const cfgPromise = getDoc(doc(db, 'config', 'planos')).catch(() => null);
+  const [resultados, cfg] = await Promise.all([
+    Promise.all(nomes.map(n => getDocs(col(n)))),
+    cfgPromise
+  ]);
+  nomes.forEach((n, i) => {
+    state.data[n] = resultados[i].docs.map(d => ({ id: d.id, ...d.data() }));
+  });
+  if (cfg && cfg.exists()) state.config = { ...state.config, ...cfg.data() };
 }
 
 async function refresh(m = '') {
