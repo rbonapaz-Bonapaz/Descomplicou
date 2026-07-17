@@ -1,7 +1,7 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
   proximoNumeroPedido, proximaSequenciaCliente, functions, httpsCallable } from './state.js';
-import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm } from './utils.js';
+import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm, gerarPixCopiaECola } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
@@ -94,9 +94,12 @@ function prazoRecebimentoHtml(carr) {
   return `<p class="muted" style="margin:4px 0 0">💰 Recebe da ${esc(op.nome)} em ${dias} dia${dias === 1 ? '' : 's'} útil${dias === 1 ? '' : 'eis'}</p>`;
 }
 
-// Botão/estado do checkout online da InfinitePay — só aparece se a consultora cadastrou o handle
+// Botão/estado do checkout online da InfinitePay — usado SÓ pra venda no Cartão de Crédito (link
+// de pagamento / QR Code via API da InfinitePay). Só aparece se a consultora cadastrou o handle
 // dela em Minha Conta → Pagamento. Sem handle, o carrinho continua funcionando normalmente com o
-// link de pagamento manual de sempre (nada quebra pra quem não usa essa integração).
+// link de pagamento manual de sempre (nada quebra pra quem não usa essa integração). A cobrança
+// física por aproximação (NFC) saiu da tela: agora é feita digitando o valor direto no app da
+// maquininha — o CRM foca só nos QR Codes de venda remota (Pix nativo e cartão via InfinitePay).
 function infinitePayCheckoutHtml(id, carr) {
   if (!state.profile?.infinitePayHandle) return '';
   const check = carr.infinitePay;
@@ -104,91 +107,17 @@ function infinitePayCheckoutHtml(id, carr) {
     return `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">✅ Pago via InfinitePay</div>`;
   }
   if (check?.status === 'pendente' && check?.url) {
-    return `<div style="margin-top:10px"><button class="btn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Ver cobrança InfinitePay (aguardando pagamento)</button></div>`;
+    return `<div style="margin-top:10px"><button class="btn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Ver QR Code do pagamento (aguardando)</button></div>`;
   }
-  return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar cobrança InfinitePay</button></div>`;
+  return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar QR CODE do pagamento</button></div>`;
 }
 
-function ehDispositivoMobile() {
-  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-// Botão do InfiniteTap (cobrança por aproximação) — deep link que abre o app da InfinitePay no
-// celular já com valor, parcelas e forma de pagamento prontos, pra encostar o cartão físico da
-// cliente na tela (o próprio celular vira a maquininha via NFC). Só faz sentido em celular (não
-// há NFC de cartão físico em desktop) e com handle + CPF/CNPJ cadastrados em Minha Conta.
-function cobrarPorAproximacaoHtml(id, carr) {
-  if (carr.pagamento !== 'Cartão' || !ehDispositivoMobile()) return '';
-  if (!state.profile?.infinitePayHandle || !state.profile?.infinitePayDoc) return '';
-  if (!Number(carr.totalPedido || 0)) return '';
-  return `<div style="margin-top:10px"><button class="btn" onclick="App.cobrarPorAproximacao('${id}')">📲 Cobrar por aproximação</button></div>`;
-}
-
-// Esquema e parâmetros conferidos em 17/07/2026 (doc oficial via busca cruzada) — exemplo real:
-// infinitepay://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=3262
-// &result_url=...&app_client_referrer=...&handle=...&doc_number=...&af_force_deeplink=true
-// Tenta abrir o app; se não conseguir em 1.5s, mostra mensagem pedindo instalação.
-export function cobrarPorAproximacao(carrinhoId) {
-  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
-  if (!carr) return;
-  // Higienização condicional (mesma regra da Cloud Function): só remove "@"/"$" se realmente
-  // estiverem no início — nunca corte cego que deceparia a primeira letra de um handle sem prefixo.
-  let handle = (state.profile?.infinitePayHandle || '').trim();
-  if (handle.startsWith('@')) handle = handle.substring(1).trim();
-  if (handle.startsWith('$')) handle = handle.substring(1).trim();
-  handle = handle.toLowerCase();
-  const doc = (state.profile?.infinitePayDoc || '').trim();
-  if (!handle || !doc) return toast('Cadastre o handle e o CPF/CNPJ da InfinitePay em Minha Conta → Pagamento primeiro.');
-  const amount = Math.round(Number(carr.totalPedido || 0) * 100);
-  if (amount <= 0) return toast('Este carrinho não tem valor a cobrar.');
-  const ehDebito = carr.cartaoTipo === 'Débito';
-  const params = new URLSearchParams({
-    amount: String(amount),
-    payment_method: ehDebito ? 'debit' : 'credit',
-    installments: String(ehDebito ? 1 : Math.max(1, Number(carr.parcelas || 1))),
-    order_id: carrinhoId,
-    result_url: 'https://descomplicandovendas.web.app/',
-    app_client_referrer: 'DescomplicouCRM',
-    handle,
-    doc_number: doc,
-    af_force_deeplink: 'true'
-  });
-  const deepLinkUrl = `infinitepay://infinitetap-app?${params.toString()}`;
-  const inicioTentativa = Date.now();
-  window.location.href = deepLinkUrl;
-  // Se o app não abriu em 1.5s (user deixou a aba visível), mostra mensagem de ajuda
-  setTimeout(() => {
-    if (Date.now() - inicioTentativa < 2000) {
-      toast('O app da InfinitePay não abriu — confira se está instalado no seu celular.');
-    }
-  }, 1500);
-}
-
+// Débito saiu de linha (item 13-A): a consultora trabalha só com Crédito no cartão — sem seletor
+// Tipo, sem ramificação de cálculo à parte. Parcelamento aparece pra "Cartão" e "Link de pagamento".
 function parcelamentoHtml(id, carr) {
   if (carr.pagamento !== 'Cartão' && carr.pagamento !== 'Link de pagamento') return '';
   const cfg = state.profile || {};
-  const ehDebito = carr.pagamento === 'Cartão' && carr.cartaoTipo === 'Débito';
   const operadoraAtiva = carr.cartaoOperadoraId ? operadoraById(carr.cartaoOperadoraId) : null;
-
-  const tipoCartaoHtml = carr.pagamento === 'Cartão' ? `<div class="field"><label>Tipo</label>
-    <select id="cCartaoTipo" onchange="App.salvarCarrinhoOpt('${id}',true)">
-      <option value="Crédito" ${carr.cartaoTipo !== 'Débito' ? 'selected' : ''}>Crédito</option>
-      <option value="Débito" ${carr.cartaoTipo === 'Débito' ? 'selected' : ''}>Débito</option>
-    </select>
-  </div>` : '';
-
-  if (ehDebito) {
-    const custoCartao = calcCustoCartao(carr.totalPedido || 0, carr.pagamento, 1, 'Débito', carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo);
-    return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
-      <h4 style="margin:0 0 8px">Cartão de débito</h4>
-      <div class="grid">${tipoCartaoHtml}${operadoraBandeiraHtml(id, carr)}</div>
-      <p class="muted" style="margin:8px 0 0">Débito é sempre à vista, sem parcelamento.</p>
-      ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
-      ${prazoRecebimentoHtml(carr)}
-    ${infinitePayCheckoutHtml(id, carr)}
-    ${cobrarPorAproximacaoHtml(id, carr)}
-    </div>`;
-  }
 
   const maxParcelas = Number(operadoraAtiva?.maxParcelas || 12);
   const opts = Array.from({ length: maxParcelas }, (_, i) => i + 1);
@@ -198,7 +127,6 @@ function parcelamentoHtml(id, carr) {
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
     <h4 style="margin:0 0 8px">Parcelamento</h4>
     <div class="grid">
-      ${tipoCartaoHtml}
       <div class="field"><label>Parcelas</label>
         <select id="cParcelas" onchange="App.salvarCarrinhoOpt('${id}',true)">
           ${opts.map(n => `<option value="${n}" ${(carr.parcelas || 1) === n ? 'selected' : ''}>${n}x</option>`).join('')}
@@ -214,7 +142,35 @@ function parcelamentoHtml(id, carr) {
     ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
     ${prazoRecebimentoHtml(carr)}
     ${infinitePayCheckoutHtml(id, carr)}
-    ${cobrarPorAproximacaoHtml(id, carr)}
+  </div>`;
+}
+
+// QR Code de Pix nativo (item 13-B): NÃO chama a API da InfinitePay — gera na hora, só com dados
+// já em memória (chave Pix do perfil + valor do pedido), um BR Code EMV estático (padrão Banco
+// Central), sem taxa nenhuma. Só aparece com "Pix" selecionado e a chave já cadastrada em Minha
+// Conta → Pagamento; sem chave cadastrada, mostra aviso pra configurar.
+function pixCheckoutHtml(id, carr) {
+  if (carr.pagamento !== 'Pix') return '';
+  const chave = (state.profile?.pixChave || '').trim();
+  if (!chave) {
+    return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
+      <h4 style="margin:0 0 8px">📱 Pix</h4>
+      <p class="muted">Cadastre sua Chave Pix em Minha Conta → Pagamento pra gerar o QR Code automaticamente.</p>
+      <button class="btn small" onclick="App.goto('perfil');App.setSection('perfil','pagamento')">Cadastrar Chave Pix</button>
+    </div>`;
+  }
+  const total = Number(carr.totalPedido || 0);
+  const codigo = gerarPixCopiaECola({
+    chave, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade, valor: total, txid: id.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
+  });
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=${encodeURIComponent(codigo)}`;
+  return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
+    <h4 style="margin:0 0 8px">📱 Pix — ${money(total)}</h4>
+    <p class="muted">QR Code estático gerado na hora com sua Chave Pix — sem taxa, sem chamar API externa.</p>
+    <div style="text-align:center;margin:12px 0"><img src="${qrSrc}" alt="QR Code Pix" style="border-radius:12px;border:1px solid var(--line)"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="btn dark" onclick="App.copiarCodigoPix('${id}')">📋 Copiar código Pix (Copia e Cola)</button>
+    </div>
   </div>`;
 }
 
@@ -429,6 +385,7 @@ export function openCarrinho(id) {
     ${carr.dataRetorno ? `<p class="muted" style="margin-top:-6px">🔔 Retorno agendado para ${formatDateBR(carr.dataRetorno)}. Vai aparecer no Painel Inicial nessa data.</p>` : ''}
 
     ${parcelamentoHtml(id, carr)}
+    ${pixCheckoutHtml(id, carr)}
 
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
       <button class="btn dark" onclick="App.finalizarCarrinho('${id}')">✓ Finalizar venda</button>
@@ -850,7 +807,6 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
       }
     }
   }
-  if ($('cCartaoTipo')) updates.cartaoTipo = $('cCartaoTipo').value;
   if ($('cOperadora')) updates.cartaoOperadoraId = $('cOperadora').value;
   if ($('cBandeira')) updates.cartaoBandeiraGrupo = $('cBandeira').value;
   if ($('cObs')) updates.observacoes = $('cObs').value;
@@ -898,7 +854,27 @@ export async function abrirCheckoutInfinitePay(carrinhoId) {
   } catch (e) {
     toast('Não consegui gerar a cobrança InfinitePay: ' + (e.message || 'erro desconhecido'));
     const btnAtual = $('cInfinitePayBtn');
-    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '💳 Gerar cobrança InfinitePay'; }
+    if (btnAtual) { btnAtual.disabled = false; btnAtual.textContent = '💳 Gerar QR CODE do pagamento'; }
+  }
+}
+
+// Copia o código Pix "Copia e Cola" (BR Code EMV) gerado localmente pro clipboard — mesmo texto
+// codificado no QR Code mostrado acima, pra colar direto no app do banco quando o cliente preferir
+// digitar/colar em vez de escanear a câmera.
+export async function copiarCodigoPix(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+  const chave = (state.profile?.pixChave || '').trim();
+  if (!chave) return toast('Cadastre sua Chave Pix em Minha Conta → Pagamento primeiro.');
+  const codigo = gerarPixCopiaECola({
+    chave, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade,
+    valor: Number(carr.totalPedido || 0), txid: carrinhoId.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
+  });
+  try {
+    await navigator.clipboard.writeText(codigo);
+    toast('Código Pix copiado — cole no app do banco.');
+  } catch (e) {
+    toast('Não consegui copiar automaticamente — selecione e copie o código manualmente.');
   }
 }
 

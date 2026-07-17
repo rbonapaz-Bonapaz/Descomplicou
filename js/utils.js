@@ -207,6 +207,58 @@ export function collapsibleHtml(key, headInnerHtml, bodyHtml) {
   </div>`;
 }
 
+// --- Pix estático (BR Code / EMV, padrão Banco Central) ---
+// Monta o payload TLV (tag-length-value) e calcula o CRC16-CCITT final — o mesmo formato que
+// qualquer banco/app de pagamento lê num QR Code Pix "Copia e Cola" estático (sem chamar API
+// nenhuma, sem depender de gateway: só a chave Pix da consultora + o valor do pedido).
+function tlv(id, valor) {
+  return id + String(valor.length).padStart(2, '0') + valor;
+}
+
+function crc16ccitt(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+// O padrão exige texto só ASCII (sem acento) e limita o tamanho de nome/cidade — normaliza
+// removendo acentuação, filtra pra ASCII imprimível e corta no limite de cada campo.
+function limparAsciiPix(s, max) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^\x20-\x7E]/g, '').trim().slice(0, max).toUpperCase();
+}
+
+// Gera o BR Code (Pix Copia e Cola) estático: chave + valor exato do pedido, sem taxa de
+// intermediário nenhuma — é o mesmo texto que vira o QR Code exibido no carrinho.
+export function gerarPixCopiaECola({ chave, titular, cidade, valor, txid }) {
+  const chaveClean = String(chave || '').trim();
+  if (!chaveClean) return '';
+  const merchantAccount = tlv('00', 'br.gov.bcb.pix') + tlv('01', chaveClean);
+  const nomeClean = limparAsciiPix(titular, 25) || 'RECEBEDOR';
+  const cidadeClean = limparAsciiPix(cidade, 15) || 'BRASIL';
+  const txidClean = limparAsciiPix(txid, 25) || '***';
+  const valorNum = Number(valor || 0);
+
+  let payload =
+    tlv('00', '01') +
+    tlv('26', merchantAccount) +
+    tlv('52', '0000') +
+    tlv('53', '986') +
+    (valorNum > 0 ? tlv('54', valorNum.toFixed(2)) : '') +
+    tlv('58', 'BR') +
+    tlv('59', nomeClean) +
+    tlv('60', cidadeClean) +
+    tlv('62', tlv('05', txidClean));
+
+  payload += '6304';
+  return payload + crc16ccitt(payload);
+}
+
 export function thSort(label, field, current, filterKey) {
   const [f, dir] = String(current || '').split('_');
   const active = f === field;

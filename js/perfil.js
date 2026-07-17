@@ -110,13 +110,24 @@ export function renderPerfil() {
 
   if (sec === 'pagamento') {
     html += `<div class="panel">
-      <h3>Pagamento</h3>
-      <p class="muted">Máximo de parcelas, juro cobrado da cliente, custo da maquininha e link de cobrança agora ficam no cadastro de cada <b>operadora</b> (abaixo) — quem assume o juro em cada venda é escolhido direto no carrinho. Aqui só fica o checkout automático da InfinitePay.</p>
+      <h3>Pix</h3>
+      <p class="muted">Chave usada pra gerar o QR Code de Pix direto no carrinho — sem taxa, sem chamar nenhuma API externa (o CRM monta o código na hora, com o valor exato do pedido).</p>
+      <div class="grid">
+        <div class="field"><label>Chave Pix padrão</label><input id="perPixChave" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória" value="${esc(p.pixChave || '')}"></div>
+        <div class="field"><label>Nome do titular</label><input id="perPixTitular" placeholder="Como aparece na conta do banco" value="${esc(p.pixTitular || p.nome || '')}"></div>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Exigido pelo Banco Central pra montar o QR Code — sem esses dois campos preenchidos, o Pix no carrinho não aparece.</p><br>
+      <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
+    </div>
+
+    <div class="panel">
+      <h3>Cartão de crédito (InfinitePay)</h3>
+      <p class="muted">Máximo de parcelas, juro cobrado da cliente, custo da maquininha e link de cobrança ficam no cadastro de cada <b>operadora</b> (abaixo) — quem assume o juro em cada venda é escolhido direto no carrinho. Aqui só fica o checkout automático da InfinitePay pra venda no Crédito.</p>
       <div class="grid">
         <div class="field"><label>Handle da InfinitePay (@usuário)</label><input id="perInfinitePayHandle" placeholder="Ex: minhaloja" value="${esc(p.infinitePayHandle || '')}"></div>
         <div class="field"><label>CPF/CNPJ da conta InfinitePay</label><input id="perInfinitePayDoc" placeholder="Só números" value="${esc(p.infinitePayDoc || '')}"></div>
       </div>
-      <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar cobrança InfinitePay" no carrinho — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar. O CPF/CNPJ (só números, sem pontuação) libera o botão "📲 Cobrar por aproximação" — abre o app da InfinitePay no celular já com o valor pronto pra encostar o cartão.</p><br>
+      <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar QR CODE do pagamento" no carrinho, quando "Cartão" for selecionado — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar. Cobrança por aproximação (NFC) saiu da tela: pra isso, digite o valor direto no app da maquininha.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
     </div>
 
@@ -358,6 +369,8 @@ export async function savePerfil() {
       return h.toLowerCase();
     })(),
     infinitePayDoc: ($('perInfinitePayDoc')?.value ?? p.infinitePayDoc ?? '').replace(/\D/g, ''),
+    pixChave: ($('perPixChave')?.value ?? p.pixChave ?? '').trim(),
+    pixTitular: ($('perPixTitular')?.value ?? p.pixTitular ?? '').trim(),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });
