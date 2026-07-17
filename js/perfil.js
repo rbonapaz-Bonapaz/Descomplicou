@@ -349,7 +349,14 @@ export async function savePerfil() {
     diasContatoFrio: $('perDiasFrio') ? Number($('perDiasFrio').value || 30) : (p.diasContatoFrio || 30),
     diasAgendaPainel: $('perDiasAgenda') ? Number($('perDiasAgenda').value || 0) : (p.diasAgendaPainel || 0),
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
-    infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim().replace(/^@/, ''),
+    // Higienização condicional na origem (mesma regra da Cloud Function): remove "@"/"$" só se
+    // estiverem de fato no início, e grava minúsculo — nunca corte cego de posição fixa.
+    infinitePayHandle: (() => {
+      let h = ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim();
+      if (h.startsWith('@')) h = h.substring(1).trim();
+      if (h.startsWith('$')) h = h.substring(1).trim();
+      return h.toLowerCase();
+    })(),
     infinitePayDoc: ($('perInfinitePayDoc')?.value ?? p.infinitePayDoc ?? '').replace(/\D/g, ''),
     atualizadoEm: serverTimestamp()
   };

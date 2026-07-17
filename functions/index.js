@@ -35,6 +35,18 @@ const WHATSAPP_API_VERSION = 'v21.0';
 
 const INFINITEPAY_CHECKOUT_URL = 'https://api.checkout.infinitepay.io/links';
 
+// Higienização CONDICIONAL do handle — nunca corta cego (ex: um .substring(1) sem checar antes
+// decepava a primeira letra real de handles que não começavam com "$", virando "fabiula-mariano"
+// em "abiula-mariano" e gerando 404 na InfinitePay). Só remove "@"/"$" se de fato estiverem no
+// início; minúsculo porque a InfinitePay trata handle como case-insensitive internamente, mas
+// alguns clientes cadastram com maiúscula e isso já causou divergência de "usuário não encontrado".
+function limparHandleInfinitePay(raw) {
+  let h = String(raw || '').trim();
+  if (h.startsWith('@')) h = h.substring(1).trim();
+  if (h.startsWith('$')) h = h.substring(1).trim();
+  return h.toLowerCase();
+}
+
 // Gera o link/QR Code de cobrança pra um carrinho já existente. Chamado do navegador via
 // httpsCallable — o SDK do Firebase já manda o token de auth da consultora, então dá pra validar
 // que o carrinho pertence a ela antes de gastar uma chamada com a InfinitePay.
@@ -54,7 +66,7 @@ exports.criarCheckoutInfinitePay = onCall({ region: 'southamerica-east1' }, asyn
   const carrinho = carrinhoSnap.data();
   const perfil = perfilSnap.data() || {};
 
-  const handle = (perfil.infinitePayHandle || '').trim().replace(/^[\$@]+/, '');
+  const handle = limparHandleInfinitePay(perfil.infinitePayHandle);
   if (!handle) throw new HttpsError('failed-precondition', 'Cadastre seu handle (@usuário) da InfinitePay em Minha Conta → Pagamento antes de gerar cobranças.');
 
   const total = Number(carrinho.totalPedido || 0);
@@ -97,7 +109,12 @@ exports.criarCheckoutInfinitePay = onCall({ region: 'southamerica-east1' }, asyn
 
   if (!resposta.ok) {
     const corpoErro = await resposta.text().catch(() => '');
-    logger.error('InfinitePay recusou o checkout', resposta.status, corpoErro);
+    logger.error('InfinitePay recusou o checkout', resposta.status, corpoErro, 'handle usado:', handle);
+    // 404 é especificamente "esse handle não existe pra InfinitePay" — mensagem direta em vez do
+    // genérico "recusou a cobrança", que deixava a consultora sem saber o que checar.
+    if (resposta.status === 404) {
+      throw new HttpsError('not-found', 'Usuário InfinitePay não encontrado. Por favor, verifique se o handle cadastrado nas configurações está correto e sem letras digitadas erradas.');
+    }
     throw new HttpsError('internal', `A InfinitePay recusou a cobrança (${resposta.status}) — confira se o handle está certo e ativo.`);
   }
 

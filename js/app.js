@@ -46,7 +46,7 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
-  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, cobrarPorAproximacao } from './carrinho.js';
+  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, cobrarPorAproximacao, ordenarItensCarrinhoUI } from './carrinho.js';
 import { sendWhatsApp, enviarWhatsAppAuto } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
 import { switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle, precisaCriarSenhaGoogle } from './auth.js';
@@ -284,6 +284,7 @@ function setFilter(tipo, val) {
   if (tipo === 'prod' || tipo === 'prodSort' || tipo === 'prodLinha') renderProdutos();
   else if (tipo === 'estoque' || tipo === 'estoqueSort' || tipo === 'estoqueLinha') renderEstoque();
   else if (tipo === 'vendas' || tipo === 'vendasSort') renderVendas();
+  else if (tipo === 'clientesSort') renderClientes();
   else renderRelatorios();
 }
 
@@ -317,7 +318,7 @@ window.App = {
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido,
-  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, cobrarPorAproximacao,
+  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, cobrarPorAproximacao, ordenarItensCarrinhoUI,
   // Vendas
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos,
   // Estoque

@@ -1,6 +1,6 @@
 import { state, col, ref, db, deleteDoc, showModal, closeModal, toast, setDoc, addDoc, serverTimestamp,
   cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo, estoqueDisponivel, numeroPedidoLabel } from './state.js';
-import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR } from './utils.js';
+import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR, thSort } from './utils.js';
 import { whatsAppBtn, onclickArg, WA_ICON, openWhatsApp, formatPhone } from './whatsapp.js';
 import { detalheVendaHtml } from './vendas.js';
 import { gerarSugestaoAbordagem } from './gemini.js';
@@ -30,12 +30,35 @@ export function renderClientes() {
   });
 }
 
+// Ordena a listagem de clientes pela coluna clicada (state.filters.clientesSort, ex: "compra_desc").
+// Texto ordena alfabético case-insensitive (norm já baixa caixa e remove acento), data usa a
+// própria string ISO (ordena cronológico certinho por comparação lexicográfica), status usa os
+// mesmos dias-desde-última-compra que definem Quente/Morno/Frio, então a ordem reflete a categoria.
+function ordenarClientes(lista) {
+  const [field, dir] = String(state.filters.clientesSort || '').split('_');
+  if (!field) return lista;
+  const mul = dir === 'desc' ? -1 : 1;
+  const val = c => {
+    if (field === 'contato') return norm(c.whatsapp || '');
+    if (field === 'compra') return lastBuy(c) || '';
+    if (field === 'status') return daysSince(lastBuy(c));
+    return norm(c.nome || '');
+  };
+  return [...lista].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    if (typeof va === 'string') return va.localeCompare(vb, 'pt-BR') * mul;
+    return (va - vb) * mul;
+  });
+}
+
 function tableClientes() {
   const q = norm($('qcli')?.value || '');
-  const l = state.data.clientes.filter(c => !q || norm(c.nome + ' ' + c.whatsapp + ' ' + c.cidade + ' ' + (c.tags || []).join(' ')).includes(q));
+  let l = state.data.clientes.filter(c => !q || norm(c.nome + ' ' + c.whatsapp + ' ' + c.cidade + ' ' + (c.tags || []).join(' ')).includes(q));
   if (!l.length) return '<p class="muted">Nenhum cliente.</p>';
+  const sortKey = state.filters.clientesSort;
+  l = ordenarClientes(l);
   return `<div class="table"><table><thead><tr>
-    <th>Cliente</th><th>Contato</th><th>Última compra</th><th>Status</th><th>Ações</th>
+    ${thSort('Cliente', 'nome', sortKey, 'clientesSort')}${thSort('Contato', 'contato', sortKey, 'clientesSort')}${thSort('Última compra', 'compra', sortKey, 'clientesSort')}${thSort('Status', 'status', sortKey, 'clientesSort')}<th>Ações</th>
   </tr></thead><tbody>${l.map(c => {
     const ds = daysSince(lastBuy(c));
     const carrinhoAberto = openCarrinhosForClient(c.id).length > 0;

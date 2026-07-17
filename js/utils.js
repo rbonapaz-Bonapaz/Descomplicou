@@ -177,7 +177,7 @@ export function thSort(label, field, current, filterKey) {
   const [f, dir] = String(current || '').split('_');
   const active = f === field;
   const nextDir = active && dir === 'asc' ? 'desc' : 'asc';
-  return `<th style="cursor:pointer;user-select:none" onclick="App.setFilter('${filterKey}','${field}_${nextDir}')" title="Ordenar">${label}${active ? (dir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+  return `<th class="th-sort" onclick="App.setFilter('${filterKey}','${field}_${nextDir}')" title="Ordenar">${label}${active ? ` <span class="th-sort-arrow">${dir === 'asc' ? '▲' : '▼'}</span>` : ''}</th>`;
 }
 
 // Ordena uma lista de itens "envolvidos" (formato {p, custo, venda, est, ...} usado em

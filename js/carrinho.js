@@ -1,7 +1,7 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
   proximoNumeroPedido, proximaSequenciaCliente, functions, httpsCallable } from './state.js';
-import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero } from './utils.js';
+import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
@@ -131,7 +131,12 @@ function cobrarPorAproximacaoHtml(id, carr) {
 export function cobrarPorAproximacao(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  let handle = (state.profile?.infinitePayHandle || '').trim().replace(/^[\$@]+/, '');
+  // Higienização condicional (mesma regra da Cloud Function): só remove "@"/"$" se realmente
+  // estiverem no início — nunca corte cego que deceparia a primeira letra de um handle sem prefixo.
+  let handle = (state.profile?.infinitePayHandle || '').trim();
+  if (handle.startsWith('@')) handle = handle.substring(1).trim();
+  if (handle.startsWith('$')) handle = handle.substring(1).trim();
+  handle = handle.toLowerCase();
   const doc = (state.profile?.infinitePayDoc || '').trim();
   if (!handle || !doc) return toast('Cadastre o handle e o CPF/CNPJ da InfinitePay em Minha Conta → Pagamento primeiro.');
   const amount = Math.round(Number(carr.totalPedido || 0) * 100);
@@ -237,6 +242,50 @@ async function criarCarrinho(clienteId) {
   openCarrinho(r.id);
 }
 
+// Ordena as linhas de itens do carrinho pela coluna clicada (state.filters.carrinhoItensSort),
+// mas preservando o índice REAL de cada item em carr.itens — os botões de ação (remover, alternar
+// entrega) usam esse índice pra saber qual item do array mexer, então a ordem visual na tela nunca
+// pode se desalinhar dele. Por isso ordena pares {it, idx} em vez do array de itens puro.
+function ordenarItensCarrinho(pares, carrinhoId) {
+  const [field, dir] = String(state.filters.carrinhoItensSort || '').split('_');
+  if (!field) return pares;
+  const mul = dir === 'desc' ? -1 : 1;
+  const val = ({ it }) => {
+    const original = Number(it.precoOriginal || it.precoUnitario || 0);
+    if (field === 'motivo') return norm(it.motivo || 'Venda');
+    if (field === 'qtd') return Number(it.quantidade || 0);
+    if (field === 'original') return original;
+    if (field === 'preco') return Number(it.precoUnitario || 0);
+    if (field === 'desconto') return original > it.precoUnitario ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
+    if (field === 'total') return Number(it.totalItem || 0);
+    if (field === 'entrega') return estoqueDisponivel(it.produtoId, carrinhoId) >= it.quantidade ? 1 : 0; // Pronta > Futura
+    if (field === 'quando') return it.tipoEntrega !== 'entrega_futura' ? 1 : 0; // Agora > Depois
+    return norm(it.produtoNome || '');
+  };
+  return [...pares].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    if (typeof va === 'string') return va.localeCompare(vb, 'pt-BR') * mul;
+    return (va - vb) * mul;
+  });
+}
+
+// Cabeçalho ordenável específico pra tabela de itens dentro do modal de carrinho — não usa o
+// App.setFilter genérico (utils.thSort) porque este precisa saber QUAL carrinho reabrir depois de
+// ordenar (o modal é por id, diferente das telas de página inteira que thSort normalmente serve).
+function thSortItensCarrinho(label, field, current, carrinhoId) {
+  const [f, dir] = String(current || '').split('_');
+  const active = f === field;
+  const nextDir = active && dir === 'asc' ? 'desc' : 'asc';
+  return `<th class="th-sort" onclick="App.ordenarItensCarrinhoUI('${carrinhoId}','${field}_${nextDir}')" title="Ordenar">${label}${active ? ` <span class="th-sort-arrow">${dir === 'asc' ? '▲' : '▼'}</span>` : ''}</th>`;
+}
+
+// Chamado pelo clique no cabeçalho da tabela de itens — só atualiza o critério de ordenação e
+// reabre o mesmo carrinho (mesmo padrão de toggleCarrinhoOpt), sem recarregar o app inteiro.
+export function ordenarItensCarrinhoUI(carrinhoId, sortKey) {
+  state.filters.carrinhoItensSort = sortKey;
+  openCarrinho(carrinhoId);
+}
+
 export function openNovoCarrinho() {
   const cliOpts = state.data.clientes.map(c =>
     `<option value="${c.id}">${esc(c.nome)}</option>`
@@ -310,8 +359,8 @@ export function openCarrinho(id) {
     <div class="panel" style="margin-top:12px">
       <h4>Itens do carrinho (${itens.length})</h4>
       ${itens.length ? `<div class="table"><table><thead><tr>
-        <th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço Unit.</th><th>Desconto</th><th>Total</th><th>Entrega</th><th>Quando</th><th></th>
-      </tr></thead><tbody>${itens.map((it, idx) => {
+        ${thSortItensCarrinho('Produto', 'nome', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Motivo', 'motivo', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Qtd', 'qtd', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Original', 'original', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Preço Unit.', 'preco', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Desconto', 'desconto', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Total', 'total', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Entrega', 'entrega', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Quando', 'quando', state.filters.carrinhoItensSort, id)}<th></th>
+      </tr></thead><tbody>${ordenarItensCarrinho(itens.map((it, idx) => ({ it, idx })), id).map(({ it, idx }) => {
         const original = Number(it.precoOriginal || it.precoUnitario || 0);
         const temDesconto = original > it.precoUnitario;
         const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
