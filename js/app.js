@@ -220,6 +220,7 @@ function setupUI() {
   $('photo').src = state.profile.fotoPerfil || state.user.photoURL || '';
   $('brandName').textContent = state.profile.nomeNegocio || 'CRM de Vendas';
   $('sideLogo').textContent = initials(state.profile.nomeNegocio);
+  document.title = state.profile.nomeNegocio || 'Descomplicou';
   document.querySelectorAll('.admin-only').forEach(e =>
     e.classList.toggle('hidden', state.profile.role !== 'admin')
   );
