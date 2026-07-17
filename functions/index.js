@@ -5,9 +5,11 @@
 //    deles pode chamar essa URL, o navegador da consultora nunca fica sabendo em tempo real sem
 //    isso) e atualiza o carrinho no Firestore.
 //
-// IMPORTANTE — antes do primeiro deploy, confirme os campos abaixo contra a documentação atual em
-// https://developers.infinitepay.io (a Checkout API pública da InfinitePay é vinculada ao "handle"
-// da conta, sem OAuth) — nomes de campo podem ter mudado desde que este código foi escrito.
+// Endpoint conferido em 17/07/2026 (busca cruzada, dois exemplos independentes de integração real
+// batendo no mesmo endpoint) — a API não é autenticada por chave, é vinculada ao "handle" (@usuário)
+// da conta InfinitePay mandado no corpo de cada requisição. IMPORTANTE: o webhook_url NÃO precisa
+// ser cadastrado em nenhum painel da InfinitePay — ele vai dentro do corpo desta mesma chamada
+// (campo webhook_url logo abaixo), a cada link de cobrança criado.
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -17,12 +19,12 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Token só nosso (gerado por você, não é segredo da InfinitePay) — vai como query string na URL
-// do webhook que registramos na InfinitePay. Sem ele, qualquer um que descobrisse a URL do webhook
-// poderia forjar uma confirmação de pagamento falsa. Configure com:
+// que passamos como webhook_url pra InfinitePay chamar de volta. Sem ele, qualquer um que
+// descobrisse a URL do webhook poderia forjar uma confirmação de pagamento falsa. Configure com:
 //   firebase functions:secrets:set WEBHOOK_TOKEN
 const WEBHOOK_TOKEN = defineSecret('WEBHOOK_TOKEN');
 
-const INFINITEPAY_CHECKOUT_URL = 'https://api.infinitepay.io/invoices/public/checkout/links';
+const INFINITEPAY_CHECKOUT_URL = 'https://api.checkout.infinitepay.io/links';
 
 // Gera o link/QR Code de cobrança pra um carrinho já existente. Chamado do navegador via
 // httpsCallable — o SDK do Firebase já manda o token de auth da consultora, então dá pra validar
