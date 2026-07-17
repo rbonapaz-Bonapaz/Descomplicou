@@ -419,12 +419,14 @@ async function renderBioSecurityBox() {
 }
 
 // Prévia instantânea das cores personalizadas — aplica direto no :root sem gravar nada, só pra
-// consultora ver o resultado antes de decidir salvar (ou descartar recarregando a página).
+// consultora ver o resultado antes de decidir salvar (ou descartar recarregando a página). Mantém o
+// campo de texto hex em sincronia com o seletor visual, pros dois sempre mostrarem a mesma cor.
 export function previewTema() {
-  aplicarTemaPersonalizado({
-    corFundo: $('perCorFundo')?.value || '',
-    corPrimaria: $('perCorPrimaria')?.value || ''
-  });
+  const fundo = $('perCorFundo')?.value || '';
+  const cor = $('perCorPrimaria')?.value || '';
+  if ($('perCorFundoHex')) $('perCorFundoHex').value = fundo;
+  if ($('perCorPrimariaHex')) $('perCorPrimariaHex').value = cor;
+  aplicarTemaPersonalizado({ corFundo: fundo, corPrimaria: cor });
 }
 
 // O <input type="color"> não aceita digitar hex direto (só o seletor visual) — este campo de texto
@@ -476,6 +478,7 @@ export async function savePerfil() {
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });
   state.profile = { ...state.profile, ...d };
+  aplicarTemaPersonalizado(state.profile); // aplica na hora, sem depender do ciclo de refresh
   window.App.refresh('Personalização salva');
 }
 

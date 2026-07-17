@@ -235,9 +235,15 @@ export function aplicarTemaPersonalizado(perfil) {
   if (cor && /^#[0-9a-fA-F]{6}$/.test(cor)) {
     root.setProperty('--p', cor);
     root.setProperty('--ps', sombrearCor(cor, -0.15));
+    // Botões de ação principais (.btn.dark) também assumem a cor escolhida — sem isso a
+    // personalização quase não aparecia (só títulos/links mudavam, os botões seguiam navy fixo).
+    // Só sobrescreve quando há cor personalizada: sem personalização, --btn-dark fica indefinido e
+    // o CSS cai no navy padrão (var(--text)), preservando o visual de quem não mexeu nas cores.
+    root.setProperty('--btn-dark', sombrearCor(cor, -0.08));
   } else {
     root.removeProperty('--p');
     root.removeProperty('--ps');
+    root.removeProperty('--btn-dark');
   }
   if (fundo && /^#[0-9a-fA-F]{6}$/.test(fundo)) root.setProperty('--bg', fundo);
   else root.removeProperty('--bg');
