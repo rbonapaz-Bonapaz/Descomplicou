@@ -114,8 +114,9 @@ export function renderPerfil() {
       <p class="muted">Máximo de parcelas, juro cobrado da cliente, custo da maquininha e link de cobrança agora ficam no cadastro de cada <b>operadora</b> (abaixo) — quem assume o juro em cada venda é escolhido direto no carrinho. Aqui só fica o checkout automático da InfinitePay.</p>
       <div class="grid">
         <div class="field"><label>Handle da InfinitePay (@usuário)</label><input id="perInfinitePayHandle" placeholder="Ex: minhaloja" value="${esc(p.infinitePayHandle || '')}"></div>
+        <div class="field"><label>CPF/CNPJ da conta InfinitePay</label><input id="perInfinitePayDoc" placeholder="Só números" value="${esc(p.infinitePayDoc || '')}"></div>
       </div>
-      <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar cobrança InfinitePay" no carrinho — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar.</p><br>
+      <p class="muted" style="font-size:12px;margin-top:8px">O handle da InfinitePay (o @usuário da sua conta de recebedor) libera o botão "💳 Gerar cobrança InfinitePay" no carrinho — gera um link/QR Code de pagamento de verdade e confirma sozinho quando a cliente pagar. O CPF/CNPJ (só números, sem pontuação) libera o botão "📲 Cobrar por aproximação" — abre o app da InfinitePay no celular já com o valor pronto pra encostar o cartão.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
     </div>
 
@@ -349,6 +350,7 @@ export async function savePerfil() {
     diasAgendaPainel: $('perDiasAgenda') ? Number($('perDiasAgenda').value || 0) : (p.diasAgendaPainel || 0),
     mensagemPadrao: $('perMsg')?.value ?? p.mensagemPadrao ?? '',
     infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').trim().replace(/^@/, ''),
+    infinitePayDoc: ($('perInfinitePayDoc')?.value ?? p.infinitePayDoc ?? '').replace(/\D/g, ''),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });

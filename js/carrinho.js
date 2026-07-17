@@ -87,6 +87,47 @@ function infinitePayCheckoutHtml(id, carr) {
   return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar cobrança InfinitePay</button></div>`;
 }
 
+function ehDispositivoMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// Botão do InfiniteTap (cobrança por aproximação) — deep link que abre o app da InfinitePay no
+// celular já com valor, parcelas e forma de pagamento prontos, pra encostar o cartão físico da
+// cliente na tela (o próprio celular vira a maquininha via NFC). Só faz sentido em celular (não
+// há NFC de cartão físico em desktop) e com handle + CPF/CNPJ cadastrados em Minha Conta.
+function cobrarPorAproximacaoHtml(id, carr) {
+  if (carr.pagamento !== 'Cartão' || !ehDispositivoMobile()) return '';
+  if (!state.profile?.infinitePayHandle || !state.profile?.infinitePayDoc) return '';
+  if (!Number(carr.totalPedido || 0)) return '';
+  return `<div style="margin-top:10px"><button class="btn" onclick="App.cobrarPorAproximacao('${id}')">📲 Cobrar por aproximação</button></div>`;
+}
+
+// Esquema e parâmetros conferidos em 17/07/2026 (doc oficial via busca cruzada) — exemplo real:
+// infinitepaydash://infinitetap-app?amount=100&payment_method=credit&installments=1&order_id=3262
+// &result_url=...&app_client_referrer=...&handle=...&doc_number=...&af_force_deeplink=true
+export function cobrarPorAproximacao(carrinhoId) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  if (!carr) return;
+  const handle = state.profile?.infinitePayHandle;
+  const doc = state.profile?.infinitePayDoc;
+  if (!handle || !doc) return toast('Cadastre o handle e o CPF/CNPJ da InfinitePay em Minha Conta → Pagamento primeiro.');
+  const amount = Math.round(Number(carr.totalPedido || 0) * 100);
+  if (amount <= 0) return toast('Este carrinho não tem valor a cobrar.');
+  const ehDebito = carr.cartaoTipo === 'Débito';
+  const params = new URLSearchParams({
+    amount: String(amount),
+    payment_method: ehDebito ? 'debit' : 'credit',
+    installments: String(ehDebito ? 1 : Math.max(1, Number(carr.parcelas || 1))),
+    order_id: carrinhoId,
+    result_url: 'https://rbonapaz-bonapaz.github.io/Descomplicou/',
+    app_client_referrer: 'DescomplicouCRM',
+    handle,
+    doc_number: doc,
+    af_force_deeplink: 'true'
+  });
+  window.location.href = `infinitepaydash://infinitetap-app?${params.toString()}`;
+}
+
 function parcelamentoHtml(id, carr) {
   if (carr.pagamento !== 'Cartão' && carr.pagamento !== 'Link de pagamento') return '';
   const cfg = state.profile || {};
@@ -109,6 +150,7 @@ function parcelamentoHtml(id, carr) {
       ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
       ${prazoRecebimentoHtml(carr)}
     ${infinitePayCheckoutHtml(id, carr)}
+    ${cobrarPorAproximacaoHtml(id, carr)}
     </div>`;
   }
 
@@ -137,6 +179,7 @@ function parcelamentoHtml(id, carr) {
     ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
     ${prazoRecebimentoHtml(carr)}
     ${infinitePayCheckoutHtml(id, carr)}
+    ${cobrarPorAproximacaoHtml(id, carr)}
   </div>`;
 }
 
