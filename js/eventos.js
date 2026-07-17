@@ -259,7 +259,10 @@ function coletarDadosFormEvento() {
   const perfilPublico = {
     nome: p.nome || '', nomeNegocio: p.nomeNegocio || '', genero: p.genero || '',
     instagram: p.instagram || '', linkLoja: p.linkLoja || '', whatsapp: p.whatsapp || '',
-    foto: p.fotoPerfil || state.user?.photoURL || ''
+    foto: p.fotoPerfil || state.user?.photoURL || '',
+    // Cores personalizadas (item de tema visual) — sem isso, o link público de evento sempre ficava
+    // no rosa padrão, ignorando a marca que a consultora configurou em Minha Conta.
+    corPrimaria: p.corPrimaria || '', corFundo: p.corFundo || ''
   };
 
   return {
@@ -399,10 +402,16 @@ export async function confirmarEditarEvento(id) {
   const dados = coletarDadosFormEvento();
   if (!dados) return;
 
-  const payload = { ...dados, atualizadoEm: serverTimestamp() };
+  // Editar SEMPRE reativa o link (ativo:true) — sem isso, um evento auto-desativado por vigência
+  // vencida (ver desativarEventosExpirados) continuava desativado mesmo depois de a consultora
+  // estender a data pra uma vigência futura, porque o merge:true do Firestore só toca nos campos
+  // que o payload manda, e "ativo" nunca entrava aqui (só entrava na criação). A consultora sempre
+  // pode desativar de novo manualmente por outro caminho, se quiser.
+  const payload = { ...dados, ativo: true, atualizadoEm: serverTimestamp() };
   try {
     await setDoc(ref('eventos', id), payload, { merge: true });
     await setDoc(doc(db, 'eventosPublicos', id), payload, { merge: true });
+    eventosJaChecados.delete(id); // reavalia a vigência do zero na próxima checagem
     closeModal();
     window.App.refresh('Evento atualizado');
   } catch (e) {

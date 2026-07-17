@@ -92,6 +92,7 @@ function ordenarVendas(items) {
   if (!field) return items;
   const mul = dir === 'desc' ? -1 : 1;
   const val = c => {
+    if (field === 'numero') return Number(c.numeroPedido || 0);
     if (field === 'itens') return (c.itens || []).length;
     if (field === 'total') return Number(c.totalPedido || 0);
     if (field === 'lucro') return Number(c.lucroTotal || 0);
@@ -112,7 +113,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
 
   return `<div style="margin-top:16px"><h4>${titulo}</h4>
     <div class="table"><table><thead><tr>
-      <th>Nº</th>${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
+      ${thSort('Nº', 'numero', sortKey, 'vendasSort')}${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
     </tr></thead><tbody>${ordenarVendas(items).map(c => {
       const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
       const expandida = vendasExpandidas.has(c.id);

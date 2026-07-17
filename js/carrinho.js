@@ -315,7 +315,7 @@ export function openCarrinho(id) {
     <div class="panel" style="margin-top:12px">
       <h4>Itens do carrinho (${itens.length})</h4>
       ${itens.length ? `<div class="table"><table><thead><tr>
-        ${thSortItensCarrinho('Produto', 'nome', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Motivo', 'motivo', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Qtd', 'qtd', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Original', 'original', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Preço Unit.', 'preco', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Desconto', 'desconto', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Total', 'total', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Entrega', 'entrega', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Quando', 'quando', state.filters.carrinhoItensSort, id)}<th></th>
+        <th>Cód.</th>${thSortItensCarrinho('Produto', 'nome', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Motivo', 'motivo', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Qtd', 'qtd', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Original', 'original', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Preço Unit.', 'preco', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Desconto', 'desconto', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Total', 'total', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Entrega', 'entrega', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Quando', 'quando', state.filters.carrinhoItensSort, id)}<th></th>
       </tr></thead><tbody>${ordenarItensCarrinho(itens.map((it, idx) => ({ it, idx })), id).map(({ it, idx }) => {
         const original = Number(it.precoOriginal || it.precoUnitario || 0);
         const temDesconto = original > it.precoUnitario;
@@ -324,6 +324,7 @@ export function openCarrinho(id) {
         // Exclui as reservas deste próprio carrinho pra não contar o item contra ele mesmo.
         const temEstoqueAgora = estoqueDisponivel(it.produtoId, id) >= it.quantidade;
         return `<tr>
+        <td data-label="Cód."><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
         <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
         <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
         <td data-label="Qtd">${it.quantidade}</td>
@@ -413,12 +414,13 @@ function openCarrinhoView(carr) {
       <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || '-')}</b></div>
     </div>
     <div class="table" style="margin-top:12px"><table><thead><tr>
-      <th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço</th><th>Desconto</th><th>Total</th><th>Entrega</th>
+      <th>Cód.</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço</th><th>Desconto</th><th>Total</th><th>Entrega</th>
     </tr></thead><tbody>${itens.map(it => {
       const original = Number(it.precoOriginal || it.precoUnitario || 0);
       const temDesconto = original > it.precoUnitario;
       const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
       return `<tr>
+      <td data-label="Cód."><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
       <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
       <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
       <td data-label="Qtd">${it.quantidade}</td>

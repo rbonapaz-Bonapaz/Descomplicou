@@ -128,7 +128,7 @@ export function renderDashboard() {
 
     ${collapsibleHtml('dashKpis', '<h3>Indicadores</h3>', `
     <div class="cards">
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Carrinhos abertos</span><b>${carrAbertos.length}</b></div>
+      <div class="card clickable" onclick="App.setFilter('vendas','abertos');App.goto('vendas')"><span>Carrinhos abertos</span><b>${carrAbertos.length}</b></div>
       <div class="card clickable" onclick="App.goto('relatorios')"><span>Faturamento 30d</span><b>${money(r.fat)}</b></div>
       <div class="card clickable" onclick="App.goto('relatorios')"><span>Lucro 30d</span><b>${money(r.luc)}</b></div>
       <div class="card clickable" onclick="App.goto('estoque')"><span>Valor em estoque</span><b>${money(s.invest)}</b></div>

@@ -23,7 +23,7 @@ import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, remo
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, filtrarLinhaBaseColetiva,
-  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir,
+  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, editarLinhaCustom, selecionarLinhaParaAtribuir,
   filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos } from './produtos.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
@@ -356,7 +356,7 @@ window.App = {
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, filtrarLinhaBaseColetiva,
-  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos,
+  atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, editarLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos,
   // Catálogo
   selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo, excluirTodoCatalogo,
   toggleOcultarAtual, toggleBeneficiosPdf,

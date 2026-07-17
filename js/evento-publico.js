@@ -26,6 +26,33 @@ let evento = null;
 let wishlist = [];
 let linhaAtiva = 'todas';
 
+// Mesma lógica de utils.js (aplicarTemaPersonalizado), duplicada aqui porque esta página é
+// standalone (não usa state.js/app.js, roda sem login) — sobrescreve --p/--ps/--bg/--btn-dark no
+// :root a partir das cores salvas no snapshot perfilPublico do evento (ver eventos.js).
+function sombrearCor(hex, percent) {
+  const h = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+  const num = parseInt(h, 16);
+  const ajustar = canal => {
+    const v = (num >> canal) & 0xFF;
+    const novo = percent < 0 ? v * (1 + percent) : v + (255 - v) * percent;
+    return Math.max(0, Math.min(255, Math.round(novo)));
+  };
+  const r = ajustar(16), g = ajustar(8), b = ajustar(0);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+}
+function aplicarTemaEvento(perfilPublico) {
+  const root = document.documentElement.style;
+  const cor = perfilPublico?.corPrimaria;
+  const fundo = perfilPublico?.corFundo;
+  if (cor && /^#[0-9a-fA-F]{6}$/.test(cor)) {
+    root.setProperty('--p', cor);
+    root.setProperty('--ps', sombrearCor(cor, -0.15));
+    root.setProperty('--btn-dark', sombrearCor(cor, -0.08));
+  }
+  if (fundo && /^#[0-9a-fA-F]{6}$/.test(fundo)) root.setProperty('--bg', fundo);
+}
+
 function formatDate(d) {
   if (!d) return '';
   const [y, m, dd] = String(d).split('-');
@@ -53,6 +80,7 @@ async function init() {
     onSnapshot(doc(db, 'eventosPublicos', eventoId), (snap) => {
       if (!snap.exists()) return showExpirado();
       evento = snap.data();
+      aplicarTemaEvento(evento.perfilPublico);
       if (evento.ativo === false) return showExpirado();
 
       const agora = new Date();

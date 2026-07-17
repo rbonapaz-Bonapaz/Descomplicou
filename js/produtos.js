@@ -208,6 +208,7 @@ function linhasTabHtml() {
     ${linhas.length ? `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px">${linhas.map(l => `
       <span class="chip ${linhaSelecionadaAtribuir === l ? 'active' : ''}" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px" onclick="App.selecionarLinhaParaAtribuir('${esc(l)}')">
         ${esc(l)}
+        <button style="border:0;background:none;cursor:pointer;font-weight:900" onclick="event.stopPropagation();App.editarLinhaCustom('${esc(l)}')" title="Editar nome da linha">✏️</button>
         <button style="border:0;background:none;cursor:pointer;color:var(--error);font-weight:900" onclick="event.stopPropagation();App.removerLinhaCustom('${esc(l)}')" title="Remover linha">✗</button>
       </span>`).join('')}</div>` : '<p class="muted" style="margin-top:12px">Nenhuma linha cadastrada ainda.</p>'}
   </div>`;
@@ -262,6 +263,43 @@ export async function adicionarLinhaCustom() {
   await setDoc(doc(db, 'users', state.user.uid), { linhasCustom: novas }, { merge: true });
   state.profile = { ...state.profile, linhasCustom: novas };
   window.App.refresh(`Linha "${nome}" adicionada`);
+}
+
+// Renomeia uma linha em cascata (item 23): troca o nome cadastrado E corrige todos os produtos que
+// já usam esse nome (campo p.linha, texto separado por vírgula) — evita "Maquiagem"/"Maquiagens"
+// convivendo pra sempre só porque corrigir um typo exigiria abrir produto por produto.
+export async function editarLinhaCustom(nomeAntigo) {
+  const novo = prompt(`Novo nome para a linha "${nomeAntigo}":`, nomeAntigo)?.trim();
+  if (!novo || novo === nomeAntigo) return;
+  const atuais = state.profile?.linhasCustom || [];
+  if (atuais.some(l => l !== nomeAntigo && norm(l) === norm(novo))) {
+    return toast(`Já existe uma linha "${novo}" — escolha outro nome ou remova a duplicada.`);
+  }
+
+  toast('Atualizando produtos vinculados à linha...');
+
+  // Atualiza o cadastro de linhas da consultora.
+  const novasLinhas = atuais.map(l => l === nomeAntigo ? novo : l);
+  await setDoc(doc(db, 'users', state.user.uid), { linhasCustom: novasLinhas }, { merge: true });
+
+  // Atualização em cascata: todo produto que tem essa linha (comparação normalizada, robusta a
+  // maiúscula/acento) tem o nome trocado dentro do texto composto, preservando as outras linhas do
+  // mesmo produto. writeBatch agrupa tudo numa única viagem ao Firestore (até 500 por lote).
+  const afetados = state.data.produtos.filter(p => linhasDe(p).some(l => norm(l) === norm(nomeAntigo)));
+  if (afetados.length) {
+    const batch = writeBatch(db);
+    afetados.forEach(p => {
+      const novasDoProduto = linhasDe(p).map(l => norm(l) === norm(nomeAntigo) ? novo : l);
+      const linhaTexto = [...new Set(novasDoProduto)].join(', ');
+      p.linha = linhaTexto; // reflete na hora, sem esperar o refresh
+      batch.set(ref('produtos', p.id), { linha: linhaTexto }, { merge: true });
+    });
+    await batch.commit();
+  }
+
+  state.profile = { ...state.profile, linhasCustom: novasLinhas };
+  if (linhaSelecionadaAtribuir === nomeAntigo) linhaSelecionadaAtribuir = novo;
+  window.App.refresh(`Linha renomeada para "${novo}" — ${afetados.length} produto(s) atualizado(s)`);
 }
 
 export async function removerLinhaCustom(nome) {
