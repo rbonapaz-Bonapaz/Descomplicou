@@ -9,7 +9,7 @@ import { gerarBeneficios } from './gemini.js';
 import { CARDS_INTELIGENCIA, SECOES_RELATORIO, ordemSecoes, secaoAtiva, renderRelatorios } from './relatorios.js';
 import { NOMES_DATAS_AUTOMATICAS, carregarDatasComemorativas } from './datasComemorativas.js';
 import { renderOperadorasPanel } from './operadoras.js';
-import { WA_CONTEXTOS_AUTOMATIZAVEIS } from './whatsapp.js';
+import { WA_CONTEXTOS_AUTOMATIZAVEIS, MENSAGENS_EDITAVEIS } from './whatsapp.js';
 import { sincronizarPerfilNosEventos } from './eventos.js';
 
 const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -174,6 +174,18 @@ export function renderPerfil() {
         </div>`).join('')}
       </div>
       <p class="muted" style="font-size:12px;margin-top:12px">Resumo do pedido e link de pagamento não entram aqui — o conteúdo muda a cada pedido (itens, valores), o que não cabe num template fixo aprovado pela Meta. Esses dois continuam sempre manuais.</p>
+    </div>
+
+    <div class="panel">
+      <h3>✏️ Editar textos do WhatsApp (envio manual)</h3>
+      <p class="muted">Reescreva o texto padrão de cada mensagem — vale só pro envio manual (o botão que abre o WhatsApp pra você conferir e mandar). O envio automático usa um template fixo aprovado pela Meta, esse texto não muda por aqui. Deixe em branco pra usar o texto padrão do sistema.</p>
+      <div class="grid" style="margin-top:8px">
+        ${MENSAGENS_EDITAVEIS.map(m => `<div class="field full">
+          <label>${esc(m.label)} <span class="muted" style="text-transform:none;font-weight:400">— use ${m.placeholders} onde quiser que apareça</span></label>
+          <textarea id="perMsg_${m.key}" rows="3" placeholder="Texto padrão do sistema">${esc((p.mensagensPersonalizadas || {})[m.key] || '')}</textarea>
+        </div>`).join('')}
+      </div><br>
+      <button class="btn dark" onclick="App.savePerfil()">Salvar textos</button>
     </div>
 
     <div class="panel">
@@ -484,6 +496,9 @@ export async function savePerfil() {
     corFundo: $('perCorFundo') ? ($('perCorFundoHex')?.value.trim() || $('perCorFundo').value) : (p.corFundo ?? ''),
     corPrimaria: $('perCorPrimaria') ? ($('perCorPrimariaHex')?.value.trim() || $('perCorPrimaria').value) : (p.corPrimaria ?? ''),
     corTexto: $('perCorTexto') ? ($('perCorTextoHex')?.value.trim() || $('perCorTexto').value) : (p.corTexto ?? ''),
+    mensagensPersonalizadas: $('perMsg_aniversario')
+      ? Object.fromEntries(MENSAGENS_EDITAVEIS.map(m => [m.key, ($(`perMsg_${m.key}`)?.value || '').trim()]))
+      : (p.mensagensPersonalizadas ?? {}),
     atualizadoEm: serverTimestamp()
   };
   await setDoc(doc(db, 'users', state.user.uid), d, { merge: true });
