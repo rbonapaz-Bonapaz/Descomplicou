@@ -120,30 +120,6 @@ export async function gerarBeneficios(nomeProduto, linha = '') {
   return chamarGemini(prompt);
 }
 
-// Interpretação de pedido falado/digitado em texto livre (Ações Rápidas → "Adicionar por voz") —
-// mesma chave BYOK acima. A IA só extrai a intenção (cliente citada + produtos com quantidade);
-// o casamento com o catálogo/cliente reais da consultora é feito localmente depois, por
-// normalização de texto — evita mandar o catálogo inteiro no prompt e a IA "inventar" um produto
-// que não existe no cadastro dela.
-export async function interpretarPedidoDeVenda(texto) {
-  if (!texto?.trim()) throw new Error('Digite ou fale o pedido antes de interpretar.');
-
-  const prompt = `Extraia de um pedido de venda falado por uma consultora de cosméticos o nome da cliente e os produtos com quantidade. Frase: "${texto.replace(/"/g, "'")}"
-
-Responda SOMENTE em JSON válido, neste formato exato:
-{"cliente":"nome da cliente mencionada, ou vazio se não citou","itens":[{"produto":"nome do produto como foi dito, sem marca nem tamanho de embalagem","quantidade":numero}]}
-
-Se a quantidade não for dita, use 1. Não invente produtos que não foram citados na frase.`;
-
-  const texto2 = await chamarGemini(prompt, { json: true });
-  let obj;
-  try { obj = JSON.parse(texto2); } catch (e) { throw new Error('Não consegui interpretar a resposta da IA — tente reformular o pedido.'); }
-  const itens = Array.isArray(obj.itens) ? obj.itens
-    .map(i => ({ produto: String(i.produto || '').trim(), quantidade: Math.max(1, Number(i.quantidade) || 1) }))
-    .filter(i => i.produto) : [];
-  return { cliente: String(obj.cliente || '').trim(), itens };
-}
-
 // Interpretação de tabela de taxas de operadora de cartão (Minha Conta → Pagamento → Operadoras)
 // — a consultora cola o texto copiado do app da maquininha (débito, crédito à vista, 2x a 12x,
 // por bandeira) e a IA devolve só os números que reconheceu, sem inventar o que não veio no texto.

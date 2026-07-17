@@ -5,7 +5,6 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
 import { $, esc, filtrarSearchPicker, formatDateBR, porGenero } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
-import { abrirPedidoPorTexto, alternarGravacaoPedidoVoz, interpretarPedidoVoz, confirmarPedidoVoz } from './pedidoTexto.js';
 import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA } from './operadoras.js';
 import { renderClientes, openClienteForm, saveCliente, openCliente360, marcarContatado, excluirCliente, toggleHistoricoVenda,
   gerarSugestaoAbordagemCliente, copiarSugestaoAbordagem, enviarSugestaoAbordagem, removerInteresseCliente } from './clientes.js';
@@ -310,8 +309,6 @@ window.App = {
   concluirAgendamento, confirmarConclusao, cancelarAgendamento,
   reagendarAgendamento, confirmarReagendamento, removerAgendamento, importarDoGoogleAgenda,
   abrirMapaDoCampo, abrirMapaAgendamento, preencherLocalDoCliente, toggleAgendamentoTitulo,
-  // Pedido por voz/texto
-  abrirPedidoPorTexto, alternarGravacaoPedidoVoz, interpretarPedidoVoz, confirmarPedidoVoz,
   // Operadoras de cartão
   abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA,
   // Carrinho

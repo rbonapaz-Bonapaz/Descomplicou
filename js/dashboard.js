@@ -119,8 +119,7 @@ export function renderDashboard() {
       <p class="eyebrow">Seu dia hoje</p>
       <h2>Olá, ${esc((state.profile.nome || state.user.displayName || porGenero(state.profile?.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' })).split(' ')[0])}!</h2>
       <p class="muted" id="dashClock" style="margin:0 0 12px">${relogioStr()}</p>
-      <div class="quick-grid">
-        <div class="quick-card pink" onclick="App.abrirPedidoPorTexto()"><small>🎤 Novo · fale ou digite</small>Adicionar por voz</div>
+      <div class="quick-grid three">
         <div class="quick-card pink" onclick="App.openNovoCarrinho()"><small>⚡ Ação rápida</small>Novo Carrinho</div>
         <div class="quick-card black" onclick="App.openClienteForm()"><small>Cadastrar</small>Novo Cliente</div>
         <div class="quick-card" onclick="App.openAgendamentoForm()"><small>Agendar</small>Atendimento</div>
