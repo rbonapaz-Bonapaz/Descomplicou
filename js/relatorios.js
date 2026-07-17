@@ -219,9 +219,14 @@ export function renderRelatorios() {
   // custo de saídas de estoque que não são venda (brinde/parceria/consumo próprio/perda/ajuste) —
   // itens que saem do estoque sem gerar receita. Trocas ficam de fora: é troca de produto por
   // produto, não dinheiro, então não entra na conta de lucro líquido em R$.
-  const custoSaidasNaoVenda = (state.data.movimentacoesEstoque || [])
-    .filter(m => m.tipo === 'saida' && !m.geraLucro && !String(m.motivo || '').startsWith('Troca') && inPeriod(m.data, d))
-    .reduce((s, m) => s + Number(m.valorFinanceiro || 0), 0);
+  const saidasNaoVendaPeriodo = (state.data.movimentacoesEstoque || [])
+    .filter(m => m.tipo === 'saida' && !m.geraLucro && !String(m.motivo || '').startsWith('Troca') && inPeriod(m.data, d));
+  const custoSaidasNaoVenda = saidasNaoVendaPeriodo.reduce((s, m) => s + Number(m.valorFinanceiro || 0), 0);
+  // Saída registrada com custoUnitario zerado quase sempre é produto sem custo médio cadastrado NA
+  // ÉPOCA da saída (não a situação atual dele) — o valor gravado fica menor do que devia, e por
+  // tabela o lucro líquido (que subtrai esse custo) fica MAIOR do que devia. Avisa em vez de deixar
+  // o número parecer bom escondendo o dado incompleto.
+  const qtdSaidasSemCusto = saidasNaoVendaPeriodo.filter(m => Number(m.quantidade || 0) > 0 && !Number(m.custoUnitario || 0)).length;
   // Fretes pagos à Farmasi nos pedidos de compra (registrados em Estoque → Pré-encomenda) —
   // despesa simples do período, fora do custo médio dos produtos (decisão de 14/07/2026).
   const freteFarmasi = (state.data.despesas || [])
@@ -236,14 +241,12 @@ export function renderRelatorios() {
   // Saídas de estoque que não são venda, agrupadas por motivo (Brinde, Parceria, Consumo próprio,
   // Perda, Ajuste) — trocas ficam de fora daqui porque já têm o próprio painel "Trocas" acima.
   const saidasPorMotivo = {};
-  (state.data.movimentacoesEstoque || [])
-    .filter(m => m.tipo === 'saida' && !m.geraLucro && !String(m.motivo || '').startsWith('Troca') && inPeriod(m.data, d))
-    .forEach(m => {
-      const k = m.motivo || 'Outro';
-      saidasPorMotivo[k] = saidasPorMotivo[k] || { qtd: 0, valor: 0 };
-      saidasPorMotivo[k].qtd += Number(m.quantidade || 0);
-      saidasPorMotivo[k].valor += Number(m.valorFinanceiro || 0);
-    });
+  saidasNaoVendaPeriodo.forEach(m => {
+    const k = m.motivo || 'Outro';
+    saidasPorMotivo[k] = saidasPorMotivo[k] || { qtd: 0, valor: 0 };
+    saidasPorMotivo[k].qtd += Number(m.quantidade || 0);
+    saidasPorMotivo[k].valor += Number(m.valorFinanceiro || 0);
+  });
   const saidasList = Object.entries(saidasPorMotivo).sort((a, b) => b[1].valor - a[1].valor);
 
   // Cards de Inteligência — só calcula os que estão ativados (Minha Conta → Relatórios), evita
@@ -293,7 +296,8 @@ export function renderRelatorios() {
         ${despesasOperacionais > 0 ? `<div class="pedido-total-line"><span>Despesas operacionais</span><b style="color:var(--error)">- ${money(despesasOperacionais)}</b></div>` : ''}
         <div class="pedido-total-line" style="font-size:11pt;border-top:1px solid var(--line);padding-top:6px;margin-top:4px"><span><b>Lucro líquido</b></span><b>${money(lucroLiquido)}</b></div>
       </div>
-      ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}`)}
+      ${tr.total ? `<p class="muted" style="margin-top:10px">🔁 Trocas no total: diferença de valor de ${money(tr.valorEntrada - tr.valorSaida)} (produto por produto, não soma ao lucro líquido em R$).</p>` : ''}
+      ${qtdSaidasSemCusto ? `<div class="alert-box" style="margin-top:10px">⚠️ ${qtdSaidasSemCusto} saída(s) sem venda nesse período foram registradas com custo R$0 (produto sem custo médio cadastrado na época) — o "Custo de brindes/perdas/consumo" acima está <b>subestimado</b>, e o lucro líquido, <b>superestimado</b>. Cadastre o custo médio dos produtos afetados em Produtos.</div>` : ''}`)}
 
     ${collapsibleHtml('relTendencia', '<h3>Tendência de faturamento</h3>', `
       <p class="muted">Faturamento por dia${d === 'all' || Number(d) > 30 ? ' (últimos 30 dias)' : ''}.</p>
@@ -395,7 +399,8 @@ export function renderRelatorios() {
           <p class="muted" style="margin:0 0 8px">Brinde, parceria, consumo próprio, perda e ajuste — o que sai do estoque sem virar receita.</p>
           <div class="list">
             ${saidasList.length ? saidasList.map(([motivo, x]) => `<div class="list-item clickable" onclick="App.goto('estoque')"><div><b>${esc(motivo)}</b><small>${x.qtd} un.</small></div><span class="tag orange">${money(x.valor)}</span></div>`).join('') : '<p class="muted">Nenhuma saída sem venda nesse período.</p>'}
-          </div>`),
+          </div>
+          ${qtdSaidasSemCusto ? `<p class="muted" style="margin-top:8px">⚠️ ${qtdSaidasSemCusto} saída(s) acima com custo R$0 registrado (produto sem custo médio cadastrado na época) — valor real provavelmente maior.</p>` : ''}`),
         curvaAbc: collapsibleHtml('relCurvaAbc', '<h3>Curva ABC detalhada</h3>', `
           <p class="muted" style="margin:0 0 8px">Produtos ordenados por faturamento no período — classe A é quem puxa até 80% do total, B até 95%, C o resto. Foco de reposição/promoção deve ser nos produtos A.</p>
           ${abcDetalhe.length ? `<div class="table"><table><thead><tr>
@@ -423,13 +428,19 @@ export function renderRelatorios() {
         ${thSort('Preço médio', 'precoMedio', relProdSort, 'relProdSort')}
         ${thSort('Faturamento', 'rec', relProdSort, 'relProdSort')}
         ${thSort('Lucro', 'luc', relProdSort, 'relProdSort')}
-      </tr></thead><tbody>${produtosVendidos.map(x => `<tr>
+      </tr></thead><tbody>${produtosVendidos.map(x => {
+        // Lucro igual ao faturamento quase sempre denuncia custo médio zerado/não cadastrado na
+        // época da venda, não que o produto realmente não teve custo nenhum — sinaliza em vez de
+        // deixar parecer 100% de margem de verdade.
+        const semCustoAparente = x.rec > 0.004 && x.luc >= x.rec - 0.004;
+        return `<tr>
         <td data-label="Produto">${esc(x.nome)}</td>
         <td data-label="Qtd vendida">${x.q}</td>
         <td data-label="Preço médio">${money(x.precoMedio)}</td>
         <td data-label="Faturamento">${money(x.rec)}</td>
-        <td data-label="Lucro">${money(x.luc)}</td>
-      </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}`)}</div>`;
+        <td data-label="Lucro">${money(x.luc)}${semCustoAparente ? ' <span title="Lucro = faturamento — provável custo médio não cadastrado na época da venda">⚠️</span>' : ''}</td>
+      </tr>`;
+      }).join('')}</tbody></table></div>` : '<p class="muted">Nenhum produto vendido nesse período.</p>'}`)}</div>`;
 }
 
 // Rótulo do período atual (mesmos chips de state.filters.rel) — usado nos nomes de arquivo
