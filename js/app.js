@@ -161,9 +161,11 @@ async function checkAutoSyncBaseColetiva() {
 document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => goto(b.dataset.page));
 
 function goto(p) {
+  paginaAtiva = p;
   document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   $(p).classList.add('active');
+  RENDER_PAGE[p]?.(); // lazy render: desenha a tela de destino agora, com os dados atuais
   $('eyebrow').textContent = titles[p]?.[2] || '';
   $('title').textContent = titles[p]?.[0] || p;
   $('subtitle').textContent = titles[p]?.[1] || '';
@@ -276,19 +278,25 @@ async function refresh(m = '') {
   if (m) toast(m);
 }
 
+// Mapa página -> função que desenha aquela tela. Fonte única usada tanto pela navegação (goto) quanto
+// pelo setSection e pelas re-renderizações em tempo real.
+const RENDER_PAGE = {
+  dashboard: renderDashboard, clientes: renderClientes, agenda: renderAgenda, vendas: renderVendas,
+  estoque: renderEstoque, produtos: renderProdutos, catalogo: renderCatalogo, relatorios: renderRelatorios,
+  perfil: renderPerfil, admin: renderAdmin, eventos: renderEventos, sobre: renderSobre
+};
+
+// Qual página está visível agora. Começa no Painel (é a que já vem com class "active" no HTML).
+let paginaAtiva = 'dashboard';
+
+// LAZY RENDER: em vez de desenhar as 12 telas de uma vez na abertura (e a cada mudança de dados),
+// desenha SÓ a que está visível. As outras são desenhadas sob demanda quando você navega até elas
+// (em goto), sempre com os dados atuais. Ganho no primeiro "desenho" da tela, principalmente em
+// contas com muitos clientes/produtos. A correção é garantida porque: (a) navegar re-desenha a tela
+// de destino com o estado atual; (b) qualquer mudança de dado (onSnapshot/refresh) re-desenha a tela
+// ativa; (c) os sub-renders isolados (banner de leads, datas) têm guarda pra DOM ausente.
 function renderAll() {
-  renderDashboard();
-  renderClientes();
-  renderAgenda();
-  renderVendas();
-  renderEstoque();
-  renderProdutos();
-  renderCatalogo();
-  renderRelatorios();
-  renderPerfil();
-  renderAdmin();
-  renderEventos();
-  renderSobre();
+  RENDER_PAGE[paginaAtiva]?.();
 }
 
 function setFilter(tipo, val) {
@@ -300,11 +308,9 @@ function setFilter(tipo, val) {
   else renderRelatorios();
 }
 
-const RENDER_BY_PAGE = { admin: () => renderAdmin(), perfil: () => renderPerfil(), produtos: () => renderProdutos(), estoque: () => renderEstoque(), catalogo: () => renderCatalogo(), sobre: () => renderSobre() };
-
 function setSection(pagina, secao) {
   state.section[pagina] = secao;
-  RENDER_BY_PAGE[pagina]?.();
+  RENDER_PAGE[pagina]?.();
 }
 
 // --- Global API ---
