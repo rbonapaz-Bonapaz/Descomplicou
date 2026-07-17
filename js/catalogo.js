@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, addDoc, serverTimestamp, setDoc, ref, toast, writeBatch, db } from './state.js';
-import { $, esc, money, today, norm, withFocusPreserved, sectionTabsHtml, linhasDe, descontoPercent, labelLinha } from './utils.js';
+import { $, esc, money, today, norm, withFocusPreserved, sectionTabsHtml, linhasDe, descontoPercent, labelLinha, logoNegocioHtml } from './utils.js';
 
 // Estado do catálogo. ocultarPrecoAtual => mostra só o preço original (PDF "Preços originais").
 let ocultarPrecoAtual = false;
@@ -195,6 +195,7 @@ function pageHtml(items, title, density) {
       <div class="cat-grid">${items.map(it => pdfCard(it, mostrarBeneficiosPdf && density === 'd-comfy')).join('')}</div>
     </main>
     <footer class="cat-footer">
+      ${logoNegocioHtml(p, 'pdf-foot-logo cat-foot-logo')}
       <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}<br>${esc(p.linkLoja || qrData())}</div>
       <img class="cat-qr" src="${qrUrl()}">
     </footer>

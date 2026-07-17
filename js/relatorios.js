@@ -1,5 +1,5 @@
 import { state, salesAgg, salesAggAnterior, salesTrend, variacao, stockAgg, agendaAgg, lastBuy, diasContatoFrio, toast } from './state.js';
-import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, barChartSvg, donutChartSvg, downloadCSV, thSort, norm, linhasDe, collapsibleHtml } from './utils.js';
+import { $, esc, money, daysSince, pill, normStatusPag, inPeriod, lineChartSvg, barChartSvg, donutChartSvg, downloadCSV, thSort, norm, linhasDe, collapsibleHtml, logoNegocioHtml } from './utils.js';
 import { recommendations } from './dashboard.js';
 
 // Registro dos "Cards de Inteligência" — cada consultora escolhe quais quer ver (Minha Conta →
@@ -495,6 +495,7 @@ export function gerarPdfRelatorio() {
       </table>
     </main>
     <footer class="pdf-footer">
+      ${logoNegocioHtml(p)}
       <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || '')}</div>
     </footer>
   </section>`;

@@ -161,7 +161,7 @@ function pixCheckoutHtml(id, carr) {
   }
   const total = Number(carr.totalPedido || 0);
   const codigo = gerarPixCopiaECola({
-    chave, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade, valor: total, txid: id.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
+    chave, tipoChave: state.profile?.pixChaveTipo, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade, valor: total, txid: id.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
   });
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=${encodeURIComponent(codigo)}`;
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
@@ -872,7 +872,7 @@ export async function copiarCodigoPix(carrinhoId) {
   const chave = (state.profile?.pixChave || '').trim();
   if (!chave) return toast('Cadastre sua Chave Pix em Minha Conta → Pagamento primeiro.');
   const codigo = gerarPixCopiaECola({
-    chave, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade,
+    chave, tipoChave: state.profile?.pixChaveTipo, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade,
     valor: Number(carr.totalPedido || 0), txid: carrinhoId.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
   });
   try {

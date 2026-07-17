@@ -1,5 +1,5 @@
 import { state, carrinhoById, cliById, numeroPedidoLabel } from './state.js';
-import { $, esc, money, normStatusPag, descontoPercent } from './utils.js';
+import { $, esc, money, normStatusPag, descontoPercent, logoNegocioHtml } from './utils.js';
 import { calcCustoCartao } from './carrinho.js';
 
 export function gerarPdfCliente(carrinhoId) {
@@ -135,6 +135,7 @@ function gerarPdf(carr, interno) {
 
   html += `</main>
     <footer class="pdf-footer">
+      ${logoNegocioHtml(p)}
       <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
     </footer>
   </section>`;

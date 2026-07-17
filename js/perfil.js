@@ -1,6 +1,6 @@
 import { state, SECTIONS, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
   auth, GoogleAuthProvider, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from './state.js';
-import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml } from './utils.js';
+import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml, normalizarChavePix } from './utils.js';
 import { biometriaDisponivel, temBiometriaAtiva } from './biometria.js';
 import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
@@ -15,6 +15,7 @@ const MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
 export function renderPerfil() {
   const p = state.profile || {};
   const foto = p.fotoPerfil || state.user?.photoURL || '';
+  const logo = p.logoNegocio || '';
   const sec = state.section.perfil;
   let html = sectionTabsHtml('perfil', SECTIONS.perfil, sec);
 
@@ -27,6 +28,14 @@ export function renderPerfil() {
           <label class="btn dark small">Carregar foto<input type="file" accept="image/*" style="display:none" onchange="App.carregarFotoPerfil(this.files[0])"></label>
           ${p.fotoPerfil ? '<button class="btn ghost small" style="color:var(--error);margin-left:6px" onclick="App.removerFotoPerfil()">Remover</button>' : ''}
           <p class="muted" style="margin:6px 0 0;font-size:12px">JPG ou PNG. A imagem é reduzida automaticamente.</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <img id="perLogoPrev" src="${esc(logo)}" alt="" style="width:72px;height:72px;border-radius:14px;object-fit:contain;background:#EEF1F5;box-shadow:var(--ring);${logo ? '' : 'visibility:hidden'}" onerror="this.style.visibility='hidden'">
+        <div>
+          <label class="btn dark small">Carregar logo do negócio (opcional)<input type="file" accept="image/*" style="display:none" onchange="App.carregarLogoNegocio(this.files[0])"></label>
+          ${logo ? '<button class="btn ghost small" style="color:var(--error);margin-left:6px" onclick="App.removerLogoNegocio()">Remover</button>' : ''}
+          <p class="muted" style="margin:6px 0 0;font-size:12px">Opcional — aparece no cabeçalho do catálogo e no rodapé dos PDFs (pedido e relatório) no lugar/junto do nome do negócio. Sem logo, tudo continua como hoje (só texto).</p>
         </div>
       </div>
       <div class="grid">
@@ -113,10 +122,22 @@ export function renderPerfil() {
       <h3>Pix</h3>
       <p class="muted">Chave usada pra gerar o QR Code de Pix direto no carrinho — sem taxa, sem chamar nenhuma API externa (o CRM monta o código na hora, com o valor exato do pedido).</p>
       <div class="grid">
-        <div class="field"><label>Chave Pix padrão</label><input id="perPixChave" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória" value="${esc(p.pixChave || '')}"></div>
+        <div class="field"><label>Tipo da chave</label>
+          <select id="perPixTipo" onchange="App.atualizarPreviewPix()">
+            <option value="auto" ${(!p.pixChaveTipo || p.pixChaveTipo === 'auto') ? 'selected' : ''}>Detectar automaticamente</option>
+            <option value="cpf" ${p.pixChaveTipo === 'cpf' ? 'selected' : ''}>CPF</option>
+            <option value="cnpj" ${p.pixChaveTipo === 'cnpj' ? 'selected' : ''}>CNPJ</option>
+            <option value="celular" ${p.pixChaveTipo === 'celular' ? 'selected' : ''}>Celular</option>
+            <option value="email" ${p.pixChaveTipo === 'email' ? 'selected' : ''}>E-mail</option>
+            <option value="aleatoria" ${p.pixChaveTipo === 'aleatoria' ? 'selected' : ''}>Chave aleatória</option>
+          </select>
+        </div>
+        <div class="field"><label>Chave Pix padrão</label><input id="perPixChave" placeholder="CPF/CNPJ, e-mail, telefone ou chave aleatória" value="${esc(p.pixChave || '')}" oninput="App.atualizarPreviewPix()"></div>
         <div class="field"><label>Nome do titular</label><input id="perPixTitular" placeholder="Como aparece na conta do banco" value="${esc(p.pixTitular || p.nome || '')}"></div>
       </div>
-      <p class="muted" style="font-size:12px;margin-top:8px">Exigido pelo Banco Central pra montar o QR Code — sem esses dois campos preenchidos, o Pix no carrinho não aparece.</p><br>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">Chave que vai pro QR Code, exatamente como o app do seu banco vai ler — <b>confira contra o seu app bancário antes de usar com clientes de verdade</b>:</p>
+      <p id="perPixPreview" style="font-family:monospace;font-size:13px;font-weight:700;background:#F3F6FA;border-radius:8px;padding:8px 10px;margin:4px 0 0;word-break:break-all"></p>
+      <p class="muted" style="font-size:12px;margin-top:8px">Exigido pelo Banco Central pra montar o QR Code. CPF/CNPJ e celular são gravados só com números (pontuação removida sozinha); celular ganha o +55 e o DDD automaticamente — se a chave acima não bater com o número/documento certo do seu banco, o Pix cai como "conta não encontrada" ao escanear. Sem chave e titular preenchidos, o Pix no carrinho não aparece.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
     </div>
 
@@ -252,6 +273,22 @@ export function renderPerfil() {
 
   $('perfil').innerHTML = html;
   if (sec === 'seguranca') renderBioSecurityBox();
+  if (sec === 'pagamento') atualizarPreviewPix();
+}
+
+// Prévia ao vivo da chave Pix normalizada (item: correção do erro "conta não encontrada") — mostra
+// exatamente o texto que vai dentro do QR Code, pra consultora conferir contra o próprio app do
+// banco ANTES de gerar uma cobrança de verdade. Ambiguidade clássica: celular com DDD igual ao
+// prefixo do país (DDD 55) ou CPF/celular com a mesma quantidade de dígitos (11) só se resolve com
+// o tipo escolhido manualmente + essa conferência visual — o sistema não tem como adivinhar sozinho
+// com 100% de certeza.
+export function atualizarPreviewPix() {
+  const el = $('perPixPreview');
+  if (!el) return;
+  const chave = $('perPixChave')?.value || '';
+  const tipo = $('perPixTipo')?.value || 'auto';
+  const normalizada = normalizarChavePix(chave, tipo);
+  el.textContent = normalizada || '(preencha a chave acima)';
 }
 
 // Link de indicação: leva o próprio uid como código — simples, sem precisar de um registro
@@ -366,6 +403,7 @@ export async function savePerfil() {
     // letra nenhuma do handle real, só remove esses dois símbolos de onde aparecerem.
     infinitePayHandle: ($('perInfinitePayHandle')?.value ?? p.infinitePayHandle ?? '').replace(/[@$]/g, '').trim().toLowerCase(),
     infinitePayDoc: ($('perInfinitePayDoc')?.value ?? p.infinitePayDoc ?? '').replace(/\D/g, ''),
+    pixChaveTipo: $('perPixTipo')?.value ?? p.pixChaveTipo ?? 'auto',
     pixChave: ($('perPixChave')?.value ?? p.pixChave ?? '').trim(),
     pixTitular: ($('perPixTitular')?.value ?? p.pixTitular ?? '').trim(),
     atualizadoEm: serverTimestamp()
@@ -393,6 +431,29 @@ export async function removerFotoPerfil() {
   await setDoc(doc(db, 'users', state.user.uid), { fotoPerfil: '', atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, fotoPerfil: '' };
   window.App.refresh('Foto removida');
+}
+
+// Logo do negócio (opcional) — diferente da foto pessoal acima: usado no cabeçalho do catálogo e
+// no rodapé dos PDFs (pedido e relatório) quando cadastrado, sem substituir a foto pessoal em
+// nenhum lugar. Mesma redução de tamanho da foto; guardado em campo próprio (logoNegocio).
+export async function carregarLogoNegocio(file) {
+  if (!file) return;
+  try {
+    const dataUrl = await fileToDataURL(file, 400, 0.85);
+    const prev = $('perLogoPrev');
+    if (prev) { prev.src = dataUrl; prev.style.visibility = 'visible'; }
+    await setDoc(doc(db, 'users', state.user.uid), { logoNegocio: dataUrl, atualizadoEm: serverTimestamp() }, { merge: true });
+    state.profile = { ...state.profile, logoNegocio: dataUrl };
+    window.App.refresh('Logo atualizado');
+  } catch (e) {
+    toast('Não foi possível carregar o logo: ' + e.message);
+  }
+}
+
+export async function removerLogoNegocio() {
+  await setDoc(doc(db, 'users', state.user.uid), { logoNegocio: '', atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, logoNegocio: '' };
+  window.App.refresh('Logo removido');
 }
 
 export async function conectarGoogleAgendaUI() {

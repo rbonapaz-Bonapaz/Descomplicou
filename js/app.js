@@ -33,6 +33,7 @@ import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalo
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
 import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio } from './relatorios.js';
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
+  carregarLogoNegocio, removerLogoNegocio, atualizarPreviewPix,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,
@@ -346,6 +347,7 @@ window.App = {
   renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio, toggleColapsavel,
   // Perfil
   renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
+  carregarLogoNegocio, removerLogoNegocio, atualizarPreviewPix,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
   apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,

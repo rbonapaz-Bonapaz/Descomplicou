@@ -233,10 +233,52 @@ function limparAsciiPix(s, max) {
     .replace(/[^\x20-\x7E]/g, '').trim().slice(0, max).toUpperCase();
 }
 
+// Detecta o tipo da chave Pix quando o tipo não foi informado ("auto"). CPF e celular ambos podem
+// ter 11 dígitos — por isso o perfil tem um seletor manual; esta detecção é só o palpite de reserva.
+function detectarTipoChavePix(raw) {
+  if (raw.includes('@')) return 'email';
+  // Chave aleatória (UUID): tem letras e/ou hifens no meio do texto.
+  if (/[a-zA-Z]/.test(raw) || raw.includes('-')) return 'aleatoria';
+  const d = raw.replace(/\D/g, '');
+  if (d.length === 14) return 'cnpj';
+  if (d.length === 11) return 'cpf'; // palpite: CPF é a chave mais comum com 11 dígitos
+  if (d.length === 10 || d.length === 12 || d.length === 13) return 'celular';
+  return 'aleatoria';
+}
+
+// Normaliza a chave pro formato EXATO que o banco tem registrado — é a causa nº1 de "conta não
+// encontrada" ao escanear: CPF/CNPJ/celular com pontuação, ou celular sem o +55, não batem com a
+// chave cadastrada. CPF/CNPJ viram só dígitos; celular vira E.164 (+55DDDnúmero); e-mail minúsculo;
+// aleatória fica como está.
+export function normalizarChavePix(chave, tipo) {
+  const raw = String(chave || '').trim();
+  if (!raw) return '';
+  const t = (tipo && tipo !== 'auto') ? tipo : detectarTipoChavePix(raw);
+  const digitos = raw.replace(/\D/g, '');
+  switch (t) {
+    case 'cpf': return digitos.slice(0, 11);
+    case 'cnpj': return digitos.slice(0, 14);
+    case 'email': return raw.toLowerCase();
+    case 'celular': {
+      // 10-11 dígitos = DDD + número, sem o código do país → prefixa 55. 12-13 já vêm com o 55.
+      const comPais = (digitos.length === 10 || digitos.length === 11) ? '55' + digitos : digitos;
+      return '+' + comPais;
+    }
+    default: return raw; // aleatória — enviada exatamente como cadastrada
+  }
+}
+
+// Logo do negócio (opcional, Minha Conta → Conta) no rodapé dos PDFs (pedido, relatório, catálogo)
+// — some sozinho quando não cadastrado, sem afetar o layout de quem só usa o nome em texto.
+export function logoNegocioHtml(p, cls = 'pdf-foot-logo') {
+  const logo = p?.logoNegocio || '';
+  return logo ? `<img src="${esc(logo)}" alt="" class="${cls}">` : '';
+}
+
 // Gera o BR Code (Pix Copia e Cola) estático: chave + valor exato do pedido, sem taxa de
 // intermediário nenhuma — é o mesmo texto que vira o QR Code exibido no carrinho.
-export function gerarPixCopiaECola({ chave, titular, cidade, valor, txid }) {
-  const chaveClean = String(chave || '').trim();
+export function gerarPixCopiaECola({ chave, tipoChave, titular, cidade, valor, txid }) {
+  const chaveClean = normalizarChavePix(chave, tipoChave);
   if (!chaveClean) return '';
   const merchantAccount = tlv('00', 'br.gov.bcb.pix') + tlv('01', chaveClean);
   const nomeClean = limparAsciiPix(titular, 25) || 'RECEBEDOR';
