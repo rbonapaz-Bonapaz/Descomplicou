@@ -186,7 +186,7 @@ export function openTroca(id) {
       <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${id}')">🗑️ Excluir troca</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>
-  </div>`);
+  </div>`, { wide: true });
 }
 
 export async function toggleTrocaOpt(id, campo, valor) {

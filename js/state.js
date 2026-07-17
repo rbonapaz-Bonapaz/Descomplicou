@@ -74,8 +74,12 @@ export function toast(m) {
 // barrinha flutuante pra restaurar — dá pra navegar pelo resto do sistema no meio de um carrinho/
 // troca/formulário e voltar exatamente de onde parou. Abrir outra janela substitui a minimizada
 // (uma janela por vez — os dados de carrinho/troca já são salvos a cada mudança, nada se perde).
-export function showModal(h) {
+// `wide:true` amplia o modal no desktop (item 19) — usado pelas telas complexas (Carrinho, Trocas)
+// cujas tabelas internas esmagavam/quebravam linha na largura padrão de 980px. Sempre reseta a
+// classe (add/remove) a cada chamada, nunca herda o estado do modal anterior.
+export function showModal(h, { wide = false } = {}) {
   $('modalCard').innerHTML = `<button class="modal-min" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>` + h;
+  $('modalCard').classList.toggle('modal-wide', wide);
   $('modal').classList.remove('hidden');
   $('modalMinBar')?.classList.add('hidden');
 }

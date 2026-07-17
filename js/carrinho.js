@@ -395,7 +395,7 @@ export function openCarrinho(id) {
       <button class="btn small" style="color:var(--error)" onclick="App.cancelarCarrinho('${id}')">✗ Cancelar</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>
-  </div>`);
+  </div>`, { wide: true });
 
   preencherPrecoItem();
 }
@@ -432,7 +432,7 @@ function openCarrinhoView(carr) {
     }).join('')}</tbody></table></div>
     ${carr.status !== 'cancelado' ? pagamentoResumoHtml(carr) : ''}
     ${carr.observacoes ? `<p class="muted" style="margin-top:8px">${esc(carr.observacoes)}</p>` : ''}
-    <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
+    <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`, { wide: true });
 }
 
 // Decide o status de pagamento sozinho a partir do valor efetivamente recebido — evita ficar
