@@ -271,8 +271,13 @@ async function loadAll() {
   if (cfg && cfg.exists()) state.config = { ...state.config, ...cfg.data() };
 }
 
-async function refresh(m = '') {
-  await loadAll();
+// NÃO re-lê o banco (loadAll) a cada chamada — os onSnapshot de setupListeners já mantêm
+// state.data atualizado em tempo real (inclusive preço/estoque/quantidade), e o Firestore aplica
+// a mutação no cache local + dispara o listener correspondente ANTES do próprio setDoc/addDoc
+// resolver, então por aqui os dados já estão frescos. loadAll() só roda uma vez, no login inicial
+// (onAuthStateChanged) — chamá-lo de novo em toda ação (~100 pontos do app chamam refresh) fazia o
+// app reler as 12 coleções inteiras à toa, inflando muito a cota de leituras do Firestore.
+function refresh(m = '') {
   renderAll();
   setupUI();
   if (m) toast(m);
