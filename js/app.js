@@ -170,6 +170,10 @@ function goto(p) {
   $('title').textContent = titles[p]?.[0] || p;
   $('subtitle').textContent = titles[p]?.[1] || '';
   window.scrollTo({ top: 0 }); // no celular, trocar de página deve voltar ao topo do conteúdo
+  // O menu de cima é uma fileira horizontal que rola de lado (mobile) — sem isso, clicar num botão
+  // fora da parte visível deixava ele "sumido" fora da tela depois do clique, dando sensação de
+  // salto/desalinhamento. Centraliza sozinho o botão ativo dentro da fileira.
+  document.querySelector('#nav button.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
 }
 
 // Captura o "?ref=uid" da URL de indicação assim que a página carrega (antes do login terminar)
