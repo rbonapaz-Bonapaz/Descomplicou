@@ -112,30 +112,6 @@ export function renderPerfil() {
           <button style="border:0;background:none;cursor:pointer;font-weight:900" onclick="App.editarDataComemorativa('${esc(d.nome)}')" title="Editar">✏️</button>
           <button style="border:0;background:none;cursor:pointer;color:var(--error);font-weight:900" onclick="App.removerDataComemorativa('${esc(d.nome)}')" title="Remover">✗</button>
         </span>`).join('')}</div>` : '<p class="muted" style="margin-top:12px">Nenhuma data personalizada cadastrada ainda.</p>'}
-    </div>
-
-    <div class="panel">
-      <h3>📅 Sincronizar com Google Agenda</h3>
-      <p class="muted">Cria um calendário dedicado na sua conta Google com o nome que você escolher, e espelha lá os agendamentos criados/editados no CRM. A conexão dura cerca de 1h por vez — se parar de sincronizar, é só clicar em "Reconectar".</p>
-      <div class="grid">
-        <div class="field full"><label>Nome da agenda no Google</label><input id="perNomeAgendaGoogle" value="${esc(p.nomeAgendaGoogle || `Agenda - ${p.nomeNegocio || 'CRM de Vendas'}`)}"></div>
-      </div><br>
-      ${p.googleCalendarId
-      ? `<span class="pill green">✓ Conectada</span>
-          <button class="btn small" style="margin-left:8px" onclick="App.conectarGoogleAgendaUI()">🔄 Reconectar</button>
-          <button class="btn small ghost" style="color:var(--error);margin-left:8px" onclick="App.desconectarGoogleAgendaUI()">Desconectar</button>`
-      : `<button class="btn dark" onclick="App.conectarGoogleAgendaUI()">🔗 Conectar Google Agenda</button>`}
-    </div>
-
-    <div class="panel">
-      <h3>✨ Assistente de IA (Gemini)</h3>
-      <p class="muted">Cole sua própria chave de API do Gemini para usar o botão "✨ Gerar com IA" no cadastro de produtos (sugere benefícios a partir do nome) e o botão "🤖 Gerar Sugestão de Abordagem" no Cliente 360 (sugere uma mensagem de WhatsApp personalizada com base no histórico da cliente). A chave fica salva só na sua conta e a chamada é feita direto do seu navegador para o Google — não passa por nenhum servidor nosso.</p>
-      <div class="grid">
-        <div class="field full"><label>Chave de API do Gemini</label><input type="password" id="perGeminiKey" placeholder="Cole aqui sua chave" value="${esc(p.geminiApiKey || '')}"></div>
-      </div>
-      <p class="muted" style="font-size:12px">Não tem uma chave? Crie gratuitamente em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
-      <button class="btn dark" onclick="App.salvarGeminiKey()">Salvar chave</button>
-      ${p.geminiApiKey ? '<span class="pill green" style="margin-left:8px">✓ Configurada</span>' : ''}
     </div>`;
   }
 
@@ -177,8 +153,9 @@ export function renderPerfil() {
     ${renderOperadorasPanel()}`;
   }
 
-  if (sec === 'whatsapp') {
+  if (sec === 'integracoes') {
     const auto = p.waAutomatico || {};
+    const ultimaSinc = p.baseColetivaUltimaSincronizacao?.toDate ? formatDateBR(p.baseColetivaUltimaSincronizacao.toDate().toISOString().slice(0, 10)) + ' às ' + p.baseColetivaUltimaSincronizacao.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'nunca';
     html += `<div class="panel">
       <h3>💬 WhatsApp — automático ou manual</h3>
       <p class="muted">Escolha, mensagem por mensagem, se o botão de WhatsApp manda sozinho (API oficial da Meta, sem abrir nada) ou abre o WhatsApp Web/app pra você revisar e enviar na mão. Fica desligado até você ligar — e automático só funciona depois que a WhatsApp Cloud API estiver configurada (veja <code>docs/whatsapp-cloud-api.md</code>) e o template correspondente aprovado na Meta; sem isso, cai sozinho pro manual com um aviso.</p>
@@ -189,6 +166,46 @@ export function renderPerfil() {
         </div>`).join('')}
       </div>
       <p class="muted" style="font-size:12px;margin-top:12px">Resumo do pedido e link de pagamento não entram aqui — o conteúdo muda a cada pedido (itens, valores), o que não cabe num template fixo aprovado pela Meta. Esses dois continuam sempre manuais.</p>
+    </div>
+
+    <div class="panel">
+      <h3>📅 Sincronizar com Google Agenda</h3>
+      <p class="muted">Cria um calendário dedicado na sua conta Google com o nome que você escolher, e espelha lá os agendamentos criados/editados no CRM. A conexão dura cerca de 1h por vez — se parar de sincronizar, é só clicar em "Reconectar".</p>
+      <div class="grid">
+        <div class="field full"><label>Nome da agenda no Google</label><input id="perNomeAgendaGoogle" value="${esc(p.nomeAgendaGoogle || `Agenda - ${p.nomeNegocio || 'CRM de Vendas'}`)}"></div>
+      </div><br>
+      ${p.googleCalendarId
+      ? `<span class="pill green">✓ Conectada</span>
+          <button class="btn small" style="margin-left:8px" onclick="App.conectarGoogleAgendaUI()">🔄 Reconectar</button>
+          <button class="btn small ghost" style="color:var(--error);margin-left:8px" onclick="App.desconectarGoogleAgendaUI()">Desconectar</button>`
+      : `<button class="btn dark" onclick="App.conectarGoogleAgendaUI()">🔗 Conectar Google Agenda</button>`}
+    </div>
+
+    <div class="panel">
+      <h3>✨ Assistente de IA (Gemini)</h3>
+      <p class="muted">Cole sua própria chave de API do Gemini para usar o botão "✨ Gerar com IA" no cadastro de produtos (sugere benefícios a partir do nome) e o botão "🤖 Gerar Sugestão de Abordagem" no Cliente 360 (sugere uma mensagem de WhatsApp personalizada com base no histórico da cliente). A chave fica salva só na sua conta e a chamada é feita direto do seu navegador para o Google — não passa por nenhum servidor nosso.</p>
+      <div class="grid">
+        <div class="field full"><label>Chave de API do Gemini</label><input type="password" id="perGeminiKey" placeholder="Cole aqui sua chave" value="${esc(p.geminiApiKey || '')}"></div>
+      </div>
+      <p class="muted" style="font-size:12px">Não tem uma chave? Crie gratuitamente em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+      <button class="btn dark" onclick="App.salvarGeminiKey()">Salvar chave</button>
+      ${p.geminiApiKey ? '<span class="pill green" style="margin-left:8px">✓ Configurada</span>' : ''}
+    </div>
+
+    <div class="panel">
+      <h3>📦 Base coletiva de produtos</h3>
+      <p class="muted">Ative para usar a base de produtos publicada pela administração como ponto de partida (nome, código, linha, foto e preço de tabela). Seu preço de venda, custo médio e estoque continuam sempre individuais.</p>
+      ${toggleHtml('perBaseColetiva', p.usaBaseColetiva, 'App.toggleBaseColetiva(this.checked)', 'Usar base coletiva do Administrador')}
+      ${p.usaBaseColetiva ? `<div class="alert-box" style="margin-top:12px">⚠️ O preço da base coletiva pode divergir do site da fornecedora — o site muda o preço com frequência, e a atualização aqui depende de quando a administração publicou a base.</div>
+        <p class="muted" style="margin-top:8px">Última sincronização: <b>${ultimaSinc}</b></p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <button class="btn dark" onclick="App.sincronizarBaseColetiva()">🔄 Sincronizar agora</button>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+          ${toggleHtml('perAutoSync', p.baseColetivaAutoSync, 'App.salvarAutoSyncBaseColetiva(this.checked)', 'Sincronizar automaticamente todo dia')}
+          <p class="muted" style="margin:6px 0 0;font-size:12px">Só sincroniza sozinho quando você abrir o CRM depois do horário escolhido (o app não roda em segundo plano com a tela fechada).</p>
+          <div class="field" style="max-width:160px;margin-top:8px"><label>Horário</label><input type="time" id="perAutoSyncHora" value="${esc(p.baseColetivaAutoSyncHora || '08:00')}" onchange="App.salvarAutoSyncBaseColetiva(document.getElementById('perAutoSync').checked)"></div>
+        </div>` : ''}
     </div>`;
   }
 
@@ -216,25 +233,6 @@ export function renderPerfil() {
       <h3>Seções do relatório</h3>
       <p class="muted">Escolha quais seções aparecem e em que ordem — arraste pelo ☰ para reorganizar. Todas vêm ativadas por padrão.</p>
       <div id="relSecoesLista" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${secoesListaHtml()}</div>
-    </div>`;
-  }
-
-  if (sec === 'baseColetiva') {
-    const ultimaSinc = p.baseColetivaUltimaSincronizacao?.toDate ? formatDateBR(p.baseColetivaUltimaSincronizacao.toDate().toISOString().slice(0, 10)) + ' às ' + p.baseColetivaUltimaSincronizacao.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'nunca';
-    html += `<div class="panel">
-      <h3>Base coletiva de produtos</h3>
-      <p class="muted">Ative para usar a base de produtos publicada pela administração como ponto de partida (nome, código, linha, foto e preço de tabela). Seu preço de venda, custo médio e estoque continuam sempre individuais.</p>
-      ${toggleHtml('perBaseColetiva', p.usaBaseColetiva, 'App.toggleBaseColetiva(this.checked)', 'Usar base coletiva do Administrador')}
-      ${p.usaBaseColetiva ? `<div class="alert-box" style="margin-top:12px">⚠️ O preço da base coletiva pode divergir do site da Farmasi — o site muda o preço com frequência, e a atualização aqui depende de quando a administração publicou a base.</div>
-        <p class="muted" style="margin-top:8px">Última sincronização: <b>${ultimaSinc}</b></p>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-          <button class="btn dark" onclick="App.sincronizarBaseColetiva()">🔄 Sincronizar agora</button>
-        </div>
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-          ${toggleHtml('perAutoSync', p.baseColetivaAutoSync, 'App.salvarAutoSyncBaseColetiva(this.checked)', 'Sincronizar automaticamente todo dia')}
-          <p class="muted" style="margin:6px 0 0;font-size:12px">Só sincroniza sozinho quando você abrir o CRM depois do horário escolhido (o app não roda em segundo plano com a tela fechada).</p>
-          <div class="field" style="max-width:160px;margin-top:8px"><label>Horário</label><input type="time" id="perAutoSyncHora" value="${esc(p.baseColetivaAutoSyncHora || '08:00')}" onchange="App.salvarAutoSyncBaseColetiva(document.getElementById('perAutoSync').checked)"></div>
-        </div>` : ''}
     </div>`;
   }
 

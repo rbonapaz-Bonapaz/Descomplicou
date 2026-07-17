@@ -37,7 +37,7 @@ export const state = {
 // Páginas longas divididas em abas: página -> [[chave, rótulo], ...]. A primeira é a aba padrão.
 export const SECTIONS = {
   admin: [['consultoras', 'Consultoras'], ['financeiro', 'Financeiro'], ['catalogoMestre', 'Catálogo mestre'], ['planos', 'Planos']],
-  perfil: [['conta', 'Conta'], ['pagamento', 'Pagamento'], ['whatsapp', 'WhatsApp'], ['plano', 'Meu plano'], ['baseColetiva', 'Base coletiva'], ['relatorios', 'Relatórios'], ['seguranca', 'Segurança']],
+  perfil: [['conta', 'Conta'], ['pagamento', 'Pagamentos'], ['integracoes', 'Integrações'], ['relatorios', 'Relatórios'], ['plano', 'Meu plano'], ['seguranca', 'Segurança']],
   produtos: [['produtos', 'Produtos'], ['linhas', 'Linhas']],
   estoque: [['estoque', 'Estoque'], ['importar', 'Importar pedido'], ['trocas', 'Trocas'], ['preEncomenda', 'Pré-encomenda']],
   catalogo: [['montar', 'Montar catálogo']],
