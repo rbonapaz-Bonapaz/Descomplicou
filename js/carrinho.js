@@ -147,7 +147,7 @@ export function cobrarPorAproximacao(carrinhoId) {
     payment_method: ehDebito ? 'debit' : 'credit',
     installments: String(ehDebito ? 1 : Math.max(1, Number(carr.parcelas || 1))),
     order_id: carrinhoId,
-    result_url: 'https://rbonapaz-bonapaz.github.io/Descomplicou/',
+    result_url: 'https://descomplicandovendas.web.app/',
     app_client_referrer: 'DescomplicouCRM',
     handle,
     doc_number: doc,
