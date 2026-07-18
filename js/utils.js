@@ -4,6 +4,10 @@ export const money = v => Number(v || 0).toLocaleString('pt-BR', { style: 'curre
 export const parseMoney = v => Number(String(v || '0').replace(/R\$|\s|\./g, '').replace(',', '.')) || 0;
 export const today = () => new Date().toISOString().slice(0, 10);
 export const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// Comparador de ordenação alfabética (pt-BR, ignora maiúsculas/acentos na prática) por .nome — usado
+// em toda lista/seletor de clientes e produtos que não tem opção de ordenação própria, pra sempre
+// aparecer em ordem alfabética por padrão em vez da ordem de cadastro no Firestore.
+export const porNome = (a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
 
 // Trava um botão por N segundos com contagem regressiva visível — usado depois de um erro de
 // limite de requisições por minuto (Gemini), pra deixar claro que é só esperar (não a chave errada)

@@ -1,7 +1,7 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
   proximoNumeroPedido, proximaSequenciaCliente, functions, httpsCallable } from './state.js';
-import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm, gerarPixCopiaECola } from './utils.js';
+import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm, gerarPixCopiaECola, porNome } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
@@ -280,7 +280,7 @@ export function ordenarItensCarrinhoUI(carrinhoId, sortKey) {
 }
 
 export function openNovoCarrinho() {
-  const cliOpts = state.data.clientes.map(c =>
+  const cliOpts = [...state.data.clientes].sort(porNome).map(c =>
     `<option value="${c.id}">${esc(c.nome)}</option>`
   ).join('');
   showModal(`<h3>Novo Carrinho</h3>

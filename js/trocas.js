@@ -3,7 +3,7 @@
 // cada item com valor unitário e podendo ser pronta entrega (processa na hora) ou entrega futura
 // (fica pendente até você marcar como entregue/recebido). Não gera receita nem lucro nos relatórios.
 import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, prodById, cliById, estoqueDisponivel, reservadoEmAberto } from './state.js';
-import { $, esc, money, parseMoney, pill, searchPickerHtml, toggleHtml } from './utils.js';
+import { $, esc, money, parseMoney, pill, searchPickerHtml, toggleHtml, porNome } from './utils.js';
 import { entradaEstoque, saidaEstoque } from './estoque.js';
 
 function motivoTroca(t) {
@@ -18,7 +18,7 @@ function calcValor(itens) {
 // o que bagunçaria qualquer relatório por parceira no futuro) — com opção de texto livre pra
 // quando ela ainda não é uma cliente cadastrada no CRM.
 function parceiraPickerHtml(parceiraAtual = '') {
-  const opcoes = [{ id: '', nome: '— Nenhuma / não está na lista —' }, ...state.data.clientes];
+  const opcoes = [{ id: '', nome: '— Nenhuma / não está na lista —' }, ...[...state.data.clientes].sort(porNome)];
   const picker = searchPickerHtml('trParceiraId', opcoes, c => c.nome, 'App.preencherNomeParceira()');
   return `<div class="field full"><label>Parceira (busque uma cliente já cadastrada)</label>${picker}</div>
     <div class="field full"><label>Ou digite o nome (se não for cliente cadastrada)</label><input id="trParceiraNome" placeholder="Ex: @outraconsultora" value="${esc(parceiraAtual)}"></div>`;
@@ -128,10 +128,10 @@ export function openTroca(id) {
   const aberta = t.status === 'aberta' || t.status === 'parcial';
   const podeAdicionar = t.status === 'aberta';
   const mostrarSem = t.mostrarSemEstoque;
-  const pickerSai = searchPickerHtml('trProdSai', state.data.produtos.filter(p => mostrarSem || estoqueDisponivel(p.id) > 0),
+  const pickerSai = searchPickerHtml('trProdSai', state.data.produtos.filter(p => mostrarSem || estoqueDisponivel(p.id) > 0).sort(porNome),
     p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoVenda || p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()');
   const pickerEntra = searchPickerHtml('trProdEntra',
-    [{ id: '', nome: '— Produto novo (digite o nome abaixo) —' }, ...state.data.produtos],
+    [{ id: '', nome: '— Produto novo (digite o nome abaixo) —' }, ...[...state.data.produtos].sort(porNome)],
     p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome, 'App.preencherValorTrocaEntrada()');
 
   const statusLabel = { aberta: 'Em andamento', parcial: 'Parcial (pendências)', finalizada: 'Finalizada', cancelada: 'Cancelada' }[t.status] || t.status;

@@ -1,5 +1,5 @@
 import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, cliById, nomeAtualDoCliente, nomeChamado, agendaAgg } from './state.js';
-import { $, esc, today, pill, formatDateBR, toggleHtml } from './utils.js';
+import { $, esc, today, pill, formatDateBR, toggleHtml, porNome } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { sincronizarAgendamento, removerEventoGoogle, googleAgendaConectada, listarEventosGoogle } from './googleAgenda.js';
 
@@ -89,7 +89,7 @@ export function preencherLocalDoCliente(clienteId) {
 // para várias convidadas, sem cliente específico atrelado). Sem cliente, usa um título livre no
 // lugar do nome — é ele que aparece na tabela e no espelho do Google Agenda.
 function clienteFieldHtml(clienteIdSelecionado, tituloValor) {
-  const cliOpts = state.data.clientes.map(c =>
+  const cliOpts = [...state.data.clientes].sort(porNome).map(c =>
     `<option value="${c.id}" ${c.id === clienteIdSelecionado ? 'selected' : ''}>${esc(c.nome)}</option>`
   ).join('');
   return `<div class="field full"><label>Cliente (opcional)</label>

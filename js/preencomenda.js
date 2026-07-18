@@ -1,5 +1,5 @@
 import { state, ref, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm } from './utils.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome } from './utils.js';
 import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -126,7 +126,7 @@ export async function confirmarChegada(itemId) {
 // "aguardando chegada" — quando confirmar a chegada, o custo padrão é 0 (mas pode editar). Se já
 // houver um registro de chegada desse produto, soma a quantidade em vez de duplicar.
 export function abrirModalBrinde() {
-  const picker = searchPickerHtml('bdProd', state.data.produtos, p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}`);
+  const picker = searchPickerHtml('bdProd', [...state.data.produtos].sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}`);
   showModal(`<h3>🎁 Adicionar brinde recebido</h3>
     <p class="muted">Produtos que a Farmasi manda de brinde conforme o valor do pedido — dá entrada no estoque com custo zero.</p>
     <div class="grid">
@@ -181,7 +181,7 @@ function precoReferencia(p) {
 export function openKitForm(manterComposicao = false) {
   if (!manterComposicao) kitTemp = { nome: '', valor: '', itens: [] };
 
-  const picker = searchPickerHtml('kitProd', state.data.produtos,
+  const picker = searchPickerHtml('kitProd', [...state.data.produtos].sort(porNome),
     p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | ref: ${money(precoReferencia(p))}`);
 
   const totalRef = kitTemp.itens.reduce((s, it) => {

@@ -27,7 +27,7 @@ export const ADMINS = ADMIN_EMAILS;
 export const state = {
   user: null,
   profile: null,
-  filters: { prod: 'todos', estoque: 'todos', rel: '30', vendas: 'todos', prodSort: 'nome_asc', estoqueSort: 'nome_asc', vendasSort: '', prodLinha: '', relProdSort: '', estoqueLinha: '', clientesSort: '', carrinhoItensSort: '', semLucroMotivo: '' },
+  filters: { prod: 'todos', estoque: 'todos', rel: '30', vendas: 'todos', prodSort: 'nome_asc', estoqueSort: 'nome_asc', vendasSort: '', prodLinha: '', relProdSort: '', estoqueLinha: '', clientesSort: 'nome_asc', carrinhoItensSort: '', semLucroMotivo: '' },
   data: { clientes: [], produtos: [], vendas: [], carrinhos: [], agendamentos: [], movimentacoesEstoque: [], catalogos: [], eventos: [], trocas: [], preEncomenda: [], despesas: [], operadoras: [] },
   config: { limiteTeste: 5, limiteGratuito: 10, precoMensal: 0, precoSemestral: 0, precoAnual: 0 },
   // Aba ativa (por página) nas telas divididas em seções — ver SECTIONS abaixo.
