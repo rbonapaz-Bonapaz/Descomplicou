@@ -25,8 +25,19 @@ function chips(tipo, vals) {
   ).join('')}</div>`;
 }
 
+// Ações de um produto — HTML idêntico no cartão desktop (.data-card) e mobile (.vcard).
+function produtoAcoesHtml(x) {
+  return `
+    ${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red', x.est > 0 ? `${x.est} unidade(s) disponível(is) agora` : 'Nenhuma unidade disponível — venda entra como entrega futura')}
+    ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)') : ''}
+    ${btnAdicionarPreEncomenda(x.p.id)}
+    <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
+    ${(x.p.historicoPrecos || []).length ? `<button class="btn small" onclick="App.abrirHistoricoPrecos('${x.p.id}')" title="Histórico de preços">📈</button>` : ''}
+    <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>`;
+}
+
 function productCard(x) {
-  return `<div class="data-card">
+  return `<div class="data-card only-desktop">
     <img src="${esc(x.p.imagem || '')}" onerror="this.style.visibility='hidden'">
     <div>
       <b class="cli-link" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</b>
@@ -36,14 +47,26 @@ function productCard(x) {
     <div class="metric"><small>Venda</small><b>${money(x.venda)}</b></div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Estoque</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
-    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-      ${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red', x.est > 0 ? `${x.est} unidade(s) disponível(is) agora` : 'Nenhuma unidade disponível — venda entra como entrega futura')}
-      ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)') : ''}
-      ${btnAdicionarPreEncomenda(x.p.id)}
-      <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
-      ${(x.p.historicoPrecos || []).length ? `<button class="btn small" onclick="App.abrirHistoricoPrecos('${x.p.id}')" title="Histórico de preços">📈</button>` : ''}
-      <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>
+    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${produtoAcoesHtml(x)}</div>
+  </div>
+  <div class="vcard only-mobile">
+    <div class="vcard-top" style="align-items:flex-start">
+      <img src="${esc(x.p.imagem || '')}" onerror="this.style.visibility='hidden'" style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;box-shadow:var(--ring);flex:0 0 auto">
+      <div style="flex:1 1 auto;min-width:0">
+        <div class="cli-link" style="font-size:17px;font-weight:800;overflow-wrap:break-word" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</div>
+        <div class="prod-tags" style="margin-top:4px">
+          <span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span>
+          <span class="prod-tag">Linha <b>${esc(linhasDe(x.p).map(labelLinha).join(', ') || '-')}</b></span>
+        </div>
+      </div>
     </div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Original / atual</span><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual || x.p.precoVenda)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda)}%</span>` : ''}</b></div>
+      <div class="vcard-row"><span>Venda</span><b>${money(x.venda)}</b></div>
+      <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
+      <div class="vcard-row"><span>Estoque</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
+    </div>
+    <div class="vcard-actions">${produtoAcoesHtml(x)}</div>
   </div>`;
 }
 

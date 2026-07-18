@@ -147,8 +147,19 @@ function chips(tipo, vals) {
   ).join('')}</div>`;
 }
 
+// Ações de um item de estoque — HTML idêntico no cartão desktop (.data-card) e mobile (.vcard).
+function stockAcoesHtml(x) {
+  return `
+    ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
+      x.semCusto || x.baixo ? 'red' : 'green',
+      x.semCusto ? 'Produto sem custo médio cadastrado — o lucro dele não entra certo nos relatórios' : x.baixo ? 'Estoque abaixo do mínimo configurado pra esse produto' : 'Estoque normal, acima do mínimo')}
+    ${btnAdicionarPreEncomenda(x.p.id)}
+    <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
+    <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>`;
+}
+
 function stockCard(x) {
-  return `<div class="data-card">
+  return `<div class="data-card only-desktop">
     <img src="${esc(x.p.imagem || '')}" onerror="this.style.visibility='hidden'">
     <div><b class="cli-link" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</b>
       <div class="prod-tags"><span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span><span class="prod-tag">Linha <b>${esc(x.p.linha || '-')}</b></span></div>
@@ -157,14 +168,26 @@ function stockCard(x) {
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Investido</small><b>${money(x.investido)}</b></div>
     <div class="metric"><small>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</small><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
-    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-      ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
-        x.semCusto || x.baixo ? 'red' : 'green',
-        x.semCusto ? 'Produto sem custo médio cadastrado — o lucro dele não entra certo nos relatórios' : x.baixo ? 'Estoque abaixo do mínimo configurado pra esse produto' : 'Estoque normal, acima do mínimo')}
-      ${btnAdicionarPreEncomenda(x.p.id)}
-      <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
-      <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>
+    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${stockAcoesHtml(x)}</div>
+  </div>
+  <div class="vcard only-mobile">
+    <div class="vcard-top" style="align-items:flex-start">
+      <img src="${esc(x.p.imagem || '')}" onerror="this.style.visibility='hidden'" style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;box-shadow:var(--ring);flex:0 0 auto">
+      <div style="flex:1 1 auto;min-width:0">
+        <div class="cli-link" style="font-size:17px;font-weight:800;overflow-wrap:break-word" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</div>
+        <div class="prod-tags" style="margin-top:4px">
+          <span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span>
+          <span class="prod-tag">Linha <b>${esc(x.p.linha || '-')}</b></span>
+        </div>
+      </div>
     </div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Qtd</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
+      <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
+      <div class="vcard-row"><span>Investido</span><b>${money(x.investido)}</b></div>
+      <div class="vcard-row"><span>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
+    </div>
+    <div class="vcard-actions">${stockAcoesHtml(x)}</div>
   </div>`;
 }
 
