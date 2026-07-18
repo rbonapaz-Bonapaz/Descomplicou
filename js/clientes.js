@@ -287,7 +287,7 @@ export function openCliente360(id) {
           <td data-label="Valor">${money(v.receita || v.totalPedido)}</td>
           <td data-label="Lucro">${money(v.lucroTotal)}</td>
           <td data-label="Pgto">${esc(v.pagamento || '-')}</td>
-        </tr>${expandida ? `<tr><td colspan="6" style="background:#F7FAFC">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</td></tr>` : ''}`;
+        </tr>${expandida ? `<tr><td colspan="6" data-label="Itens da venda" class="td-block" style="background:#F7FAFC"><div>${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</div></td></tr>` : ''}`;
         }).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma venda registrada.</p>'}
     </div>
 

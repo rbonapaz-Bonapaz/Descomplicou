@@ -141,7 +141,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
             ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
           </div>
         </td>
-      </tr>${expandida ? `<tr><td colspan="8" data-label="Itens da venda" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
+      </tr>${expandida ? `<tr><td colspan="8" data-label="Itens da venda" class="td-block" style="background:#F7FAFC"><div>${detalheVendaHtml(c)}</div></td></tr>` : ''}`;
     }).join('')}</tbody></table></div></div>`;
 }
 
