@@ -121,6 +121,15 @@ function corStatusPedido(s) {
   return s === 'aberto' ? 'blue' : s === 'finalizado' || s === 'entregue' ? 'green' : s === 'parcial' ? 'orange' : 'red';
 }
 
+// .acoes-tabela usa direction:rtl (pra crescer da direita pra esquerda conforme mais botões
+// entram), o que inverte a ordem visual dos itens colocados no HTML. Esse helper extrai cada
+// botão (tag <button ...>...</button>) e inverte a ordem antes de montar o HTML final, assim o
+// visual fica na ordem original (mesmo com o container RTL) sem mexer no tamanho das colunas.
+export function ordemVisualAcoes(html) {
+  const botoes = html.match(/<button[\s\S]*?<\/button>/g) || [];
+  return botoes.reverse().join('');
+}
+
 // Botões de ação de um pedido — HTML idêntico na tabela (desktop) e no cartão (mobile),
 // então fica numa função só pra não sair de sincronia. O botão de WhatsApp fica de fora
 // (ver vendaWhatsAppHtml) pra ter local fixo próprio, em vez de se misturar aos outros.
@@ -192,7 +201,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
         <td>${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
         <td>${pill(c.status, corStatusPedido(c.status))}<br>${vendaWhatsAppHtml(c, isAberto)}</td>
         <td>
-          <div class="acoes-tabela">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
+          <div class="acoes-tabela">${ordemVisualAcoes(vendaAcoesHtml(c, isAberto, showFutura))}</div>
         </td>
       </tr>${expandida ? `<tr><td colspan="8" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
     }).join('')}</tbody></table></div>`;

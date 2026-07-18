@@ -2,7 +2,7 @@ import { state, col, ref, db, deleteDoc, showModal, closeModal, toast, setDoc, a
   cliById, lastBuy, salesAgg, openCarrinhosForClient, planoInfo, estoqueDisponivel, numeroPedidoLabel } from './state.js';
 import { $, esc, money, today, norm, daysSince, daysToBirthday, pill, withFocusPreserved, formatDateBR, thSort } from './utils.js';
 import { whatsAppBtn, onclickArg, WA_ICON, openWhatsApp, formatPhone } from './whatsapp.js';
-import { detalheVendaHtml } from './vendas.js';
+import { detalheVendaHtml, ordemVisualAcoes } from './vendas.js';
 import { gerarSugestaoAbordagem } from './gemini.js';
 
 // Vendas expandidas no histórico do Cliente 360 (mesmo padrão do accordion de Vendas — B.2) —
@@ -106,7 +106,7 @@ function tableClientes() {
       <td>${esc(c.whatsapp || '')}</td>
       <td>${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds} dias)</small>` : '-'}</td>
       <td>${pill(ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio', ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red')}</td>
-      <td class="acoes-tabela">${clienteAcoesHtml(c)}</td>
+      <td class="acoes-tabela">${ordemVisualAcoes(clienteAcoesHtml(c))}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
 
