@@ -83,12 +83,19 @@ export function toast(m) {
 export function showModal(h, { wide = false } = {}) {
   const temMinimizada = !$('modalMinBar')?.classList.contains('hidden');
   if (temMinimizada && !confirm('Você tem uma janela minimizada em aberto. Abrir esta agora vai descartá-la — o que não foi salvo nela se perde. Continuar?')) return;
+
+  // Extrai o h3 (título com ícone e cliente) do conteúdo
+  const h3Match = h.match(/<h3[^>]*>(.*?)<\/h3>/);
+  const titulo = h3Match ? h3Match[1] : '';
+  const conteudoSemTitulo = h.replace(/<h3[^>]*>.*?<\/h3>/, '');
+
   $('modalCard').innerHTML = `<div class="modal-header-fixed">
-    <div style="display:flex;gap:8px;z-index:5">
-      <button style="width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);padding:0" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>
-      <button style="width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:#999;padding:0" title="Fechar" onclick="App.closeModal()">✕</button>
+    <h3 style="margin:0;display:flex;align-items:center;gap:10px;flex:1">${titulo}</h3>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button style="width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);padding:0;transition:background .15s ease,color .15s ease" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>
+      <button style="width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:#999;padding:0;transition:background .15s ease,color .15s ease" title="Fechar" onclick="App.closeModal()">✕</button>
     </div>
-  </div><div class="modal-content-scroll">` + h + `</div>`;
+  </div><div class="modal-content-scroll">` + conteudoSemTitulo + `</div>`;
   $('modalCard').classList.toggle('modal-wide', wide);
   $('modal').classList.remove('hidden');
   $('modalMinBar')?.classList.add('hidden');
