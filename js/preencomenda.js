@@ -27,12 +27,64 @@ function numeroPedidoAtual() {
   if (!pedidoAtualNumero) pedidoAtualNumero = proximoNumeroPedidoCompra();
   return pedidoAtualNumero;
 }
+// Só pra mostrar na tela pra onde os próximos itens vão — não cria nada, ao contrário de
+// numeroPedidoAtual() (que é chamada só na hora de mover um item de verdade).
+function pedidoAtualPreview() {
+  return pedidoAtualNumero;
+}
 // Fecha a leva atual — o próximo item marcado como "já pedido" começa um pedido novo, separado
 // dos que já estão aguardando chegar. Use antes de lançar uma nova compra, pra não misturar com
 // um pedido anterior que ainda não chegou.
 export function iniciarNovoPedidoCompra() {
   pedidoAtualNumero = proximoNumeroPedidoCompra();
   toast(`Pedido nº ${pedidoAtualNumero} iniciado — os próximos itens marcados como "Pedido" entram juntos aqui, separados do que já está aguardando chegar`);
+}
+
+// Aponta um pedido já existente (ainda em aberto) como destino — o próximo item marcado como
+// "já pedido" na lista "A comprar" entra junto nele, em vez de criar um pedido novo. É o que
+// permite "reabrir para edição": editar não mexe nos itens já lançados, só faz os PRÓXIMOS itens
+// marcados caírem nesse mesmo grupo.
+export function definirPedidoCompraAtivo(numero) {
+  pedidoAtualNumero = Number(numero);
+  toast(`Itens marcados como "Pedido" agora entram no pedido nº ${numero} — vá em "A comprar" e marque o que faltava`);
+}
+
+// Nome amigável (usado nos toasts/confirms) — cai pro número se ainda não tiver nome.
+function nomeDoPedido(numero, itensDoPedido) {
+  const nome = itensDoPedido.find(it => it.pedidoNome)?.pedidoNome;
+  return nome || (numero ? `Pedido nº ${numero}` : 'Pedido anterior');
+}
+
+export async function encerrarPedidoCompra(numero) {
+  const itens = state.data.preEncomenda.filter(x => x.status === 'pedido' && (x.pedidoNumero || 0) === Number(numero));
+  if (!itens.length) return;
+  const batch = writeBatch(db);
+  itens.forEach(it => batch.update(ref('preEncomenda', it.id), { pedidoStatus: 'fechado' }));
+  await batch.commit();
+  // Se era o pedido que estava recebendo os próximos itens, para de apontar pra ele — o próximo
+  // item marcado começa um pedido novo em vez de cair num que acabou de ser encerrado.
+  if (pedidoAtualNumero === Number(numero)) pedidoAtualNumero = null;
+  window.App.refresh('Pedido encerrado');
+}
+
+export async function reabrirPedidoCompra(numero) {
+  const itens = state.data.preEncomenda.filter(x => x.status === 'pedido' && (x.pedidoNumero || 0) === Number(numero));
+  if (!itens.length) return;
+  const batch = writeBatch(db);
+  itens.forEach(it => batch.update(ref('preEncomenda', it.id), { pedidoStatus: 'aberto' }));
+  await batch.commit();
+  window.App.refresh('Pedido reaberto');
+}
+
+export async function excluirPedidoCompra(numero) {
+  const itens = state.data.preEncomenda.filter(x => x.status === 'pedido' && (x.pedidoNumero || 0) === Number(numero));
+  if (!itens.length) return;
+  if (!confirm(`Excluir "${nomeDoPedido(numero, itens)}" inteiro (${itens.length} item(ns))? Isso não mexe no estoque — só apaga o controle de "aguardando chegada". Não tem como desfazer.`)) return;
+  const batch = writeBatch(db);
+  itens.forEach(it => batch.delete(ref('preEncomenda', it.id)));
+  await batch.commit();
+  if (pedidoAtualNumero === Number(numero)) pedidoAtualNumero = null;
+  window.App.refresh('Pedido excluído');
 }
 
 // Soma, em tempo real, quantas unidades de um produto estão "presas" em carrinhos abertos/parciais
@@ -835,7 +887,8 @@ export function preEncomendaTabHtml() {
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;flex-wrap:wrap;gap:8px">
       <h4 style="margin:0">Pedido — aguardando chegada (${aguardando.length})</h4>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${pedidoAtualPreview() ? `<span class="muted" style="font-size:12px">Próximos itens marcados vão pro <b>pedido nº ${pedidoAtualPreview()}</b></span>` : ''}
         <button class="btn small" onclick="App.iniciarNovoPedidoCompra()" title="Separa os próximos itens marcados como 'Pedido' num pedido novo, sem misturar com o que já está aguardando chegar">🆕 Novo pedido</button>
         <button class="btn small" onclick="App.abrirModalBrinde()">🎁 Adicionar brinde</button>
       </div>
@@ -889,14 +942,21 @@ function aguardandoAgrupadoHtml(aguardando) {
   return grupos.map(([numero, itensDoPedido]) => {
     const totalPedido = itensDoPedido.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0);
     const nomePedido = itensDoPedido.find(it => it.pedidoNome)?.pedidoNome;
+    const fechado = itensDoPedido.every(it => it.pedidoStatus === 'fechado');
     const kitsDoGrupo = new Set();
     const expandido = pedidosCompraExpandidos.has(numero);
     return `<div style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#F3F6FA;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="App.togglePedidoCompraExpandido(${numero})">
-        <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-size:12px">${expandido ? '▾' : '▸'}</span>
           <b>${nomePedido ? `📦 ${esc(nomePedido)}` : numero ? `📦 Pedido nº ${numero}` : '📦 Pedido anterior'}</b>
-          ${numero ? `<button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.renomearPedidoCompra(${numero})" title="Dar/mudar nome deste pedido">✏️</button>` : ''}
+          ${pill(fechado ? 'Encerrado' : 'Em aberto', fechado ? 'gray' : 'blue')}
+          <button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.renomearPedidoCompra(${numero})" title="Dar/mudar nome deste pedido">✏️</button>
+          ${!fechado ? `<button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.definirPedidoCompraAtivo(${numero})" title="Os próximos itens marcados como 'Pedido' em A comprar entram aqui — assim dá pra adicionar mais nesse pedido">➕ Adicionar itens aqui</button>` : ''}
+          ${fechado
+        ? `<button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.reabrirPedidoCompra(${numero})" title="Reabrir pra poder adicionar mais itens">🔓 Reabrir</button>`
+        : `<button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.encerrarPedidoCompra(${numero})" title="Marca como encerrado — sinalização visual, continua editável se reabrir">🔒 Encerrar</button>`}
+          <button class="btn small" style="padding:3px 8px;color:var(--error)" onclick="event.stopPropagation();App.excluirPedidoCompra(${numero})" title="Excluir este pedido inteiro">🗑️</button>
         </div>
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
