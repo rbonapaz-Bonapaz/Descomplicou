@@ -21,7 +21,7 @@ function updateProntaEntregaAuto(tx, pr, p, novoEstoque) {
 }
 
 export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'manual') {
-  let novoEstoque = 0;
+  let novoEstoque = 0, novoCustoMedio = 0, novaProntaEntrega;
   await runTransaction(db, async tx => {
     const pr = ref('produtos', produtoId);
     const s = await tx.get(pr);
@@ -32,6 +32,8 @@ export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'ma
     const novoCM = novo > 0 ? ((e * cm) + (q * c)) / novo : 0;
     tx.update(pr, { estoqueAtual: novo, custoMedio: novoCM, ultimaEntrada: today() });
     updateProntaEntregaAuto(tx, pr, p, novo);
+    if (novo > 0 && p.produtoProntaEntrega !== true && !(p.prontaEntregaManual && p.produtoProntaEntrega === false)) novaProntaEntrega = true;
+    else if (novo <= 0 && p.produtoProntaEntrega === true) novaProntaEntrega = false;
     tx.set(doc(col('movimentacoesEstoque')), {
       produtoId, produtoNome: p.nome, tipo: 'entrada', motivo, origem,
       quantidade: q, estoqueAntes: e, estoqueDepois: novo,
@@ -39,7 +41,20 @@ export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'ma
       valorFinanceiro: q * c, data: today(), criadoEm: serverTimestamp()
     });
     novoEstoque = novo;
+    novoCustoMedio = novoCM;
   });
+  // runTransaction, diferente de setDoc/addDoc, NÃO atualiza o cache local do Firestore na hora —
+  // só quando o servidor confirma e o onSnapshot devolve a resposta, o que pode demorar um instante.
+  // Sem este patch manual, uma tela que renderiza logo em seguida (ex: Pré-encomenda mostrando
+  // "Estoque atual") ainda via o valor antigo até a próxima sincronização chegar, dando a falsa
+  // impressão de que a atualização em tempo real tinha sido desativada.
+  const idx = state.data.produtos.findIndex(x => x.id === produtoId);
+  if (idx !== -1) {
+    state.data.produtos[idx] = {
+      ...state.data.produtos[idx], estoqueAtual: novoEstoque, custoMedio: novoCustoMedio, ultimaEntrada: today(),
+      ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
+    };
+  }
   await converterEntregaFuturaAutomatico(produtoId, novoEstoque);
 }
 
@@ -112,6 +127,7 @@ async function converterEntregaFuturaAutomatico(produtoId, novoEstoque) {
 
 export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '', receita = 0) {
   const geraLucro = motivo === 'Venda';
+  let novoEstoque = 0, novaProntaEntrega;
   await runTransaction(db, async tx => {
     const pr = ref('produtos', produtoId);
     const s = await tx.get(pr);
@@ -120,13 +136,25 @@ export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '
     const c = Number(p.custoMedio || 0), novo = e - q;
     tx.update(pr, { estoqueAtual: novo, ultimaSaida: today() });
     updateProntaEntregaAuto(tx, pr, p, novo);
+    if (novo > 0 && p.produtoProntaEntrega !== true && !(p.prontaEntregaManual && p.produtoProntaEntrega === false)) novaProntaEntrega = true;
+    else if (novo <= 0 && p.produtoProntaEntrega === true) novaProntaEntrega = false;
     tx.set(doc(col('movimentacoesEstoque')), {
       produtoId, produtoNome: p.nome, tipo: 'saida', motivo,
       quantidade: q, estoqueAntes: e, estoqueDepois: novo,
       custoUnitario: c, valorFinanceiro: q * c, receita,
       vendaId, geraLucro, data: today(), criadoEm: serverTimestamp()
     });
+    novoEstoque = novo;
   });
+  // Mesmo patch manual de entradaEstoque (ver comentário lá) — runTransaction não atualiza o cache
+  // local na hora, então sem isso a tela seguinte podia mostrar o estoque antigo por um instante.
+  const idx = state.data.produtos.findIndex(x => x.id === produtoId);
+  if (idx !== -1) {
+    state.data.produtos[idx] = {
+      ...state.data.produtos[idx], estoqueAtual: novoEstoque, ultimaSaida: today(),
+      ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
+    };
+  }
 }
 
 // Fluxo interativo (1 produto por vez): quando a consultora tinha desativado manualmente a pronta
