@@ -118,9 +118,7 @@ export async function removerPreEncomenda(itemId) {
 // produto — cria o registro de chegada se ainda não existir, ou soma nele se já existir (ex:
 // segunda leva pedida antes da primeira chegar). O preço unitário informado acompanha, sem
 // sobrescrever um preço que já estivesse lá se o novo vier vazio.
-export async function marcarComoPedido(itemId) {
-  const pendente = state.data.preEncomenda.find(x => x.id === itemId);
-  if (!pendente) return;
+async function moverParaPedido(pendente) {
   const destino = idPedido(pendente.produtoId, pendente.kitId);
   const jaChegando = state.data.preEncomenda.find(x => x.id === destino);
   await setDoc(ref('preEncomenda', destino), {
@@ -132,8 +130,24 @@ export async function marcarComoPedido(itemId) {
     ...(pendente.kitId ? { kitId: pendente.kitId, kitNome: pendente.kitNome } : {}),
     criadoEm: jaChegando?.criadoEm || serverTimestamp()
   }, { merge: true });
-  await deleteDoc(ref('preEncomenda', itemId));
+  await deleteDoc(ref('preEncomenda', pendente.id));
+}
+
+export async function marcarComoPedido(itemId) {
+  const pendente = state.data.preEncomenda.find(x => x.id === itemId);
+  if (!pendente) return;
+  await moverParaPedido(pendente);
   window.App.refresh('Marcado como pedido — aguardando chegada');
+}
+
+// Move o kit inteiro de uma vez — os componentes de um kit não têm botão individual (mexer neles
+// sozinhos descaracteriza o rateio), mas o kit como um todo precisa da mesma opção de "já pedi,
+// aguardando chegar" que qualquer item avulso tem.
+export async function marcarKitComoPedido(kitId) {
+  const itens = state.data.preEncomenda.filter(x => x.kitId === kitId && x.status !== 'pedido');
+  if (!itens.length) return toast('Nenhum item deste kit pendente de compra');
+  for (const item of itens) await moverParaPedido(item);
+  window.App.refresh('Kit marcado como pedido — aguardando chegada');
 }
 
 // Caminho inverso: volta (soma) a quantidade de "aguardando chegada" pra "a comprar".
@@ -680,10 +694,11 @@ function fretePanelHtml() {
 // (KIT_BORDA) conecta visualmente o cabeçalho às linhas dos produtos — sem ela, os produtos do
 // kit pareciam soltos na tabela, indistinguíveis de itens avulsos.
 const KIT_BORDA = '4px solid #EC4899';
-function kitHeaderRow(kitId, kitNome, qtdComponentes, colspan) {
+function kitHeaderRow(kitId, kitNome, qtdComponentes, colspan, mostrarBotaoPedido = false) {
   return `<tr class="kit-group-header"><td colspan="${colspan}" style="background:#FDF2F7;font-weight:900;color:#A83E63;border-left:${KIT_BORDA};border-top:${KIT_BORDA.replace('4px', '2px')};border-top-color:#F5C6DE">
     🎁 Kit: ${esc(kitNome)} (${qtdComponentes} produto${qtdComponentes === 1 ? '' : 's'})
     <button class="btn small" style="float:right;color:var(--error)" onclick="App.removerKitCompleto('${kitId}')">🗑️ Remover kit inteiro</button>
+    ${mostrarBotaoPedido ? `<button class="btn small" style="float:right;margin-right:6px;color:var(--success)" onclick="App.marcarKitComoPedido('${kitId}')" title="Marcar o kit inteiro como já pedido — move pra 'Aguardando chegada'">✅ Pedido (kit inteiro)</button>` : ''}
   </td></tr>`;
 }
 
@@ -760,7 +775,7 @@ export function preEncomendaTabHtml() {
       if (emKit && !kitsJaRenderizados.has(it.kitId)) {
         kitsJaRenderizados.add(it.kitId);
         const qtdNoKit = aComprar.filter(x => x.kitId === it.kitId).length;
-        cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 9);
+        cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 9, true);
       }
       // Última linha do grupo do kit (próximo item já é de outro kit/avulso) fecha a "caixa"
       // visual com uma borda inferior mais forte — só faz sentido calcular isso pra itens de kit.

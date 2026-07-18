@@ -27,7 +27,7 @@ import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTo
   filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos, marcarProdutosEditadosComoConferidos,
   abrirConferenciaPorHorario, atualizarConferenciaPorHorario, confirmarConferenciaPorHorario } from './produtos.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
-  marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
+  marcarComoPedido, marcarKitComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
   marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor,
@@ -394,7 +394,7 @@ window.App = {
   ativarProntaEntregaTodos,
   // Pré-encomenda
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
-  marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
+  marcarComoPedido, marcarKitComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa, marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor,
   adicionarCompraFornecedor, iniciarCompraFornecedor, abrirCompraFornecedor,
