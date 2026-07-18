@@ -1,25 +1,23 @@
-import { state, SECTIONS } from './state.js';
+import { state, SECTIONS, toast } from './state.js';
 import { $, esc, sectionTabsHtml, formatDateBR, collapsibleHtml } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v1.1.0';
+export const APP_VERSION = 'v1.0.0';
 
 // Changelog visível pro usuário final — reiniciado no lançamento oficial (item 20-B). Todo o
 // histórico de desenvolvimento/testes anterior (v50 a v102) foi arquivado em NOVIDADES_ARQUIVADAS
 // logo abaixo (fora da visão do usuário, mantido só como referência histórica no código-fonte).
 // Daqui pra frente, só entram aqui atualizações/melhorias/correções REAIS pós-v1.0.0.
 const NOVIDADES = [
-  { versao: 'v1.1.0', itens: [
-    '📱 Grande melhoria de uso no celular: todas as telas de lista (Vendas, Clientes, Agenda, Produtos, Estoque, Trocas e Admin) agora aparecem como cartões limpos e organizados no celular, no lugar das tabelas "achatadas" que ficavam gigantes e com texto sobreposto. Cada pedido/cliente/produto vira um cartão com a informação principal em destaque, detalhes em linhas separadas e os botões de ação bem distribuídos.',
-    'Corrigido: itens de uma venda (e do Cliente 360) mostravam o mesmo valor duas vezes quando a quantidade era 1, e mostravam o desconto de duas formas ao mesmo tempo — agora o preço aparece uma vez só, e o desconto só na etiqueta "-X%".',
-    'Corrigido na raiz: no celular, textos longos (nome de cliente/produto, valores) estouravam a borda da tela sem quebrar linha em vários cartões — resolvido de forma geral em todo o app.',
-    'As tabelas de edição em grade (conferência de pedido importado, pré-encomenda, itens de troca, catálogo mestre) agora rolam na horizontal no celular, mantendo as colunas alinhadas, em vez de empilhar tudo.',
-    'Novo manual completo do sistema em Sobre → Manual: passo a passo de cada fluxo (primeiros passos, produtos, clientes, vendas, pagamentos, agenda, eventos, pré-encomenda, trocas e relatórios).',
-    'Nova aba "Saídas sem lucro" no Estoque: lista todas as saídas de Brinde, Parceria, Consumo próprio, Perda, Ajuste e Troca, com filtro por motivo — pra conferir se algo foi lançado com o motivo errado.'
-  ] },
   { versao: 'v1.0.0', itens: [
-    '🎉 Lançamento oficial do sistema! Depois de meses de desenvolvimento e testes, o CRM chega na sua versão base completa — gestão de clientes, produtos e estoque, vendas com checkout inteligente (Pix e cartão), relatórios com inteligência de dados, catálogo de eventos e muito mais. Obrigado por fazer parte dessa jornada desde o início. A partir daqui, toda melhoria e correção nova vai aparecer aqui nas Novidades.'
+    '🎉 Lançamento oficial do sistema! Depois de meses de desenvolvimento e testes, o CRM chega na sua versão base completa — gestão de clientes, produtos e estoque, vendas com checkout inteligente (Pix e cartão), relatórios com inteligência de dados, catálogo de eventos e muito mais. Obrigado por fazer parte dessa jornada desde o início.',
+    '📱 Uso no celular repaginado: todas as telas de lista (Vendas, Clientes, Agenda, Produtos, Estoque, Trocas e Admin) aparecem como cartões limpos e organizados no celular, com a informação principal em destaque, detalhes em linhas separadas e botões de ação bem distribuídos.',
+    'Preço dos itens mais claro: quando a quantidade é 1, o valor aparece uma vez só; o desconto aparece só na etiqueta "-X%", sem repetição.',
+    'Layout à prova de qualquer tela: textos longos quebram linha corretamente e o sistema nunca estoura a largura do monitor, em qualquer resolução ou zoom.',
+    'Tabelas de edição em grade (conferência de pedido, pré-encomenda, trocas, catálogo mestre) rolam na horizontal no celular, mantendo as colunas alinhadas.',
+    'Manual completo do sistema em Sobre → Manual, com passo a passo de cada fluxo — e opção de gerar em página web / PDF pra imprimir ou compartilhar.',
+    'Aba "Saídas sem lucro" no Estoque: lista todas as saídas de Brinde, Parceria, Consumo próprio, Perda, Ajuste e Troca, com filtro por motivo.'
   ] }
 ];
 
@@ -519,13 +517,74 @@ const MANUAL_SECOES = [
     'O "Relatório completo por produto" lista tudo que vendeu no período; clique no cabeçalho pra ordenar por qualquer coluna.',
     'Fique de olho nos avisos ⚠️: quando um produto aparece com lucro igual ao faturamento, quase sempre falta cadastrar o custo médio dele — corrija em Produtos pra os números ficarem certos.',
     'Exporte produtos vendidos e clientes do período em Excel/CSV, ou gere o relatório completo em PDF.'
+  ] },
+  { key: 'manDicas', titulo: '11. Busca rápida, personalização e uso no celular', passos: [
+    'Busca global: no campo "🔎 Buscar em tudo" no topo do sistema, digite qualquer palavra — ele encontra na hora a tela, o cliente ou o produto correspondente e leva você direto pra lá.',
+    'Personalização visual: em Minha Conta → Conta, você escolhe as cores do sistema (fundo, destaque e cor do texto) pra combinar com a sua marca. As cores também aparecem no link público dos seus eventos.',
+    'No celular: a barra inferior dá acesso rápido às telas mais usadas (Painel, Clientes, Vendas, Agenda, Produtos), e o botão rosa flutuante "＋" abre um novo carrinho de qualquer lugar. Todas as listas aparecem como cartões, fáceis de ler e tocar.',
+    'Segurança: em Minha Conta → Segurança dá pra trocar a senha e ativar o desbloqueio por biometria do aparelho.',
+    'Backup: em Minha Conta você pode exportar seus dados. Como o sistema roda na nuvem (Firebase), seus dados ficam salvos automaticamente e sincronizados entre celular e computador.'
   ] }
 ];
 
+// Monta o manual completo como um documento HTML independente (com apresentação + todos os passos
+// já abertos) e abre numa aba nova — a pessoa lê, imprime ou salva como PDF pelo próprio navegador
+// (Ctrl+P → "Salvar como PDF"), e pode compartilhar o arquivo. Autossuficiente: CSS inline, não
+// depende do resto do app, então funciona mesmo se a aba for salva/enviada solta.
+export function abrirManualWeb() {
+  const cfg = state.profile || {};
+  const nome = cfg.nomeNegocio || 'Descomplicou';
+  const hoje = formatDateBR(new Date().toISOString().slice(0, 10));
+  const secoesApresentacao = APRESENTACAO_MODULOS.map(m => `
+    <section class="bloco">
+      <h2>${esc(m.titulo)}</h2>
+      <ul>${m.itens.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+    </section>`).join('');
+  const secoesManual = MANUAL_SECOES.map(m => `
+    <section class="bloco">
+      <h2>${esc(m.titulo)}</h2>
+      <ol>${m.passos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
+    </section>`).join('');
+  const doc = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Manual — ${esc(nome)}</title>
+    <style>
+      *{box-sizing:border-box}
+      body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#14213D;max-width:820px;margin:0 auto;padding:32px 20px;line-height:1.6}
+      h1{font-size:28px;margin:0 0 4px;color:#F72562}
+      .sub{color:#7D8AA5;margin:0 0 24px;font-size:14px}
+      h2{font-size:18px;margin:26px 0 8px;color:#14213D;border-bottom:2px solid #F1F4F8;padding-bottom:6px}
+      .grupo-titulo{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#F72562;font-weight:800;margin:34px 0 4px}
+      ul,ol{margin:0 0 8px;padding-left:22px}
+      li{margin-bottom:6px;font-size:14px}
+      .bloco{break-inside:avoid}
+      .barra{position:sticky;top:0;background:#fff;padding:12px 0;border-bottom:1px solid #E6EDF4;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap}
+      .barra button{border:0;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;background:#F72562;color:#fff}
+      .rodape{margin-top:36px;padding-top:16px;border-top:1px solid #E6EDF4;color:#7D8AA5;font-size:12px}
+      @media print{.barra{display:none}body{padding:0}}
+    </style></head><body>
+    <div class="barra"><button onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button></div>
+    <h1>Manual do ${esc(nome)}</h1>
+    <p class="sub">Guia completo de uso • ${esc(APP_VERSION)} • Gerado em ${hoje}</p>
+    <div class="grupo-titulo">O que o sistema faz</div>
+    ${secoesApresentacao}
+    <div class="grupo-titulo">Passo a passo</div>
+    ${secoesManual}
+    <div class="rodape">${esc(nome)} — Manual gerado pelo próprio sistema em ${hoje}. Para salvar em PDF, use o botão acima ou Ctrl/Cmd+P → "Salvar como PDF".</div>
+    </body></html>`;
+  const win = window.open('', '_blank');
+  if (!win) { toast('Permita pop-ups pra abrir o manual em nova aba.'); return; }
+  win.document.write(doc);
+  win.document.close();
+}
+
 function manualHtml() {
   return `<div class="panel">
-    <h3>📖 Manual do sistema</h3>
-    <p class="muted" style="font-size:14px;line-height:1.7">Passo a passo de cada fluxo do sistema. Clique em cada tema pra abrir. Para uma visão geral das capacidades (sem o passo a passo), veja a aba "Sobre o sistema".</p>
+    <div class="panel-head">
+      <h3>📖 Manual do sistema</h3>
+      <button class="btn small dark" onclick="App.abrirManualWeb()">🖨️ Gerar PDF / página web</button>
+    </div>
+    <p class="muted" style="font-size:14px;line-height:1.7">Passo a passo de cada fluxo do sistema. Clique em cada tema pra abrir. Para uma visão geral das capacidades (sem o passo a passo), veja a aba "Sobre o sistema". Use "🖨️ Gerar PDF / página web" pra abrir o manual completo numa página separada, imprimir ou salvar como PDF.</p>
   </div>
   ${MANUAL_SECOES.map(m => collapsibleHtml(m.key, `<h3>${esc(m.titulo)}</h3>`, `
     <ol style="margin:0;padding-left:20px;color:var(--muted);font-size:13px;line-height:1.8">

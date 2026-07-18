@@ -59,7 +59,7 @@ import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, e
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
   marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento } from './eventos.js';
-import { renderSobre } from './sobre.js';
+import { renderSobre, abrirManualWeb } from './sobre.js';
 
 // --- Auth ---
 $('btnLogin').onclick = async () => {
@@ -402,7 +402,7 @@ window.App = {
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
   marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
   // Sobre
-  renderSobre
+  renderSobre, abrirManualWeb
 };
 
 // Sinaliza visualmente qualquer ação assíncrona disparada por um clique (evita a sensação de "travou"
