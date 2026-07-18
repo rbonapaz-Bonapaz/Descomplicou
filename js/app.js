@@ -30,7 +30,8 @@ import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
-  marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor } from './preencomenda.js';
+  marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor, editarFornecedor, salvarFornecedor,
+  adicionarCompraFornecedor, salvarCompraFornecedor } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
 import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio } from './relatorios.js';
@@ -395,6 +396,7 @@ window.App = {
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
   registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa, marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor,
+  editarFornecedor, salvarFornecedor, adicionarCompraFornecedor, salvarCompraFornecedor,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,

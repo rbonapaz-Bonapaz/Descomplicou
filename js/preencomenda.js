@@ -1,5 +1,5 @@
 import { state, ref, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml } from './utils.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, toggleHtml } from './utils.js';
 import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -364,6 +364,71 @@ export async function removerFornecedor(id) {
   window.App.refresh('Registro removido');
 }
 
+// Edita um lançamento de compra de fornecedor já existente — útil pra ajustar quantidade/valor
+// de uma compra que ainda não tinha os dados fechados, ou pra corrigir o nome da pessoa. Não mexe
+// no estoque (esse controle é só do "quem devo e quanto" — o produto já entrou quando foi lançado).
+export function editarFornecedor(id) {
+  const c = (state.data.despesas || []).find(x => x.id === id);
+  if (!c) return;
+  showModal(`<h3>Editar compra — ${esc(c.pessoa || '')}</h3>
+    <div class="grid">
+      <div class="field full"><label>Pessoa</label><input id="efPessoa" value="${esc(c.pessoa || '')}"></div>
+      <div class="field full"><label>Produto</label><input id="efProduto" value="${esc(c.produtoNome || '')}"></div>
+      <div class="field"><label>Quantidade</label><input id="efQtd" type="number" min="1" value="${c.quantidade || 1}"></div>
+      <div class="field"><label>Valor total</label><input id="efValor" value="${money(c.valorTotal || 0)}"></div>
+      <div class="field"><label>Data</label><input id="efData" type="date" value="${c.data || today()}"></div>
+    </div><br>
+    <button class="btn dark" onclick="App.salvarFornecedor('${id}')">Salvar</button>
+    <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+}
+
+export async function salvarFornecedor(id) {
+  const pessoa = $('efPessoa').value.trim();
+  if (!pessoa) return toast('Informe o nome da pessoa');
+  await setDoc(ref('despesas', id), {
+    pessoa, produtoNome: $('efProduto').value.trim(),
+    quantidade: Number($('efQtd').value || 1),
+    valorTotal: parseMoney($('efValor').value),
+    data: $('efData').value || today()
+  }, { merge: true });
+  closeModal();
+  window.App.refresh('Compra atualizada');
+}
+
+// Registra uma nova compra pra uma pessoa que já aparece na lista, sem precisar passar pela
+// Entrada de estoque de novo — útil pra ir "empilhando" a dívida com a mesma fornecedora conforme
+// ela vai vendendo mais produtos, mesmo antes de decidir se cada item vira estoque de verdade.
+export function adicionarCompraFornecedor(pessoa = '') {
+  showModal(`<h3>Nova compra${pessoa ? ' — ' + esc(pessoa) : ''}</h3>
+    <div class="grid">
+      <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}"></div>
+      <div class="field full"><label>Produto</label><input id="ncProduto" placeholder="Ex: Perfume Bright"></div>
+      <div class="field"><label>Quantidade</label><input id="ncQtd" type="number" min="1" value="1"></div>
+      <div class="field"><label>Valor total</label><input id="ncValor" placeholder="0,00"></div>
+      <div class="field"><label>Data</label><input id="ncData" type="date" value="${today()}"></div>
+      <div class="field full">${toggleHtml('ncJaPaguei', false, '', 'Já paguei')}</div>
+    </div><br>
+    <button class="btn dark" onclick="App.salvarCompraFornecedor()">Registrar compra</button>
+    <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+}
+
+export async function salvarCompraFornecedor() {
+  const pessoa = $('ncPessoa').value.trim();
+  if (!pessoa) return toast('Informe o nome da pessoa');
+  const produtoNome = $('ncProduto').value.trim();
+  if (!produtoNome) return toast('Informe o produto');
+  await setDoc(ref('despesas', 'forn_' + Date.now()), {
+    tipo: 'fornecedor', pessoa, produtoNome,
+    quantidade: Number($('ncQtd').value || 1),
+    valorTotal: parseMoney($('ncValor').value),
+    pago: !!$('ncJaPaguei')?.checked,
+    data: $('ncData').value || today(),
+    criadoEm: serverTimestamp()
+  });
+  closeModal();
+  window.App.refresh(`Compra de ${pessoa} registrada`);
+}
+
 function fornecedoresPanelHtml() {
   const compras = (state.data.despesas || [])
     .filter(x => x.tipo === 'fornecedor')
@@ -374,9 +439,12 @@ function fornecedoresPanelHtml() {
   return `<div class="panel" style="margin-top:10px">
     <div class="panel-head">
       <h3>🧾 Compras de outras consultoras</h3>
-      ${pendentes.length ? `<span class="muted">A pagar: <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${pendentes.length ? `<span class="muted">A pagar: <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+        <button class="btn small pink" onclick="App.adicionarCompraFornecedor()">+ Nova compra</button>
+      </div>
     </div>
-    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido) — controle aqui quem ainda falta pagar.</p>
+    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido, ou adicionados direto aqui) — controle aqui quem ainda falta pagar.</p>
     <div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Pessoa</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
       ${compras.map(c => `<tr>
         <td data-label="Data">${formatDateBR(c.data)}</td>
@@ -389,6 +457,7 @@ function fornecedoresPanelHtml() {
           ${c.pago
             ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
             : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`}
+          <button class="btn small" onclick="App.editarFornecedor('${c.id}')" title="Editar">✏️</button>
           <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${c.id}')" title="Remover registro">🗑️</button>
         </td>
       </tr>`).join('')}
