@@ -10,6 +10,16 @@ export const APP_VERSION = 'v1.0.0';
 // logo abaixo (fora da visão do usuário, mantido só como referência histórica no código-fonte).
 // Daqui pra frente, só entram aqui atualizações/melhorias/correções REAIS pós-v1.0.0.
 const NOVIDADES = [
+  { versao: 'v1.0.1', itens: [
+    '🔍 Busca global (🔎 Buscar em tudo) agora é um autocomplete de verdade: a lista de resultados aparece num dropdown flutuante e fecha automaticamente quando você escolhe um resultado — mais intuitiva e rápida.',
+    '⚠️ Proteção contra perda de dados: se você tentar abrir uma nova janela (carrinho, troca, formulário) enquanto tem outra minimizada, o sistema avisa antes de descartar o que estava lá — você pode cancelar ou confirmar.',
+    '💰 Preço mais simples: removemos o campo "Preço de venda" — agora só tem "Preço original" (de tabela da Farmasi) e "Preço atual" (o que você cobra). Produtos antigos com os dois preços tiveram a conversão automática.',
+    '📦 Pré-encomenda: novo painel "Comprado de" pra registrar quando você compra produtos de outras consultoras — defina o valor, a data e o status de pagamento (pendente/pago), tudo em uma planilha clara. Ótimo pra controlar valores a pagar.',
+    '🔄 Trocas: novo toggle "Pendente de devolução" — marca quando você recebe um produto pra análise, teste ou revisão e ainda vai devolver. Deixa claro qual troca é uma consulta temporária vs. uma troca definitiva.',
+    '⚡ Estoque corrigido: as quantidades agora atualizam na hora quando você lança entrada/saída de estoque ou troca (antes ficava mostrando valor antigo até você recarregar a página).',
+    '📝 Trocas mais limpo: quando você seleciona um produto existente pra sair da troca, os campos "Nome do produto novo" e "Código Farmasi" somem automaticamente — eles só aparecem se você criar um produto novo ali mesmo.',
+    '📱 Manual: novos botões "🔗 Copiar link" e "📱 Enviar por WhatsApp" — facilita compartilhar o manual completo (em PDF ou página web) com sua equipe ou clientes que queiram consultar.'
+  ] },
   { versao: 'v1.0.0', itens: [
     '🎉 Lançamento oficial do sistema! Depois de meses de desenvolvimento e testes, o CRM chega na sua versão base completa — gestão de clientes, produtos e estoque, vendas com checkout inteligente (Pix e cartão), relatórios com inteligência de dados, catálogo de eventos e muito mais. Obrigado por fazer parte dessa jornada desde o início.',
     '📱 Uso no celular repaginado: todas as telas de lista (Vendas, Clientes, Agenda, Produtos, Estoque, Trocas e Admin) aparecem como cartões limpos e organizados no celular, com a informação principal em destaque, detalhes em linhas separadas e botões de ação bem distribuídos.',
@@ -475,6 +485,7 @@ const MANUAL_SECOES = [
     'Toque no botão "+ Novo carrinho" (no celular, o botão rosa flutuante "＋") e escolha a cliente.',
     'Adicione produtos: busque por nome ou código, defina a quantidade e o motivo (Venda, Brinde, Parceria ou Consumo próprio). Dá pra aplicar desconto por item e um desconto no pedido inteiro (% ou R$).',
     'Para cada item, escolha "Agora" (entrega imediata, baixa o estoque ao finalizar) ou "Depois" (entrega futura — fica pendente até você marcar como entregue). "Agora" exige estoque disponível.',
+    'Cada produto mostra "Preço original" (de tabela) e "Preço atual" (o que você cobra) — a diferença é o desconto, que aparece na etiqueta "-X%".',
     'Envie o resumo do pedido pra cliente pelo botão de WhatsApp, ou gere o PDF do pedido (versão cliente ou interna).',
     'Quando fechar a venda, clique em "Finalizar" — o estoque dos itens de entrega imediata é baixado e a venda entra nos relatórios.'
   ] },
@@ -503,12 +514,14 @@ const MANUAL_SECOES = [
     'Vá em Estoque → Pré-encomenda pra ver a lista "A comprar": nome, código, quantidade a comprar e preço unitário previsto — a referência pra montar o pedido no site da Farmasi.',
     'Ao fazer o pedido no site, clique em "✅ Pedido" nos itens — eles vão pra lista "Aguardando chegada".',
     'Quando os produtos chegarem, confira a quantidade recebida e o custo pago e clique em "📦 Confirmar chegada" — o estoque e o custo médio são atualizados na hora, e a pronta entrega é reativada.',
-    'Kits: use "🎁 Montar kit" pra agrupar produtos que vêm juntos — o valor pago é rateado como custo entre os componentes.'
+    'Kits: use "🎁 Montar kit" pra agrupar produtos que vêm juntos — o valor pago é rateado como custo entre os componentes.',
+    'Comprado de outras consultoras: use o painel "Comprado de" pra registrar quando você compra produtos de colegas — nome de quem vendeu, valor, data e se já pagou. Tudo em uma planilha clara pra você não esquecer de pagar ninguém.'
   ] },
   { key: 'manTrocas', titulo: '9. Trocas com outras consultoras', passos: [
     'Vá em Estoque → Trocas → "+ Nova troca" e informe a parceira (busque entre suas clientes ou digite o nome).',
     'Monte os dois lados: os produtos que saem do seu estoque e os que você recebe, cada um com valor unitário. Cada item pode ser entregue/recebido na hora ("pronta") ou depois ("entrega futura").',
     'O sistema calcula o lucro ou prejuízo da troca (em valor e %) e dá baixa/entrada no estoque — sem gerar receita nem lucro nos relatórios de venda.',
+    'Use o toggle "Pendente de devolução" pra marcar quando você recebe um produto de verdade mas ele ainda vai voltar (análise, teste, revisão). Deixa claro qual troca é uma consulta temporária.',
     'Itens pendentes de entrega futura são processados sozinhos quando chega estoque novo. Dá pra reabrir uma troca finalizada — os lançamentos são estornados automaticamente.'
   ] },
   { key: 'manRelatorios', titulo: '10. Relatórios e acompanhamento', passos: [
