@@ -5,6 +5,7 @@
 import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, serverTimestamp, prodById, cliById, estoqueDisponivel, reservadoEmAberto } from './state.js';
 import { $, esc, money, parseMoney, pill, searchPickerHtml, toggleHtml, porNome } from './utils.js';
 import { entradaEstoque, saidaEstoque } from './estoque.js';
+import { fornecedoresPanelHtml } from './preencomenda.js';
 
 function motivoTroca(t) {
   return t.parceira ? `Troca (${t.parceira})` : 'Troca';
@@ -507,5 +508,5 @@ export function trocasTabHtml() {
     </div>
     <p class="muted">Baixa de um ou mais produtos seus e entrada de um ou mais produtos recebidos — sem gerar receita/lucro. Cada item pode ser entregue/recebido na hora ou depois.</p>
     ${trocas.length ? `<div class="data-list">${trocas.map(trocaCardHtml).join('')}</div>` : '<p class="muted">Nenhuma troca registrada ainda.</p>'}
-  </div>`;
+  </div>${fornecedoresPanelHtml()}`;
 }

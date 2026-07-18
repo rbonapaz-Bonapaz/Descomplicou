@@ -477,7 +477,7 @@ function itensDaCompra(c) {
   return [{ produtoNome: c.produtoNome || '-', quantidade: c.quantidade || 0, valorUnitario: (c.valorTotal || 0) / (c.quantidade || 1), valorTotal: c.valorTotal || 0 }];
 }
 
-function fornecedoresPanelHtml() {
+export function fornecedoresPanelHtml() {
   const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor');
   if (!compras.length) return '';
   const totalPendente = compras.filter(x => !x.pago).reduce((s, x) => s + Number(x.valorTotal || 0), 0);
@@ -660,7 +660,7 @@ export function preEncomendaTabHtml() {
       </div>
     </div>
     ${fornecedoresPendentes.length ? `<div style="background:#FBE4E4;border:1px solid #E78C8C;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-      <div><b style="color:#C23B22">💰 Você deve ${money(totalPendente)} a ${fornecedoresPendentes.length} fornecedor${fornecedoresPendentes.length > 1 ? 'es' : ''}</b><br><span class="muted" style="font-size:12px">Veja a seção "Compras de outras consultoras" abaixo</span></div>
+      <div><b style="color:#C23B22">💰 Você deve ${money(totalPendente)} a ${fornecedoresPendentes.length} fornecedor${fornecedoresPendentes.length > 1 ? 'es' : ''}</b><br><span class="muted" style="font-size:12px">Veja a seção "Compras de outras consultoras" na aba Trocas</span></div>
     </div>` : ''}
     ${itens.length ? `<div class="toolbar" style="margin-bottom:12px">
       <input id="qPreEnc" placeholder="Buscar por nome ou código..." oninput="App.renderEstoque()" value="${esc($('qPreEnc')?.value || '')}">
@@ -735,7 +735,7 @@ export function preEncomendaTabHtml() {
       </tr>`;
     }).join('')}</tbody></table></div>`}
     `}
-  </div>${fretePanelHtml()}${despesasPanelHtml()}${fornecedoresPanelHtml()}`;
+  </div>${fretePanelHtml()}${despesasPanelHtml()}`;
 }
 
 function pillOrigem(o) {
