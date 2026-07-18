@@ -527,6 +527,60 @@ export async function marcarProdutosEditadosComoConferidos() {
   window.App.refresh(`${ok} produto(s) marcado(s) como conferido(s)`);
 }
 
+// Pega produtos alterados nas últimas N horas usando o campo `atualizadoEm` que já é salvo em
+// todo saveProduto — cobre também edições feitas antes do checkbox "Conferido" existir, já que
+// esse campo sempre foi gravado (diferente de window.__produtosEditadosHoje, que só existe na
+// sessão atual e não tem como "lembrar" de edições de sessões passadas).
+function produtosAlteradosNasUltimasHoras(horas) {
+  const limite = Date.now() - horas * 60 * 60 * 1000;
+  return state.data.produtos.filter(p => {
+    if (p.conferido) return false;
+    const ts = p.atualizadoEm?.toMillis ? p.atualizadoEm.toMillis() : (p.atualizadoEm?.seconds ? p.atualizadoEm.seconds * 1000 : 0);
+    return ts >= limite;
+  }).sort((a, b) => {
+    const ta = a.atualizadoEm?.toMillis ? a.atualizadoEm.toMillis() : 0;
+    const tb = b.atualizadoEm?.toMillis ? b.atualizadoEm.toMillis() : 0;
+    return tb - ta;
+  });
+}
+
+export function abrirConferenciaPorHorario(horas = 4) {
+  const produtos = produtosAlteradosNasUltimasHoras(horas);
+  window.__horasConferencia = horas;
+  showModal(`<h3>Conferir produtos recentes</h3>
+    <div class="field">
+      <label>Buscar produtos alterados nas últimas quantas horas?</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="cfHoras" type="number" min="1" value="${horas}" style="width:100px" onchange="App.atualizarConferenciaPorHorario(Number(this.value))">
+        <span class="muted">horas</span>
+      </div>
+    </div>
+    <p style="margin-top:10px">${produtos.length ? `<b>${produtos.length}</b> produto(s) alterado(s) nesse período e ainda não conferido(s):` : 'Nenhum produto alterado nesse período (ou já estão todos conferidos).'}</p>
+    ${produtos.length ? `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;margin:10px 0">
+      ${produtos.map(p => `<div style="padding:6px 4px;border-bottom:1px solid var(--border-light)">${esc(p.nome)} <small class="muted">${esc(p.codigoFarmasi || '')}</small></div>`).join('')}
+    </div>
+    <button class="btn dark" onclick="App.confirmarConferenciaPorHorario()">✓ Marcar ${produtos.length} produto(s) como conferido(s)</button>` : ''}
+    <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+}
+
+export function atualizarConferenciaPorHorario(horas) {
+  abrirConferenciaPorHorario(horas);
+}
+
+export async function confirmarConferenciaPorHorario() {
+  const horas = window.__horasConferencia || 4;
+  const produtos = produtosAlteradosNasUltimasHoras(horas);
+  if (!produtos.length) return toast('Nenhum produto para marcar');
+
+  const batch = writeBatch(db);
+  produtos.forEach(p => {
+    batch.update(doc(db, 'produtos', p.id), { conferido: true, dataConferencia: serverTimestamp() });
+  });
+  await batch.commit();
+  closeModal();
+  window.App.refresh(`${produtos.length} produto(s) marcado(s) como conferido(s)`);
+}
+
 // Modal com o histórico de mudanças de preço do produto — mais recente primeiro. Só existe pra
 // produtos editados pelo menos uma vez com preço diferente (ver registrarHistoricoPrecos).
 export function abrirHistoricoPrecos(id) {
