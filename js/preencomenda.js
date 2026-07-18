@@ -662,8 +662,8 @@ export function preEncomendaTabHtml() {
         <button class="btn small pink" onclick="App.openKitForm()">🎁 Montar kit</button>
       </div>
     </div>
-    ${fornecedoresPendentes.length ? `<div style="background:#FBE4E4;border:1px solid #E78C8C;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-      <div><b style="color:#C23B22">💰 Você deve ${money(totalPendente)} a ${fornecedoresPendentes.length} fornecedor${fornecedoresPendentes.length > 1 ? 'es' : ''}</b><br><span class="muted" style="font-size:12px">Veja a seção "Compras de outras consultoras" na aba Trocas</span></div>
+    ${fornecedoresPendentes.length ? `<div style="background:#FBE4E4;border:1px solid #E78C8C;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="App.setSection('estoque','trocas')" title="Ver na aba Trocas">
+      <div><b style="color:#C23B22">💰 Você deve ${money(totalPendente)} a ${fornecedoresPendentes.length} fornecedor${fornecedoresPendentes.length > 1 ? 'es' : ''}</b><br><span class="muted" style="font-size:12px">Clique pra ver na aba Trocas →</span></div>
     </div>` : ''}
     ${itens.length ? `<div class="toolbar" style="margin-bottom:12px">
       <input id="qPreEnc" placeholder="Buscar por nome ou código..." oninput="App.renderEstoque()" value="${esc($('qPreEnc')?.value || '')}">
