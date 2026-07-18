@@ -12,7 +12,28 @@ import { entradaEstoque, saidaEstoque, perguntarAtivarProntaEntrega } from './es
 // se funda com uma pendência manual do mesmo produto (ou com outro kit), preservando a
 // composição rateada até o momento em que o kit inteiro é removido ou dá entrada no estoque.
 const idPendente = (produtoId, kitId) => kitId ? `${produtoId}_pendente_${kitId}` : `${produtoId}_pendente`;
-const idPedido = (produtoId, kitId) => kitId ? `${produtoId}_pedido_${kitId}` : `${produtoId}_pedido`;
+
+// Número do pedido atual — agrupa os itens marcados como "já pedido" numa mesma leva de compra,
+// pra não misturar com um pedido anterior do mesmo produto que ainda está aguardando chegar (ex:
+// pediu 5 un. semana passada, ainda não chegou, e já quer pedir mais 3 — sem isso, os dois pedidos
+// se fundiam numa linha só de "8 un.", perdendo o controle de qual pedido é qual). Fica só na
+// sessão (não precisa persistir): ao recarregar a página, o próximo item marcado calcula um número
+// novo sozinho a partir do maior já usado, então nunca colide com pedidos existentes.
+let pedidoAtualNumero = null;
+function proximoNumeroPedidoCompra() {
+  return state.data.preEncomenda.reduce((max, x) => Math.max(max, Number(x.pedidoNumero || 0)), 0) + 1;
+}
+function numeroPedidoAtual() {
+  if (!pedidoAtualNumero) pedidoAtualNumero = proximoNumeroPedidoCompra();
+  return pedidoAtualNumero;
+}
+// Fecha a leva atual — o próximo item marcado como "já pedido" começa um pedido novo, separado
+// dos que já estão aguardando chegar. Use antes de lançar uma nova compra, pra não misturar com
+// um pedido anterior que ainda não chegou.
+export function iniciarNovoPedidoCompra() {
+  pedidoAtualNumero = proximoNumeroPedidoCompra();
+  toast(`Pedido nº ${pedidoAtualNumero} iniciado — os próximos itens marcados como "Pedido" entram juntos aqui, separados do que já está aguardando chegar`);
+}
 
 // Soma, em tempo real, quantas unidades de um produto estão "presas" em carrinhos abertos/parciais
 // como entrega futura (venda já feita, mas ainda sem estoque pra entregar) — nunca fica desatualizado
@@ -114,22 +135,21 @@ export async function removerPreEncomenda(itemId) {
   window.App.refresh('Removido da pré-encomenda');
 }
 
-// Move (soma) a quantidade do registro "a comprar" pro registro "aguardando chegada" do mesmo
-// produto — cria o registro de chegada se ainda não existir, ou soma nele se já existir (ex:
-// segunda leva pedida antes da primeira chegar). O preço unitário informado acompanha, sem
-// sobrescrever um preço que já estivesse lá se o novo vier vazio.
+// Move o registro "a comprar" pra "aguardando chegada" — sempre como um lançamento novo (nunca
+// somando num já existente), marcado com o número do pedido atual (ver numeroPedidoAtual acima).
+// Isso é o que impede um pedido novo de se misturar com um pedido anterior do mesmo produto que
+// ainda não chegou: cada leva de compra fica com seu próprio registro, agrupada na tela por
+// pedidoNumero.
 async function moverParaPedido(pendente) {
-  const destino = idPedido(pendente.produtoId, pendente.kitId);
-  const jaChegando = state.data.preEncomenda.find(x => x.id === destino);
-  await setDoc(ref('preEncomenda', destino), {
+  await addDoc(col('preEncomenda'), {
     produtoId: pendente.produtoId, produtoNome: pendente.produtoNome, codigoFarmasi: pendente.codigoFarmasi || '',
-    quantidade: Number(jaChegando?.quantidade || 0) + Number(pendente.quantidade || 0),
-    precoUnitario: pendente.precoUnitario || jaChegando?.precoUnitario || '',
-    observacoes: jaChegando?.observacoes || pendente.observacoes || '',
-    origem: pendente.origem, status: 'pedido',
+    quantidade: Number(pendente.quantidade || 0),
+    precoUnitario: pendente.precoUnitario || '',
+    observacoes: pendente.observacoes || '',
+    origem: pendente.origem, status: 'pedido', pedidoNumero: numeroPedidoAtual(),
     ...(pendente.kitId ? { kitId: pendente.kitId, kitNome: pendente.kitNome } : {}),
-    criadoEm: jaChegando?.criadoEm || serverTimestamp()
-  }, { merge: true });
+    criadoEm: serverTimestamp()
+  });
   await deleteDoc(ref('preEncomenda', pendente.id));
 }
 
@@ -227,14 +247,11 @@ export async function confirmarBrinde() {
   const p = prodById(produtoId);
   if (!p) return toast('Selecione um produto');
   const qtd = Math.max(1, Number($('bdQtd')?.value || 1));
-  const id = idPedido(produtoId);
-  const jaChegando = state.data.preEncomenda.find(x => x.id === id);
-  await setDoc(ref('preEncomenda', id), {
+  await addDoc(col('preEncomenda'), {
     produtoId, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
-    quantidade: Number(jaChegando?.quantidade || 0) + qtd,
-    precoUnitario: jaChegando?.precoUnitario || '', observacoes: jaChegando?.observacoes || '',
-    origem: 'brinde', status: 'pedido', criadoEm: jaChegando?.criadoEm || serverTimestamp()
-  }, { merge: true });
+    quantidade: qtd, precoUnitario: '', observacoes: '',
+    origem: 'brinde', status: 'pedido', pedidoNumero: numeroPedidoAtual(), criadoEm: serverTimestamp()
+  });
   closeModal();
   window.App.refresh('Brinde adicionado — confirme a chegada pra atualizar o estoque');
 }
@@ -331,7 +348,7 @@ export function removerProdutoKit(idx) {
 }
 
 // Cada kit montado ganha um kitId próprio — os componentes nunca se misturam com pendências
-// manuais nem com outro kit do mesmo produto (ver idPendente/idPedido no topo do arquivo).
+// manuais nem com outro kit do mesmo produto (ver idPendente no topo do arquivo).
 // Isso é o que permite tratar o kit como "produto único": ele só sai da pré-encomenda inteiro,
 // via removerKitCompleto — nunca componente por componente.
 export async function confirmarKit() {
@@ -816,45 +833,74 @@ export function preEncomendaTabHtml() {
       </tr>`;
     }).join('')}</tbody></table></div>`}
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;flex-wrap:wrap;gap:8px">
       <h4 style="margin:0">Pedido — aguardando chegada (${aguardando.length})</h4>
-      <button class="btn small" onclick="App.abrirModalBrinde()">🎁 Adicionar brinde</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" onclick="App.iniciarNovoPedidoCompra()" title="Separa os próximos itens marcados como 'Pedido' num pedido novo, sem misturar com o que já está aguardando chegar">🆕 Novo pedido</button>
+        <button class="btn small" onclick="App.abrirModalBrinde()">🎁 Adicionar brinde</button>
+      </div>
     </div>
     ${!aguardando.length ? '<p class="muted">Nada aguardando chegada.</p>' : `
-    <p class="muted" style="margin:0 0 10px">Quando os produtos chegarem, confira a quantidade e o preço pago e confirme — isso dá entrada no estoque automaticamente.</p>
-    <div class="table table-scroll"><table><thead><tr>
-      <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
-    </tr></thead><tbody>${agruparPorKit(aguardando).map((it, idx, arr) => {
-      const p = prodById(it.produtoId);
-      const emKit = !!it.kitId;
-      const totalItem = parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1);
-      let cabecalho = '';
-      if (emKit && !kitsJaRenderizados.has(it.kitId)) {
-        kitsJaRenderizados.add(it.kitId);
-        const qtdNoKit = aguardando.filter(x => x.kitId === it.kitId).length;
-        cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 8);
-      }
-      const ultimaDoKit = emKit && arr[idx + 1]?.kitId !== it.kitId;
-      const estiloKit = emKit ? `background:#FDF2F7;border-left:${KIT_BORDA}${ultimaDoKit ? `;border-bottom:${KIT_BORDA.replace('4px', '2px')};border-bottom-color:#F5C6DE` : ''}` : '';
-      return `${cabecalho}<tr${emKit ? ` style="${estiloKit}"` : ''}>
-        <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
-        <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
-        <td data-label="Pedido">${Number(it.quantidade || 1)}</td>
-        <td data-label="Qtd recebida"><input id="chQtd_${it.id}" type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
-        <td data-label="Custo unit. pago"><input id="chCusto_${it.id}" placeholder="0,00" value="${it.precoUnitario ? esc(it.precoUnitario) : ''}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
-        <td data-label="Total"><b id="chTotal_${it.id}">${money(totalItem)}</b></td>
-        <td data-label="Origem">${pillOrigem(it.origem)}</td>
-        <td data-label="Ações"><div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn small dark" onclick="App.confirmarChegada('${it.id}')">📦 Confirmar chegada</button>
-          <button class="btn small" onclick="App.voltarParaComprar('${it.id}')" title="Voltar pra 'A comprar'">↩️</button>
-          ${emKit ? '' : `<button class="btn small" style="color:var(--error)" onclick="App.removerPreEncomenda('${it.id}')" title="Remover da pré-encomenda">🗑️</button>`}
-        </div></td>
-      </tr>`;
-    }).join('')}</tbody></table></div>
-    <div class="cards" style="margin-top:10px"><div class="card"><span>Valor total esperado</span><b id="preEncAguardandoTotal">${money(aguardando.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0))}</b></div></div>
+    <p class="muted" style="margin:0 0 10px">Quando os produtos chegarem, confira a quantidade e o preço pago e confirme — isso dá entrada no estoque automaticamente. Pedidos diferentes ficam separados abaixo, mesmo que tenham o mesmo produto.</p>
+    ${aguardandoAgrupadoHtml(aguardando)}
+    <div class="cards" style="margin-top:14px"><div class="card"><span>Valor total esperado (todos os pedidos)</span><b id="preEncAguardandoTotal">${money(aguardando.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0))}</b></div></div>
     <p class="muted" style="margin-top:6px">Confira esse total com o valor do seu pedido na Farmasi (ou fatura de quem vendeu) antes de confirmar a chegada.</p>`}
     `}
   </div>${fretePanelHtml()}${despesasPanelHtml()}`;
+}
+
+// Agrupa "aguardando chegada" por pedidoNumero — sem isso, um pedido novo do mesmo produto de um
+// pedido anterior ainda não chegado ficaria tudo misturado numa lista só, sem dar pra saber quanto
+// veio de cada compra. Itens antigos sem pedidoNumero (lançados antes dessa mudança) caem juntos
+// no grupo "Pedido anterior", ordenados por último.
+function aguardandoAgrupadoHtml(aguardando) {
+  const porPedido = new Map();
+  for (const it of aguardando) {
+    const chave = it.pedidoNumero || 0;
+    if (!porPedido.has(chave)) porPedido.set(chave, []);
+    porPedido.get(chave).push(it);
+  }
+  const grupos = [...porPedido.entries()].sort((a, b) => b[0] - a[0]);
+
+  return grupos.map(([numero, itensDoPedido]) => {
+    const totalPedido = itensDoPedido.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0);
+    const kitsDoGrupo = new Set();
+    return `<div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#F3F6FA;border-radius:10px;padding:10px 14px">
+        <b>${numero ? `📦 Pedido nº ${numero}` : '📦 Pedido anterior'}</b>
+        <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
+      </div>
+      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
+        <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
+      </tr></thead><tbody>${agruparPorKit(itensDoPedido).map((it, idx, arr) => {
+        const p = prodById(it.produtoId);
+        const emKit = !!it.kitId;
+        const totalItem = parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1);
+        let cabecalho = '';
+        if (emKit && !kitsDoGrupo.has(it.kitId)) {
+          kitsDoGrupo.add(it.kitId);
+          const qtdNoKit = itensDoPedido.filter(x => x.kitId === it.kitId).length;
+          cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 8);
+        }
+        const ultimaDoKit = emKit && arr[idx + 1]?.kitId !== it.kitId;
+        const estiloKit = emKit ? `background:#FDF2F7;border-left:${KIT_BORDA}${ultimaDoKit ? `;border-bottom:${KIT_BORDA.replace('4px', '2px')};border-bottom-color:#F5C6DE` : ''}` : '';
+        return `${cabecalho}<tr${emKit ? ` style="${estiloKit}"` : ''}>
+          <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
+          <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
+          <td data-label="Pedido">${Number(it.quantidade || 1)}</td>
+          <td data-label="Qtd recebida"><input id="chQtd_${it.id}" type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
+          <td data-label="Custo unit. pago"><input id="chCusto_${it.id}" placeholder="0,00" value="${it.precoUnitario ? esc(it.precoUnitario) : ''}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
+          <td data-label="Total"><b id="chTotal_${it.id}">${money(totalItem)}</b></td>
+          <td data-label="Origem">${pillOrigem(it.origem)}</td>
+          <td data-label="Ações"><div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="btn small dark" onclick="App.confirmarChegada('${it.id}')">📦 Confirmar chegada</button>
+            <button class="btn small" onclick="App.voltarParaComprar('${it.id}')" title="Voltar pra 'A comprar'">↩️</button>
+            ${emKit ? '' : `<button class="btn small" style="color:var(--error)" onclick="App.removerPreEncomenda('${it.id}')" title="Remover da pré-encomenda">🗑️</button>`}
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>
+    </div>`;
+  }).join('');
 }
 
 function pillOrigem(o) {
