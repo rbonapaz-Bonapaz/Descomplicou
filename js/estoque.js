@@ -147,15 +147,25 @@ function chips(tipo, vals) {
   ).join('')}</div>`;
 }
 
-// Ações de um item de estoque — HTML idêntico no cartão desktop (.data-card) e mobile (.vcard).
-function stockAcoesHtml(x) {
+// Pílula de status do item (separada dos botões: no cartão mobile fica numa linha própria, pra a
+// grade de ações não a esticar pra largura de botão).
+function stockStatusHtml(x) {
+  return pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
+    x.semCusto || x.baixo ? 'red' : 'green',
+    x.semCusto ? 'Produto sem custo médio cadastrado — o lucro dele não entra certo nos relatórios' : x.baixo ? 'Estoque abaixo do mínimo configurado pra esse produto' : 'Estoque normal, acima do mínimo');
+}
+
+// Botões de ação do item de estoque (só botões, sem pílula) — vão na grade .vcard-actions no mobile.
+function stockBotoesHtml(x) {
   return `
-    ${pill(x.semCusto ? 'Sem custo' : x.baixo ? 'Baixo' : 'OK',
-      x.semCusto || x.baixo ? 'red' : 'green',
-      x.semCusto ? 'Produto sem custo médio cadastrado — o lucro dele não entra certo nos relatórios' : x.baixo ? 'Estoque abaixo do mínimo configurado pra esse produto' : 'Estoque normal, acima do mínimo')}
     ${btnAdicionarPreEncomenda(x.p.id)}
     <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
     <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>`;
+}
+
+// Desktop (.data-card): pílula e botões juntos, como no design original.
+function stockAcoesHtml(x) {
+  return `${stockStatusHtml(x)}${stockBotoesHtml(x)}`;
 }
 
 function stockCard(x) {
@@ -187,7 +197,8 @@ function stockCard(x) {
       <div class="vcard-row"><span>Investido</span><b>${money(x.investido)}</b></div>
       <div class="vcard-row"><span>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
     </div>
-    <div class="vcard-actions">${stockAcoesHtml(x)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${stockStatusHtml(x)}</div>
+    <div class="vcard-actions">${stockBotoesHtml(x)}</div>
   </div>`;
 }
 

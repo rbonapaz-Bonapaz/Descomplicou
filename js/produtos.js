@@ -25,15 +25,24 @@ function chips(tipo, vals) {
   ).join('')}</div>`;
 }
 
-// Ações de um produto — HTML idêntico no cartão desktop (.data-card) e mobile (.vcard).
-function produtoAcoesHtml(x) {
+// Pílulas de status do produto (separadas dos botões: no cartão mobile as pílulas ficam numa linha
+// própria; se entrassem na grade de ações, a grade as esticaria pra largura de botão, ficando torto).
+function produtoStatusHtml(x) {
+  return `${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red', x.est > 0 ? `${x.est} unidade(s) disponível(is) agora` : 'Nenhuma unidade disponível — venda entra como entrega futura')}${x.p.ativoCatalogo !== false ? ` ${pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)')}` : ''}`;
+}
+
+// Botões de ação do produto (só os botões, sem pílulas) — vão na grade .vcard-actions no mobile.
+function produtoBotoesHtml(x) {
   return `
-    ${pill(x.est > 0 ? 'Em estoque' : 'Sem estoque', x.est > 0 ? 'green' : 'red', x.est > 0 ? `${x.est} unidade(s) disponível(is) agora` : 'Nenhuma unidade disponível — venda entra como entrega futura')}
-    ${x.p.ativoCatalogo !== false ? pill('Catálogo', 'blue', 'Aparece no catálogo público (PDF e link de eventos)') : ''}
     ${btnAdicionarPreEncomenda(x.p.id)}
     <button class="btn small" onclick="App.openProdutoForm('${x.p.id}')" title="Editar">✏️</button>
     ${(x.p.historicoPrecos || []).length ? `<button class="btn small" onclick="App.abrirHistoricoPrecos('${x.p.id}')" title="Histórico de preços">📈</button>` : ''}
     <button class="btn small" style="color:var(--error)" onclick="App.excluirProduto('${x.p.id}')" title="Excluir">🗑️</button>`;
+}
+
+// Desktop (.data-card): pílulas e botões juntos, como no design original.
+function produtoAcoesHtml(x) {
+  return `${produtoStatusHtml(x)}${produtoBotoesHtml(x)}`;
 }
 
 function productCard(x) {
@@ -66,7 +75,8 @@ function productCard(x) {
       <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
       <div class="vcard-row"><span>Estoque</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
     </div>
-    <div class="vcard-actions">${produtoAcoesHtml(x)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${produtoStatusHtml(x)}</div>
+    <div class="vcard-actions">${produtoBotoesHtml(x)}</div>
   </div>`;
 }
 
