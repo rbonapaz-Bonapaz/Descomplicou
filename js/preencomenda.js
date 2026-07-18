@@ -1,5 +1,5 @@
 import { state, ref, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome } from './utils.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml } from './utils.js';
 import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -477,14 +477,34 @@ function agruparPorKit(lista) {
   });
 }
 
+function sortPreEncomenda(arr, sortKey) {
+  const [field, dir] = String(sortKey || 'nome_asc').split('_');
+  const mul = dir === 'desc' ? -1 : 1;
+  const val = x => {
+    if (field === 'codigo') return norm(x.codigoFarmasi || '');
+    if (field === 'quantidade') return Number(x.quantidade || 0);
+    if (field === 'preco') return Number(x.precoUnitario || 0);
+    return norm(x.produtoNome || '');
+  };
+  return [...arr].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    return typeof va === 'string' ? va.localeCompare(vb, 'pt-BR') * mul : (va - vb) * mul;
+  });
+}
+
 export function preEncomendaTabHtml() {
   const q = norm($('qPreEnc')?.value || '');
   // Filtra as duas listas simultaneamente (mesmo termo pesquisado em "A comprar" e "Aguardando
   // chegada" ao mesmo tempo) — pedido do usuário, pra achar um produto rápido em qualquer status.
   const itensFiltrados = q ? state.data.preEncomenda.filter(it => norm(it.produtoNome + ' ' + (it.codigoFarmasi || '')).includes(q)) : state.data.preEncomenda;
   const itens = state.data.preEncomenda;
-  const aComprar = itensFiltrados.filter(it => it.status !== 'pedido');
-  const aguardando = itensFiltrados.filter(it => it.status === 'pedido');
+  let aComprar = itensFiltrados.filter(it => it.status !== 'pedido');
+  let aguardando = itensFiltrados.filter(it => it.status === 'pedido');
+
+  // Aplica ordenação
+  aComprar = sortPreEncomenda(aComprar, state.filters.preEncomendaSort);
+  aguardando = sortPreEncomenda(aguardando, state.filters.preEncomendaSort);
+
   const kitsJaRenderizados = new Set();
 
   // Verifica se há compras pendentes de fornecedores
@@ -505,7 +525,8 @@ export function preEncomendaTabHtml() {
     </div>` : ''}
     ${itens.length ? `<div class="toolbar" style="margin-bottom:12px">
       <input id="qPreEnc" placeholder="Buscar por nome ou código..." oninput="App.renderEstoque()" value="${esc($('qPreEnc')?.value || '')}">
-    </div>` : ''}
+    </div>
+    ${sortBarHtml(state.filters.preEncomendaSort, 'preEncomendaSort')}` : ''}
     ${!itens.length ? '<p class="muted">Nenhum produto na pré-encomenda. Adicione pela tela de Produtos, Estoque (itens com estoque baixo), monte um kit aqui, ou automaticamente quando vender algo sem estoque no carrinho.</p>' : `
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
