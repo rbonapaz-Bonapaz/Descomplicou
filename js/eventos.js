@@ -583,23 +583,38 @@ function renderListasInline(eventoId) {
     <button class="btn small" onclick="App.atualizarListasEvento('${eventoId}')">🔄 Atualizar lista</button>
   </div>`;
   if (!listas.length) { box.innerHTML = cabecalho + '<p class="muted">Ninguém enviou lista ainda.</p>'; return; }
-  box.innerHTML = cabecalho + `<div class="table" style="margin-top:8px"><table><thead><tr>
+  // Ações de uma lista de desejo — idênticas na tabela (desktop) e no cartão (mobile).
+  const acoesLista = l => `
+    ${l.whatsapp ? `<a class="btn small green-btn" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">${WA_ICON}</a>` : ''}
+    ${!l._clienteId
+      ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
+      : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>
+         <button class="btn small" onclick="App.marcarInteresseDaLista('${eventoId}','${l.id}')" title="Ela tem interesse mas ainda não vai comprar — salva os produtos permanentemente no cadastro dela pra você oferecer de novo depois">⭐ Lista de interesse</button>`}`;
+  const situacaoLista = (l, matchId) => `${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : matchId ? ` ${pill('📌 Telefone de ' + (cliById(matchId)?.nome || ''), 'orange', 'Mesmo WhatsApp de um cliente já cadastrado — clique em "Vincular cliente" pra confirmar')}` : ''}`;
+  box.innerHTML = cabecalho + `<div class="table only-desktop" style="margin-top:8px"><table><thead><tr>
     <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Tratado</th><th>Ações</th>
   </tr></thead><tbody>${listas.map(l => { const matchId = !l._clienteId ? matchCliente(l) : null; return `<tr>
-    <td data-label="Nome">${esc(l.nomeVisitante)}</td>
-    <td data-label="Aniversário">${esc(l.nascimento || '-')}</td>
-    <td data-label="WhatsApp">${esc(l.whatsapp || '-')}</td>
-    <td data-label="Situação">${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : matchId ? `<br>${pill('📌 Telefone de ' + (cliById(matchId)?.nome || ''), 'orange', 'Mesmo WhatsApp de um cliente já cadastrado — clique em "Vincular cliente" pra confirmar')}` : ''}</td>
-    <td data-label="Produtos">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
-    <td data-label="Tratado">${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
-    <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
-      ${l.whatsapp ? `<a class="btn small green-btn" href="https://wa.me/55${esc(String(l.whatsapp).replace(/\D/g, ''))}" target="_blank" rel="noopener" title="Falar no WhatsApp">${WA_ICON}</a>` : ''}
-      ${!l._clienteId
-        ? `<button class="btn small" onclick="App.vincularCliente('${eventoId}','${l.id}')">Vincular cliente</button>`
-        : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>
-           <button class="btn small" onclick="App.marcarInteresseDaLista('${eventoId}','${l.id}')" title="Ela tem interesse mas ainda não vai comprar — salva os produtos permanentemente no cadastro dela pra você oferecer de novo depois">⭐ Lista de interesse</button>`}
-    </td>
-  </tr>`; }).join('')}</tbody></table></div>`;
+    <td>${esc(l.nomeVisitante)}</td>
+    <td>${esc(l.nascimento || '-')}</td>
+    <td>${esc(l.whatsapp || '-')}</td>
+    <td>${situacaoLista(l, matchId)}</td>
+    <td>${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
+    <td>${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">${acoesLista(l)}</td>
+  </tr>`; }).join('')}</tbody></table></div>
+  <div class="only-mobile vcards" style="margin-top:8px">${listas.map(l => { const matchId = !l._clienteId ? matchCliente(l) : null; return `<div class="vcard">
+    <div class="vcard-top">
+      <div class="vcard-cli" style="margin:0;font-size:17px">${esc(l.nomeVisitante)}</div>
+    </div>
+    <div style="margin:6px 0 4px">${situacaoLista(l, matchId)}</div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Aniversário</span><b>${esc(l.nascimento || '-')}</b></div>
+      <div class="vcard-row"><span>WhatsApp</span><b>${esc(l.whatsapp || '-')}</b></div>
+      <div class="vcard-row"><span>Produtos</span><b style="text-align:right">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</b></div>
+      <div class="vcard-row"><span>Tratado</span><b>${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</b></div>
+    </div>
+    <div class="vcard-actions">${acoesLista(l)}</div>
+  </div>`; }).join('')}</div>`;
 }
 
 // Marca/desmarca uma lista de desejo como "tratada" — libera (ou não) a exclusão do evento.

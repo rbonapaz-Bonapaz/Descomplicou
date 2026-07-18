@@ -10,6 +10,43 @@ import { taxaOperadora, operadoraById, linkPagamentoAtivo, operadoraPadrao } fro
 const MOTIVOS_ITEM = ['Venda', 'Brinde', 'Parceria', 'Consumo próprio'];
 const motivoColor = m => m === 'Venda' ? 'green' : m === 'Brinde' ? 'pink' : m === 'Parceria' ? 'blue' : 'orange';
 
+// Cartão de um item do carrinho no celular (substitui a linha da tabela de 9-10 colunas, que
+// virava um paredão de RÓTULO: valor no celular). `editavel` mostra o toggle Agora/Depois e o
+// botão de remover; caso contrário mostra só o status de entrega (visão de leitura).
+// idExtra garante ids únicos do toggle — desktop e mobile coexistem no DOM (alternados por CSS),
+// então o toggle mobile precisa de id próprio pra não duplicar o id do toggle da tabela.
+function carrinhoItemCardHtml(it, idx, id, editavel) {
+  const original = Number(it.precoOriginal || it.precoUnitario || 0);
+  const temDesconto = original > it.precoUnitario;
+  const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
+  const temEstoqueAgora = editavel ? estoqueDisponivel(it.produtoId, id) >= it.quantidade : null;
+  const entregaPill = editavel
+    ? pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')
+    : pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' : 'Futura') : 'Pronta',
+        it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'green' : 'orange') : 'green');
+  return `<div class="vcard">
+    <div class="vcard-top" style="align-items:flex-start">
+      <div style="min-width:0">
+        ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}
+        <span style="font-size:16px;font-weight:800;overflow-wrap:break-word">${esc(it.produtoNome)}</span>
+        ${it.codigoFarmasi ? `<br><small class="muted">Cód. ${esc(it.codigoFarmasi)}</small>` : ''}
+      </div>
+      ${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}
+    </div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Qtd</span><b>${it.quantidade}</b></div>
+      <div class="vcard-row"><span>Preço unit.</span><b>${temDesconto ? `<del class="muted" style="font-weight:400">${money(original)}</del> ` : ''}${money(it.precoUnitario)}${temDesconto ? ` ${pill('-' + percentDesc + '%', 'green')}` : ''}</b></div>
+      <div class="vcard-row"><span>Total</span><b>${money(it.totalItem)}</b></div>
+      <div class="vcard-row"><span>Entrega</span><b>${entregaPill}</b></div>
+      ${editavel ? `<div class="vcard-row"><span>Quando</span><b style="display:flex;align-items:center;gap:6px">
+        ${toggleBareHtml('entrItemM_' + idx, it.tipoEntrega !== 'entrega_futura', `App.toggleEntregaItem('${id}',${idx},this.checked)`)}
+        <small class="muted">${it.tipoEntrega === 'entrega_futura' ? 'Depois' : 'Agora'}</small>
+      </b></div>` : ''}
+    </div>
+    ${editavel ? `<div class="vcard-actions"><button class="btn small" style="color:var(--error)" onclick="App.removerItemCarrinho('${id}',${idx})">✗ Remover item</button></div>` : ''}
+  </div>`;
+}
+
 // Calcula o valor da parcela. Se o cliente assume os juros, repassa pra ela exatamente a diferença
 // real que a operadora cobra por parcelar (taxa da parcela N menos a taxa à vista da própria tabela
 // da operadora) — não é um número digitado à parte, é o juro de verdade que a maquininha desconta
@@ -314,7 +351,7 @@ export function openCarrinho(id) {
 
     <div class="panel" style="margin-top:12px">
       <h4>Itens do carrinho (${itens.length})</h4>
-      ${itens.length ? `<div class="table"><table><thead><tr>
+      ${itens.length ? `<div class="table only-desktop"><table><thead><tr>
         <th>Cód.</th>${thSortItensCarrinho('Produto', 'nome', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Motivo', 'motivo', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Qtd', 'qtd', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Original', 'original', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Preço Unit.', 'preco', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Desconto', 'desconto', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Total', 'total', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Entrega', 'entrega', state.filters.carrinhoItensSort, id)}${thSortItensCarrinho('Quando', 'quando', state.filters.carrinhoItensSort, id)}<th></th>
       </tr></thead><tbody>${ordenarItensCarrinho(itens.map((it, idx) => ({ it, idx })), id).map(({ it, idx }) => {
         const original = Number(it.precoOriginal || it.precoUnitario || 0);
@@ -324,22 +361,23 @@ export function openCarrinho(id) {
         // Exclui as reservas deste próprio carrinho pra não contar o item contra ele mesmo.
         const temEstoqueAgora = estoqueDisponivel(it.produtoId, id) >= it.quantidade;
         return `<tr>
-        <td data-label="Cód."><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
-        <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
-        <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
-        <td data-label="Qtd">${it.quantidade}</td>
-        <td data-label="Original">${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
-        <td data-label="Preço">${money(it.precoUnitario)}</td>
-        <td data-label="Desconto">${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
-        <td data-label="Total">${money(it.totalItem)}</td>
-        <td data-label="Entrega" title="Status do produto no estoque">${pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')}</td>
-        <td data-label="Quando"><div style="display:flex;align-items:center;gap:6px" title="Decisão do consultor: mesmo com estoque, pode ficar pendente de entrega pra outro momento">
+        <td><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
+        <td>${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
+        <td>${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
+        <td>${it.quantidade}</td>
+        <td>${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
+        <td>${money(it.precoUnitario)}</td>
+        <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
+        <td>${money(it.totalItem)}</td>
+        <td title="Status do produto no estoque">${pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')}</td>
+        <td><div style="display:flex;align-items:center;gap:6px" title="Decisão do consultor: mesmo com estoque, pode ficar pendente de entrega pra outro momento">
           ${toggleBareHtml('entrItem_' + idx, it.tipoEntrega !== 'entrega_futura', `App.toggleEntregaItem('${id}',${idx},this.checked)`)}
           <small class="muted" style="white-space:nowrap">${it.tipoEntrega === 'entrega_futura' ? 'Depois' : 'Agora'}</small>
         </div></td>
         <td><button class="btn small" onclick="App.removerItemCarrinho('${id}',${idx})" title="Remover item">✗</button></td>
       </tr>`;
-      }).join('')}</tbody></table></div>` : '<p class="muted">Carrinho vazio.</p>'}
+      }).join('')}</tbody></table></div>
+      <div class="only-mobile vcards">${ordenarItensCarrinho(itens.map((it, idx) => ({ it, idx })), id).map(({ it, idx }) => carrinhoItemCardHtml(it, idx, id, true)).join('')}</div>` : '<p class="muted">Carrinho vazio.</p>'}
     </div>
 
     <div class="cards" style="margin-top:12px">
@@ -413,25 +451,26 @@ function openCarrinhoView(carr) {
       <div class="card"><span>Lucro real (após taxas)</span><b>${money(lucroReal)}</b></div>
       <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || '-')}</b></div>
     </div>
-    <div class="table" style="margin-top:12px"><table><thead><tr>
+    <div class="table only-desktop" style="margin-top:12px"><table><thead><tr>
       <th>Cód.</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço</th><th>Desconto</th><th>Total</th><th>Entrega</th>
     </tr></thead><tbody>${itens.map(it => {
       const original = Number(it.precoOriginal || it.precoUnitario || 0);
       const temDesconto = original > it.precoUnitario;
       const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
       return `<tr>
-      <td data-label="Cód."><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
-      <td data-label="Produto">${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
-      <td data-label="Motivo">${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
-      <td data-label="Qtd">${it.quantidade}</td>
-      <td data-label="Original">${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
-      <td data-label="Preço">${money(it.precoUnitario)}</td>
-      <td data-label="Desconto">${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
-      <td data-label="Total">${money(it.totalItem)}</td>
-      <td data-label="Entrega">${pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' : 'Futura') : 'Pronta',
+      <td><small class="muted">${esc(it.codigoFarmasi || '-')}</small></td>
+      <td>${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small><br>` : ''}${esc(it.produtoNome)}</td>
+      <td>${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
+      <td>${it.quantidade}</td>
+      <td>${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
+      <td>${money(it.precoUnitario)}</td>
+      <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
+      <td>${money(it.totalItem)}</td>
+      <td>${pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' : 'Futura') : 'Pronta',
         it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'green' : 'orange') : 'green')}</td>
     </tr>`;
     }).join('')}</tbody></table></div>
+    <div class="only-mobile vcards" style="margin-top:12px">${itens.map((it, idx) => carrinhoItemCardHtml(it, idx, carr.id, false)).join('')}</div>
     ${carr.status !== 'cancelado' ? pagamentoResumoHtml(carr) : ''}
     ${carr.observacoes ? `<p class="muted" style="margin-top:8px">${esc(carr.observacoes)}</p>` : ''}
     <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`, { wide: true });

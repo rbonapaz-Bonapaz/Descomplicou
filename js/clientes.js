@@ -310,29 +310,60 @@ export function openCliente360(id) {
 
     <div class="panel" style="margin-top:12px">
       <h3>Histórico de vendas</h3>
-      ${vendas.length ? `<div class="table"><table><thead><tr><th></th><th>Nº</th><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
-        <tbody>${vendas.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10).map(v => {
+      ${vendas.length ? (() => {
+        const lista = vendas.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10);
+        const tabela = `<div class="table only-desktop"><table><thead><tr><th></th><th>Nº</th><th>Data</th><th>Valor</th><th>Lucro</th><th>Pgto</th></tr></thead>
+        <tbody>${lista.map(v => {
           const expandida = historicoExpandido.has(v.id);
           const carr = state.data.carrinhos.find(cr => cr.id === v.carrinhoId);
           return `<tr>
-          <td data-label=""><button class="btn small" style="padding:3px 8px" onclick="App.toggleHistoricoVenda('${id}','${v.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button></td>
-          <td data-label="Nº"><small class="muted">${carr ? numeroPedidoLabel(carr) : '-'}</small></td>
-          <td data-label="Data" style="cursor:pointer" onclick="App.toggleHistoricoVenda('${id}','${v.id}')">${formatDateBR(v.data)}</td>
-          <td data-label="Valor">${money(v.receita || v.totalPedido)}</td>
-          <td data-label="Lucro">${money(v.lucroTotal)}</td>
-          <td data-label="Pgto">${esc(v.pagamento || '-')}</td>
-        </tr>${expandida ? `<tr><td colspan="6" data-label="Itens da venda" class="td-block" style="background:#F7FAFC"><div>${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</div></td></tr>` : ''}`;
-        }).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma venda registrada.</p>'}
+          <td><button class="btn small" style="padding:3px 8px" onclick="App.toggleHistoricoVenda('${id}','${v.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button></td>
+          <td><small class="muted">${carr ? numeroPedidoLabel(carr) : '-'}</small></td>
+          <td style="cursor:pointer" onclick="App.toggleHistoricoVenda('${id}','${v.id}')">${formatDateBR(v.data)}</td>
+          <td>${money(v.receita || v.totalPedido)}</td>
+          <td>${money(v.lucroTotal)}</td>
+          <td>${esc(v.pagamento || '-')}</td>
+        </tr>${expandida ? `<tr><td colspan="6" style="background:#F7FAFC">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</td></tr>` : ''}`;
+        }).join('')}</tbody></table></div>`;
+        const cartoes = `<div class="only-mobile vcards">${lista.map(v => {
+          const expandida = historicoExpandido.has(v.id);
+          const carr = state.data.carrinhos.find(cr => cr.id === v.carrinhoId);
+          return `<div class="vcard">
+            <div class="vcard-top">
+              <span class="vcard-num">Nº ${carr ? numeroPedidoLabel(carr) : '-'} · ${formatDateBR(v.data)}</span>
+              <span>${esc(v.pagamento || '-')}</span>
+            </div>
+            <div class="vcard-rows">
+              <div class="vcard-row"><span>Valor</span><b>${money(v.receita || v.totalPedido)}</b></div>
+              <div class="vcard-row"><span>Lucro</span><b>${money(v.lucroTotal)}</b></div>
+            </div>
+            <button class="btn small ghost vcard-toggle" onclick="App.toggleHistoricoVenda('${id}','${v.id}')">${expandida ? '▾ Ocultar itens' : '▸ Ver itens'}</button>
+            ${expandida ? `<div class="vcard-itens">${carr ? detalheVendaHtml(carr) : '<small class="muted">Carrinho original não encontrado (pode ter sido excluído).</small>'}</div>` : ''}
+          </div>`;
+        }).join('')}</div>`;
+        return tabela + cartoes;
+      })() : '<p class="muted">Nenhuma venda registrada.</p>'}
     </div>
 
     <div class="panel" style="margin-top:12px">
       <h3>Agendamentos</h3>
-      ${agendamentos.length ? `<div class="table"><table><thead><tr><th>Data</th><th>Tipo</th><th>Status</th></tr></thead>
-        <tbody>${agendamentos.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10).map(a => `<tr>
-          <td data-label="Data">${formatDateBR(a.data)} ${a.hora || ''}</td>
-          <td data-label="Tipo">${esc(a.tipo)}</td>
-          <td data-label="Status">${pill(a.status || 'agendado', 'blue')}</td>
-        </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhum agendamento.</p>'}
+      ${agendamentos.length ? (() => {
+        const lista = agendamentos.sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10);
+        const tabela = `<div class="table only-desktop"><table><thead><tr><th>Data</th><th>Tipo</th><th>Status</th></tr></thead>
+        <tbody>${lista.map(a => `<tr>
+          <td>${formatDateBR(a.data)} ${a.hora || ''}</td>
+          <td>${esc(a.tipo)}</td>
+          <td>${pill(a.status || 'agendado', 'blue')}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+        const cartoes = `<div class="only-mobile vcards">${lista.map(a => `<div class="vcard">
+          <div class="vcard-top">
+            <span class="vcard-num">${formatDateBR(a.data)}${a.hora ? ' às ' + esc(a.hora) : ''}</span>
+            ${pill(a.status || 'agendado', 'blue')}
+          </div>
+          <div class="vcard-rows"><div class="vcard-row"><span>Tipo</span><b>${esc(a.tipo)}</b></div></div>
+        </div>`).join('')}</div>`;
+        return tabela + cartoes;
+      })() : '<p class="muted">Nenhum agendamento.</p>'}
     </div>
 
     ${(c.interesses || []).length ? `<div class="panel" style="margin-top:12px">

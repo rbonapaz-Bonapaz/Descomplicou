@@ -448,7 +448,7 @@ export function preEncomendaTabHtml() {
     ${!itens.length ? '<p class="muted">Nenhum produto na pré-encomenda. Adicione pela tela de Produtos, Estoque (itens com estoque baixo), monte um kit aqui, ou automaticamente quando vender algo sem estoque no carrinho.</p>' : `
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
-    <div class="table"><table><thead><tr>
+    <div class="table table-scroll"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Estoque atual</th><th>Reservado (carrinhos)</th><th>Comprar</th><th>Preço unit.</th><th>Observações</th><th>Origem</th><th>Ações</th>
     </tr></thead><tbody>${agruparPorKit(aComprar).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
@@ -486,7 +486,7 @@ export function preEncomendaTabHtml() {
     </div>
     ${!aguardando.length ? '<p class="muted">Nada aguardando chegada.</p>' : `
     <p class="muted" style="margin:0 0 10px">Quando os produtos chegarem, confira a quantidade e o preço pago e confirme — isso dá entrada no estoque automaticamente.</p>
-    <div class="table"><table><thead><tr>
+    <div class="table table-scroll"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Origem</th><th>Ações</th>
     </tr></thead><tbody>${agruparPorKit(aguardando).map((it, idx, arr) => {
       const p = prodById(it.produtoId);

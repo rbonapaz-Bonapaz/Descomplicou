@@ -600,7 +600,7 @@ function renderBaseColetivaPreview() {
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">${pill(novos + ' novos', 'green')}${pill(atualiza + ' atualizações', 'blue')}</div>
     <p class="muted">Confira, edite ou remova itens antes de salvar. Seu preço de venda, custo médio e estoque não são alterados.</p>
-    <div class="table" style="overflow-x:auto"><table style="table-layout:fixed;min-width:720px"><thead><tr>
+    <div class="table table-scroll"><table style="table-layout:fixed;min-width:720px"><thead><tr>
       <th style="width:22%">Nome</th><th style="width:12%">Código</th><th style="width:22%">Linha</th><th style="width:14%">Preço original</th><th style="width:14%">Preço atual</th><th style="width:12%">Situação</th><th style="width:4%"></th>
     </tr></thead><tbody>${arr.map((p, idx) => `<tr>
       <td data-label="Nome"><input style="width:100%" value="${esc(p.nome || '')}" onchange="App.editarItemBaseColetiva(${idx},'nome',this.value)"></td>
