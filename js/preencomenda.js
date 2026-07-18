@@ -304,10 +304,24 @@ export async function confirmarBrinde() {
   const p = prodById(produtoId);
   if (!p) return toast('Selecione um produto');
   const qtd = Math.max(1, Number($('bdQtd')?.value || 1));
+
+  // Se há um pedido específico sendo editado, adiciona o brinde lá. Caso contrário, usa o pedido atual.
+  let numeroPedido = pedidoAtualNumero;
+  if (numeroPedido === null) {
+    // Se não há um pedido específico apontado, mas há um único pedido em "Aguardando chegada", adiciona lá
+    const pedidosAbertos = [...new Set(state.data.preEncomenda.filter(x => x.status === 'pedido' && x.pedidoStatus !== 'fechado').map(x => x.pedidoNumero || 0))];
+    if (pedidosAbertos.length === 1) {
+      numeroPedido = pedidosAbertos[0];
+    } else {
+      // Múltiplos pedidos ou nenhum pedido aberto — cria um novo
+      numeroPedido = numeroPedidoAtual();
+    }
+  }
+
   await addDoc(col('preEncomenda'), {
     produtoId, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
     quantidade: qtd, precoUnitario: '', observacoes: '',
-    origem: 'brinde', status: 'pedido', pedidoNumero: numeroPedidoAtual(), criadoEm: serverTimestamp()
+    origem: 'brinde', status: 'pedido', pedidoNumero: numeroPedido, criadoEm: serverTimestamp()
   });
   closeModal();
   window.App.refresh('Brinde adicionado — confirme a chegada pra atualizar o estoque');
