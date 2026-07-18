@@ -83,7 +83,10 @@ export function toast(m) {
 export function showModal(h, { wide = false } = {}) {
   const temMinimizada = !$('modalMinBar')?.classList.contains('hidden');
   if (temMinimizada && !confirm('Você tem uma janela minimizada em aberto. Abrir esta agora vai descartá-la — o que não foi salvo nela se perde. Continuar?')) return;
-  $('modalCard').innerHTML = `<button class="modal-min" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>` + h;
+  $('modalCard').innerHTML = `<div style="position:absolute;top:12px;right:12px;display:flex;gap:8px;z-index:5">
+    <button style="position:static;width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:var(--muted);padding:0" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>
+    <button style="position:static;width:32px;height:32px;border:1px solid var(--line);background:#F3F6FA;border-radius:10px;font-weight:900;font-size:16px;line-height:1;cursor:pointer;color:#999;padding:0" title="Fechar" onclick="App.closeModal()">✕</button>
+  </div>` + h;
   $('modalCard').classList.toggle('modal-wide', wide);
   $('modal').classList.remove('hidden');
   $('modalMinBar')?.classList.add('hidden');
