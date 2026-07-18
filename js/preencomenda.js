@@ -169,6 +169,25 @@ export async function voltarParaComprar(itemId) {
   window.App.refresh('Voltou para "A comprar"');
 }
 
+// Recalcula, só na tela (sem salvar nada), o total de um item de "Aguardando chegada" conforme a
+// consultora digita a quantidade recebida ou o custo pago — e o total geral do pedido junto, pra
+// ela conferir contra a nota/comprovante antes de confirmar a chegada de verdade.
+export function atualizarTotalPreEncomenda(itemId) {
+  const qtd = Number($(`chQtd_${itemId}`)?.value || 1);
+  const custo = parseMoney($(`chCusto_${itemId}`)?.value || 0);
+  const totalEl = $(`chTotal_${itemId}`);
+  if (totalEl) totalEl.textContent = money(custo * qtd);
+
+  let totalGeral = 0;
+  document.querySelectorAll('[id^="chCusto_"]').forEach(input => {
+    const id = input.id.replace('chCusto_', '');
+    const q = Number($(`chQtd_${id}`)?.value || 1);
+    totalGeral += parseMoney(input.value || 0) * q;
+  });
+  const totalGeralEl = $('preEncAguardandoTotal');
+  if (totalGeralEl) totalGeralEl.textContent = money(totalGeral);
+}
+
 // Confirma que o produto chegou: dá entrada no estoque com a quantidade e o custo realmente
 // pagos, ativa pronta entrega automaticamente (perguntando antes se a consultora tinha desativado
 // manualmente), e remove o item da pré-encomenda (seu ciclo termina aqui). Se vier menos do que o
@@ -804,15 +823,16 @@ export function preEncomendaTabHtml() {
     ${!aguardando.length ? '<p class="muted">Nada aguardando chegada.</p>' : `
     <p class="muted" style="margin:0 0 10px">Quando os produtos chegarem, confira a quantidade e o preço pago e confirme — isso dá entrada no estoque automaticamente.</p>
     <div class="table table-scroll"><table><thead><tr>
-      <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Origem</th><th>Ações</th>
+      <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
     </tr></thead><tbody>${agruparPorKit(aguardando).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
       const emKit = !!it.kitId;
+      const totalItem = parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1);
       let cabecalho = '';
       if (emKit && !kitsJaRenderizados.has(it.kitId)) {
         kitsJaRenderizados.add(it.kitId);
         const qtdNoKit = aguardando.filter(x => x.kitId === it.kitId).length;
-        cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 7);
+        cabecalho = kitHeaderRow(it.kitId, it.kitNome, qtdNoKit, 8);
       }
       const ultimaDoKit = emKit && arr[idx + 1]?.kitId !== it.kitId;
       const estiloKit = emKit ? `background:#FDF2F7;border-left:${KIT_BORDA}${ultimaDoKit ? `;border-bottom:${KIT_BORDA.replace('4px', '2px')};border-bottom-color:#F5C6DE` : ''}` : '';
@@ -820,8 +840,9 @@ export function preEncomendaTabHtml() {
         <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
         <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
         <td data-label="Pedido">${Number(it.quantidade || 1)}</td>
-        <td data-label="Qtd recebida"><input id="chQtd_${it.id}" type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}"></td>
-        <td data-label="Custo unit. pago"><input id="chCusto_${it.id}" placeholder="0,00" value="${it.precoUnitario ? esc(it.precoUnitario) : ''}"></td>
+        <td data-label="Qtd recebida"><input id="chQtd_${it.id}" type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
+        <td data-label="Custo unit. pago"><input id="chCusto_${it.id}" placeholder="0,00" value="${it.precoUnitario ? esc(it.precoUnitario) : ''}" oninput="App.atualizarTotalPreEncomenda('${it.id}')"></td>
+        <td data-label="Total"><b id="chTotal_${it.id}">${money(totalItem)}</b></td>
         <td data-label="Origem">${pillOrigem(it.origem)}</td>
         <td data-label="Ações"><div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn small dark" onclick="App.confirmarChegada('${it.id}')">📦 Confirmar chegada</button>
@@ -829,7 +850,9 @@ export function preEncomendaTabHtml() {
           ${emKit ? '' : `<button class="btn small" style="color:var(--error)" onclick="App.removerPreEncomenda('${it.id}')" title="Remover da pré-encomenda">🗑️</button>`}
         </div></td>
       </tr>`;
-    }).join('')}</tbody></table></div>`}
+    }).join('')}</tbody></table></div>
+    <div class="cards" style="margin-top:10px"><div class="card"><span>Valor total esperado</span><b id="preEncAguardandoTotal">${money(aguardando.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0))}</b></div></div>
+    <p class="muted" style="margin-top:6px">Confira esse total com o valor do seu pedido na Farmasi (ou fatura de quem vendeu) antes de confirmar a chegada.</p>`}
     `}
   </div>${fretePanelHtml()}${despesasPanelHtml()}`;
 }
