@@ -171,8 +171,10 @@ export function openClienteForm(id = '', prefill = null) {
       <div class="field full"><label>Tags (separadas por vírgula)</label><input id="cTags" placeholder="Ex: VIP, Skincare" value="${esc((c.tags || []).join(', '))}"></div>
       <div class="field full"><label>Observações</label><textarea id="cObs">${esc(c.observacoes || '')}</textarea></div>
     </div><br>
-    <button class="btn dark" onclick="App.saveCliente('${id}')">Salvar</button>
-    <button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
+    <div style="display:flex;gap:8px">
+      <button class="btn dark" onclick="App.saveCliente('${id}')">Salvar</button>
+      <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
+    </div>`);
 }
 
 export async function saveCliente(id = '') {
