@@ -183,7 +183,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
         <td>${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
         <td>${pill(c.status, corStatusPedido(c.status))}</td>
         <td>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
+          <div class="acoes-tabela">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
         </td>
       </tr>${expandida ? `<tr><td colspan="8" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
     }).join('')}</tbody></table></div>`;
