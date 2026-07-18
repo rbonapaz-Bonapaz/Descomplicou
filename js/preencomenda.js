@@ -1,4 +1,4 @@
-import { state, ref, col, addDoc, setDoc, deleteDoc, serverTimestamp, prodById, cliById, toast, showModal, closeModal } from './state.js';
+import { state, ref, col, addDoc, setDoc, deleteDoc, writeBatch, db, serverTimestamp, prodById, cliById, toast, showModal, closeModal } from './state.js';
 import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, pill } from './utils.js';
 import { entradaEstoque, saidaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
@@ -849,6 +849,20 @@ export function preEncomendaTabHtml() {
   </div>${fretePanelHtml()}${despesasPanelHtml()}`;
 }
 
+// Dá um nome ao pedido (ex: "Pedido Farmasi julho") em vez do número automático — grava o mesmo
+// nome em todos os itens daquela leva (mesmo padrão de kitNome duplicado em cada componente do
+// kit), pra não precisar de uma coleção separada só pra isso.
+export async function renomearPedidoCompra(numero) {
+  const nome = prompt('Nome deste pedido (ex: "Pedido Farmasi julho"):', '');
+  if (nome === null) return;
+  const itens = state.data.preEncomenda.filter(x => x.status === 'pedido' && (x.pedidoNumero || 0) === Number(numero));
+  if (!itens.length) return;
+  const batch = writeBatch(db);
+  itens.forEach(it => batch.update(ref('preEncomenda', it.id), { pedidoNome: nome.trim() }));
+  await batch.commit();
+  window.App.refresh('Pedido renomeado');
+}
+
 // Agrupa "aguardando chegada" por pedidoNumero — sem isso, um pedido novo do mesmo produto de um
 // pedido anterior ainda não chegado ficaria tudo misturado numa lista só, sem dar pra saber quanto
 // veio de cada compra. Itens antigos sem pedidoNumero (lançados antes dessa mudança) caem juntos
@@ -864,10 +878,14 @@ function aguardandoAgrupadoHtml(aguardando) {
 
   return grupos.map(([numero, itensDoPedido]) => {
     const totalPedido = itensDoPedido.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0);
+    const nomePedido = itensDoPedido.find(it => it.pedidoNome)?.pedidoNome;
     const kitsDoGrupo = new Set();
     return `<div style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#F3F6FA;border-radius:10px;padding:10px 14px">
-        <b>${numero ? `📦 Pedido nº ${numero}` : '📦 Pedido anterior'}</b>
+        <div style="display:flex;align-items:center;gap:6px">
+          <b>${nomePedido ? `📦 ${esc(nomePedido)}` : numero ? `📦 Pedido nº ${numero}` : '📦 Pedido anterior'}</b>
+          ${numero ? `<button class="btn small" style="padding:3px 8px" onclick="App.renomearPedidoCompra(${numero})" title="Dar/mudar nome deste pedido">✏️</button>` : ''}
+        </div>
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
       <div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
