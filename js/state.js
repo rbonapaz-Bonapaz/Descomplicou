@@ -72,12 +72,17 @@ export function toast(m) {
 
 // Toda janela ganha um botão de minimizar: esconde o modal sem perder o conteúdo, deixando uma
 // barrinha flutuante pra restaurar — dá pra navegar pelo resto do sistema no meio de um carrinho/
-// troca/formulário e voltar exatamente de onde parou. Abrir outra janela substitui a minimizada
-// (uma janela por vez — os dados de carrinho/troca já são salvos a cada mudança, nada se perde).
+// troca/formulário e voltar exatamente de onde parou. Só existe UM slot de janela minimizada (o
+// mesmo #modalCard é reaproveitado) — abrir outra janela enquanto uma está minimizada SUBSTITUI
+// o conteúdo dela, descartando de vez o que não foi salvo (ex.: um formulário simples que só
+// grava ao clicar em "Salvar", diferente de carrinho/troca que salvam a cada mudança). Antes disso
+// acontecia silenciosamente; agora avisa e deixa cancelar.
 // `wide:true` amplia o modal no desktop (item 19) — usado pelas telas complexas (Carrinho, Trocas)
 // cujas tabelas internas esmagavam/quebravam linha na largura padrão de 980px. Sempre reseta a
 // classe (add/remove) a cada chamada, nunca herda o estado do modal anterior.
 export function showModal(h, { wide = false } = {}) {
+  const temMinimizada = !$('modalMinBar')?.classList.contains('hidden');
+  if (temMinimizada && !confirm('Você tem uma janela minimizada em aberto. Abrir esta agora vai descartá-la — o que não foi salvo nela se perde. Continuar?')) return;
   $('modalCard').innerHTML = `<button class="modal-min" title="Minimizar — continue navegando e volte depois" onclick="App.minimizarModal()">─</button>` + h;
   $('modalCard').classList.toggle('modal-wide', wide);
   $('modal').classList.remove('hidden');
