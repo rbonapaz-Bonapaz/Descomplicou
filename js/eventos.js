@@ -492,6 +492,16 @@ export function copiarLinkEvento(id) {
 // Gera uma página A4 pronta pra imprimir/exportar como PDF, com o mesmo cabeçalho/rodapé
 // do catálogo, o QR Code do link do evento e a mensagem especial (se houver) — pensada pra
 // ser exibida num tablet/impressa e deixada no balcão do evento para quem ainda não é contato.
+function qrDataLoja(p) {
+  if (p.linkLoja) return p.linkLoja;
+  const n = String(p.whatsapp || '').replace(/\D/g, '');
+  return n ? `https://wa.me/${n.startsWith('55') ? n : '55' + n}` : location.href;
+}
+
+function qrUrlLoja(p) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=1&data=${encodeURIComponent(qrDataLoja(p))}`;
+}
+
 export function gerarQrCodeEvento(id) {
   const ev = state.data.eventos.find(e => e.id === id);
   if (!ev) return toast('Evento não encontrado');
@@ -513,6 +523,7 @@ export function gerarQrCodeEvento(id) {
     <footer class="cat-footer">
       ${logoNegocioHtml(p, 'pdf-foot-logo cat-foot-logo')}
       <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
+      <img class="cat-qr" src="${qrUrlLoja(p)}">
     </footer>
   </section>`;
 
