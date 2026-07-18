@@ -812,6 +812,7 @@ function sortPreEncomenda(arr, sortKey) {
     if (field === 'codigo') return norm(x.codigoFarmasi || '');
     if (field === 'quantidade') return Number(x.quantidade || 0);
     if (field === 'preco') return Number(x.precoUnitario || 0);
+    if (field === 'total') return parseMoney(x.precoUnitario || 0) * Number(x.quantidade || 0);
     if (field === 'pedido') return Number(x.pedidoNumero || 0);
     return norm(x.produtoNome || '');
   };
@@ -860,7 +861,15 @@ export function preEncomendaTabHtml() {
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
     <div class="table table-scroll"><table><thead><tr>
-      ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Estoque atual</th><th>Reservado (carrinhos)</th>${thSort('Comprar', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Preço unit.', 'preco', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Observações</th><th>Origem</th><th>Ações</th>
+      ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}
+      ${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}
+      <th>Estoque atual</th>
+      <th>Reservado (carrinhos)</th>
+      ${thSort('Comprar', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}
+      ${thSort('Preço unit.', 'preco', state.filters.preEncomendaSort, 'preEncomendaSort')}
+      <th>Observações</th>
+      <th>Origem</th>
+      <th>Ações</th>
     </tr></thead><tbody>${agruparPorKit(aComprar).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
       const reservado = reservadoEmCarrinhos(it.produtoId);
@@ -967,7 +976,14 @@ function aguardandoAgrupadoHtml(aguardando) {
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
       ${!expandido ? '' : `<div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
-        ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Pedido', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
+        ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}
+        ${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}
+        ${thSort('Pedido', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}
+        <th>Qtd recebida</th>
+        <th>Custo unit. pago</th>
+        ${thSort('Total', 'total', state.filters.preEncomendaSort, 'preEncomendaSort')}
+        <th>Origem</th>
+        <th>Ações</th>
       </tr></thead><tbody>${agruparPorKit(itensDoPedido).map((it, idx, arr) => {
         const p = prodById(it.produtoId);
         const emKit = !!it.kitId;
