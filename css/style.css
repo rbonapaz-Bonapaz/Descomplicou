@@ -123,16 +123,21 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 .search-picker-item.muted:hover{background:none}
 
 /* Menu lateral recolhível — só ícones, sem nomes das telas. Útil quando a janela minimizada
-   (modalMinBar) ou outra parte da tela fica espremida pelo menu cheio. */
-.side-toggle{position:absolute;top:14px;right:-14px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--card-bg,#fff);box-shadow:var(--sh);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--text);z-index:2;padding:0}
-.app.side-collapsed{grid-template-columns:76px minmax(0,1fr)}
-.app.side-collapsed .side{padding:20px 8px;align-items:center}
-.app.side-collapsed .brand{justify-content:center}
-.app.side-collapsed .brand b,.app.side-collapsed .brand span{display:none}
-.app.side-collapsed .nav-section{display:none}
-.app.side-collapsed nav{align-items:center;width:100%}
-.app.side-collapsed nav button{font-size:0;padding:12px;display:flex;justify-content:center;width:100%}
-.app.side-collapsed nav button .nav-ico{font-size:20px}
-.app.side-collapsed .side-logout{font-size:0;padding:12px;width:auto}
-.app.side-collapsed .side-logout::before{content:'🚪';font-size:18px}
+   (modalMinBar) ou outra parte da tela fica espremida pelo menu cheio. Só existe no desktop —
+   no celular o menu já vira uma barra horizontal em cima (ver media query de 980px acima), um
+   layout completamente diferente onde "recolher" não faz sentido e, sem essa media query aqui,
+   a preferência salva (localStorage) vazava pro mobile e quebrava aquele layout. */
+@media(min-width:981px){
+  .side-toggle{position:absolute;top:14px;right:-14px;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--card-bg,#fff);box-shadow:var(--sh);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--text);z-index:2;padding:0}
+  .app.side-collapsed{grid-template-columns:76px minmax(0,1fr)}
+  .app.side-collapsed .side{padding:20px 8px;align-items:center}
+  .app.side-collapsed .brand{justify-content:center}
+  .app.side-collapsed .brand b,.app.side-collapsed .brand span{display:none}
+  .app.side-collapsed .nav-section{display:none}
+  .app.side-collapsed nav{align-items:center;width:100%}
+  .app.side-collapsed nav button{font-size:0;padding:12px;display:flex;justify-content:center;width:100%}
+  .app.side-collapsed nav button .nav-ico{font-size:20px}
+  .app.side-collapsed .side-logout{font-size:0;padding:12px;width:auto}
+  .app.side-collapsed .side-logout::before{content:'🚪';font-size:18px}
+}
 @media(max-width:980px){.side-toggle{display:none}}
