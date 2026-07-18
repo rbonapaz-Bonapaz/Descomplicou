@@ -3,13 +3,21 @@ import { $, esc, sectionTabsHtml, formatDateBR, collapsibleHtml } from './utils.
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v1.0.0';
+export const APP_VERSION = 'v1.1.0';
 
 // Changelog visível pro usuário final — reiniciado no lançamento oficial (item 20-B). Todo o
 // histórico de desenvolvimento/testes anterior (v50 a v102) foi arquivado em NOVIDADES_ARQUIVADAS
 // logo abaixo (fora da visão do usuário, mantido só como referência histórica no código-fonte).
 // Daqui pra frente, só entram aqui atualizações/melhorias/correções REAIS pós-v1.0.0.
 const NOVIDADES = [
+  { versao: 'v1.1.0', itens: [
+    '📱 Grande melhoria de uso no celular: todas as telas de lista (Vendas, Clientes, Agenda, Produtos, Estoque, Trocas e Admin) agora aparecem como cartões limpos e organizados no celular, no lugar das tabelas "achatadas" que ficavam gigantes e com texto sobreposto. Cada pedido/cliente/produto vira um cartão com a informação principal em destaque, detalhes em linhas separadas e os botões de ação bem distribuídos.',
+    'Corrigido: itens de uma venda (e do Cliente 360) mostravam o mesmo valor duas vezes quando a quantidade era 1, e mostravam o desconto de duas formas ao mesmo tempo — agora o preço aparece uma vez só, e o desconto só na etiqueta "-X%".',
+    'Corrigido na raiz: no celular, textos longos (nome de cliente/produto, valores) estouravam a borda da tela sem quebrar linha em vários cartões — resolvido de forma geral em todo o app.',
+    'As tabelas de edição em grade (conferência de pedido importado, pré-encomenda, itens de troca, catálogo mestre) agora rolam na horizontal no celular, mantendo as colunas alinhadas, em vez de empilhar tudo.',
+    'Novo manual completo do sistema em Sobre → Manual: passo a passo de cada fluxo (primeiros passos, produtos, clientes, vendas, pagamentos, agenda, eventos, pré-encomenda, trocas e relatórios).',
+    'Nova aba "Saídas sem lucro" no Estoque: lista todas as saídas de Brinde, Parceria, Consumo próprio, Perda, Ajuste e Troca, com filtro por motivo — pra conferir se algo foi lançado com o motivo errado.'
+  ] },
   { versao: 'v1.0.0', itens: [
     '🎉 Lançamento oficial do sistema! Depois de meses de desenvolvimento e testes, o CRM chega na sua versão base completa — gestão de clientes, produtos e estoque, vendas com checkout inteligente (Pix e cartão), relatórios com inteligência de dados, catálogo de eventos e muito mais. Obrigado por fazer parte dessa jornada desde o início. A partir daqui, toda melhoria e correção nova vai aparecer aqui nas Novidades.'
   ] }
@@ -439,14 +447,90 @@ function novidadesHtml() {
   </div>`;
 }
 
-// Manual do sistema — passo a passo de uso com telas/gifs, feito só depois que o sistema estiver
-// 100% concluído (a "Sobre o sistema" acima já cobre a visão geral das capacidades; o Manual vai
-// além, mostrando como usar cada fluxo na prática, com imagens/gifs de procedimentos reais).
+// Manual do sistema — passo a passo de uso de cada fluxo, organizado por tema em cards colapsáveis
+// (mesmo padrão accordion da "Sobre o sistema"). Diferente da apresentação (visão geral das
+// capacidades), aqui é "como fazer" na prática: cada seção é uma sequência numerada de passos.
+const MANUAL_SECOES = [
+  { key: 'manPrimeirosPassos', titulo: '1. Primeiros passos (configure antes de começar)', passos: [
+    'Entre com sua conta Google ou com e-mail e senha. Contas por Google precisam criar uma senha em Minha Conta → Segurança em até 1 hora do primeiro acesso.',
+    'Vá em Minha Conta → Conta e preencha o nome do seu negócio, seu nome, foto e dados de contato — é o que aparece no topo do sistema, nos PDFs e no link público de eventos.',
+    'Em Minha Conta → Pagamentos, cadastre sua Chave Pix (e o tipo dela: CPF, celular, e-mail ou aleatória) — é o que gera o QR Code de pagamento automático no carrinho. Se aceita cartão, cadastre também suas operadoras/maquininhas com as taxas por bandeira e parcela.',
+    'Em Minha Conta → Integrações, ligue o que for usar: mensagens automáticas de WhatsApp, Google Agenda e a chave do Gemini (IA). Ali também dá pra editar os textos padrão das mensagens de WhatsApp.',
+    'Opcional: em Minha Conta → Conta, na parte de "Personalização visual", troque as cores do sistema (fundo, destaque e texto) pra combinar com sua marca.'
+  ] },
+  { key: 'manProdutos', titulo: '2. Cadastrar produtos e controlar estoque', passos: [
+    'Vá em Produtos → "+ Novo produto" pra cadastrar manualmente (nome, código, linha, preço original/atual, custo médio e foto). Se você usa a base coletiva da administração, use "🔄 Sincronizar com base coletiva" pra puxar os produtos prontos.',
+    'Para dar entrada de estoque: Estoque → "+ Entrada", escolha o produto, a quantidade e o custo pago — o custo médio é recalculado sozinho.',
+    'Para registrar uma saída que não é venda (brinde, consumo próprio, perda): Estoque → "− Saída", escolha o produto, a quantidade e o motivo.',
+    'Para conferir todas as saídas sem lucro (brinde/parceria/consumo/perda/troca): aba "Saídas sem lucro" no Estoque, com filtro por motivo.',
+    'Importar um pedido do site da Farmasi: Estoque → aba "Importar pedido" → selecione o PDF de "Detalhes do pedido". O sistema reconhece os produtos (e kits), você confere quantidade/custo na tabela e confirma — aí entra no estoque.',
+    'Cadastre o custo médio de todos os produtos: sem ele, o sistema não calcula o lucro certo (aparece 100% de margem) e os relatórios ficam subestimados. Produtos sem custo aparecem com a etiqueta "Sem custo".'
+  ] },
+  { key: 'manClientes', titulo: '3. Cadastrar e acompanhar clientes', passos: [
+    'Vá em Clientes → "+ Cadastrar Cliente" e preencha nome, WhatsApp, apelido (como ela gosta de ser chamada), aniversário, endereço, origem (como te conheceu) e tags (VIP, Skincare...).',
+    'Clique no nome de qualquer cliente pra abrir o Cliente 360°: histórico de compras (clique no ▸ pra ver os itens), agendamentos, lista de interesse e créditos guardados.',
+    'Use o botão de WhatsApp na lista pra falar direto com a cliente — a mensagem já vem com o apelido dela.',
+    'No Cliente 360, o botão "Gerar Sugestão de Abordagem" (IA) monta uma mensagem personalizada a partir do histórico dela — você revisa e edita antes de enviar (nada é enviado sozinho).',
+    'O Painel Inicial avisa sozinho sobre aniversariantes dos próximos 30 dias e clientes "frios" (sem comprar há muito tempo, prazo configurável em Minha Conta).'
+  ] },
+  { key: 'manVenda', titulo: '4. Fazer uma venda (carrinho)', passos: [
+    'Toque no botão "+ Novo carrinho" (no celular, o botão rosa flutuante "＋") e escolha a cliente.',
+    'Adicione produtos: busque por nome ou código, defina a quantidade e o motivo (Venda, Brinde, Parceria ou Consumo próprio). Dá pra aplicar desconto por item e um desconto no pedido inteiro (% ou R$).',
+    'Para cada item, escolha "Agora" (entrega imediata, baixa o estoque ao finalizar) ou "Depois" (entrega futura — fica pendente até você marcar como entregue). "Agora" exige estoque disponível.',
+    'Envie o resumo do pedido pra cliente pelo botão de WhatsApp, ou gere o PDF do pedido (versão cliente ou interna).',
+    'Quando fechar a venda, clique em "Finalizar" — o estoque dos itens de entrega imediata é baixado e a venda entra nos relatórios.'
+  ] },
+  { key: 'manPagamento', titulo: '5. Receber pagamento (Pix, cartão e parcial)', passos: [
+    'Pix: no carrinho, o sistema gera na hora um QR Code (padrão do Banco Central) com o valor exato — a cliente lê e paga, sem taxa e sem depender de app externo. Precisa da Chave Pix cadastrada em Minha Conta.',
+    'Cartão: escolha débito ou crédito e o número de parcelas — o sistema calcula o custo real da maquininha (por operadora/bandeira/parcela) e mostra o lucro já descontando isso. Dá pra gerar link de cobrança remota (InfinitePay) se configurado.',
+    'Decida quem assume o juro do parcelamento (você ou a cliente) — o valor repassado é sempre a diferença real que a operadora cobra.',
+    'Pagamento parcial: se a cliente paga só uma parte (ex: sinal), registre em "💰 Registrar pagamento" — o status (pendente/parcial/pago) é calculado sozinho a partir do que já foi recebido.',
+    'Se a cliente pagar a mais, o sistema pergunta se quer guardar o excedente como crédito — que pode ser usado numa próxima compra.'
+  ] },
+  { key: 'manAgenda', titulo: '6. Agenda de atendimentos', passos: [
+    'Vá em Agenda → "+ Novo atendimento", escolha a cliente (ou deixe sem cliente pra um compromisso só seu), tipo, data, hora e local.',
+    'O campo "Local / endereço" já vem preenchido com o endereço da cliente e tem botão 📍 que abre o Google Maps. Se o mapa cair no lugar errado, cole um link do Maps no campo.',
+    'Se o Google Agenda estiver conectado (Minha Conta → Integrações), os compromissos aparecem no seu celular automaticamente — e o que você cria/edita no celular volta pro CRM pelo botão "📥 Puxar do Google Agenda".',
+    'Marque cada atendimento como Concluído, Reagendar ou Cancelar conforme acontece. O Painel Inicial mostra a agenda de hoje.'
+  ] },
+  { key: 'manEventos', titulo: '7. Catálogo de Eventos (link público)', passos: [
+    'Vá em Catálogo de Eventos → "+ Novo evento", dê um nome, defina o período de validade e escolha as linhas participantes e o desconto de cada uma.',
+    'Escolha o que aparece no link público (preços, benefícios, estoque) e se mostra todo o catálogo ou só as linhas participantes. Dá pra personalizar o endereço do link.',
+    'Compartilhe o link (ou o QR Code) com as clientes — elas montam a própria lista de desejos, com nome, WhatsApp e aniversário.',
+    'As listas de desejo recebidas aparecem no evento: clique pra ver os produtos desejados. Use "🛒 Virar carrinho" pra transformar em pedido, "⭐ Lista de interesse" pra guardar pra depois, ou "Vincular cliente" se ela já é cadastrada.',
+    'O link mostra suas cores personalizadas e sua foto de perfil. Se você mudar as cores ou a foto depois, o sistema sincroniza sozinho nos eventos ativos.'
+  ] },
+  { key: 'manPreEncomenda', titulo: '8. Pré-encomenda e chegada de pedido', passos: [
+    'Sempre que faltar comprar um produto, use o botão "📋 Pré-encomendar" (em Produtos ou no Estoque) — ele soma +1 na lista a cada clique e mostra quantos já estão na lista/chegando. Vender um produto sem estoque também adiciona sozinho.',
+    'Vá em Estoque → Pré-encomenda pra ver a lista "A comprar": nome, código, quantidade a comprar e preço unitário previsto — a referência pra montar o pedido no site da Farmasi.',
+    'Ao fazer o pedido no site, clique em "✅ Pedido" nos itens — eles vão pra lista "Aguardando chegada".',
+    'Quando os produtos chegarem, confira a quantidade recebida e o custo pago e clique em "📦 Confirmar chegada" — o estoque e o custo médio são atualizados na hora, e a pronta entrega é reativada.',
+    'Kits: use "🎁 Montar kit" pra agrupar produtos que vêm juntos — o valor pago é rateado como custo entre os componentes.'
+  ] },
+  { key: 'manTrocas', titulo: '9. Trocas com outras consultoras', passos: [
+    'Vá em Estoque → Trocas → "+ Nova troca" e informe a parceira (busque entre suas clientes ou digite o nome).',
+    'Monte os dois lados: os produtos que saem do seu estoque e os que você recebe, cada um com valor unitário. Cada item pode ser entregue/recebido na hora ("pronta") ou depois ("entrega futura").',
+    'O sistema calcula o lucro ou prejuízo da troca (em valor e %) e dá baixa/entrada no estoque — sem gerar receita nem lucro nos relatórios de venda.',
+    'Itens pendentes de entrega futura são processados sozinhos quando chega estoque novo. Dá pra reabrir uma troca finalizada — os lançamentos são estornados automaticamente.'
+  ] },
+  { key: 'manRelatorios', titulo: '10. Relatórios e acompanhamento', passos: [
+    'Vá em Relatórios e escolha o período (7, 30, 90 dias ou tudo). Veja faturamento, lucro bruto, lucro real (já descontando taxa de cartão), margem e ticket médio.',
+    'Explore os gráficos e os Cards de Inteligência (Taxa de Recompra, Curva ABC, Ruptura, Descontos, Ticket por Linha, Conversão de Agendamentos) — escolha quais aparecer em Minha Conta → Relatórios.',
+    'O "Relatório completo por produto" lista tudo que vendeu no período; clique no cabeçalho pra ordenar por qualquer coluna.',
+    'Fique de olho nos avisos ⚠️: quando um produto aparece com lucro igual ao faturamento, quase sempre falta cadastrar o custo médio dele — corrija em Produtos pra os números ficarem certos.',
+    'Exporte produtos vendidos e clientes do período em Excel/CSV, ou gere o relatório completo em PDF.'
+  ] }
+];
+
 function manualHtml() {
   return `<div class="panel">
     <h3>📖 Manual do sistema</h3>
-    <p class="muted">Ainda não disponível. O manual completo (passo a passo, com imagens e gifs dos principais procedimentos) será produzido depois que o sistema estiver 100% concluído. Enquanto isso, veja a aba "Sobre o sistema" para conhecer as capacidades gerais.</p>
-  </div>`;
+    <p class="muted" style="font-size:14px;line-height:1.7">Passo a passo de cada fluxo do sistema. Clique em cada tema pra abrir. Para uma visão geral das capacidades (sem o passo a passo), veja a aba "Sobre o sistema".</p>
+  </div>
+  ${MANUAL_SECOES.map(m => collapsibleHtml(m.key, `<h3>${esc(m.titulo)}</h3>`, `
+    <ol style="margin:0;padding-left:20px;color:var(--muted);font-size:13px;line-height:1.8">
+      ${m.passos.map(p => `<li style="margin-bottom:6px">${esc(p)}</li>`).join('')}
+    </ol>`)).join('')}`;
 }
 
 export function renderSobre() {
