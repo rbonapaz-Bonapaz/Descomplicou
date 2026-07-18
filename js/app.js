@@ -365,7 +365,7 @@ function renderAll() {
 function setFilter(tipo, val) {
   state.filters[tipo] = val;
   if (tipo === 'prod' || tipo === 'prodSort' || tipo === 'prodLinha') renderProdutos();
-  else if (tipo === 'estoque' || tipo === 'estoqueSort' || tipo === 'estoqueLinha' || tipo === 'semLucroMotivo') renderEstoque();
+  else if (tipo === 'estoque' || tipo === 'estoqueSort' || tipo === 'estoqueLinha' || tipo === 'semLucroMotivo' || tipo === 'preEncomendaSort') renderEstoque();
   else if (tipo === 'vendas' || tipo === 'vendasSort') renderVendas();
   else if (tipo === 'clientesSort') renderClientes();
   else renderRelatorios();
