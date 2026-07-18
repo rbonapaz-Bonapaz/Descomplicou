@@ -2,7 +2,7 @@ import { state, auth, db, ADMINS, titles, col, toast, showModal, closeModal, min
   GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   onAuthStateChanged, signOut, getDoc, getDocs, setDoc, doc, serverTimestamp, planoInfo, onSnapshot
 } from './state.js';
-import { $, esc, filtrarSearchPicker, formatDateBR, porGenero, toggleColapsavel, aplicarTemaPersonalizado } from './utils.js';
+import { $, esc, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, formatDateBR, porGenero, toggleColapsavel, aplicarTemaPersonalizado } from './utils.js';
 
 import { renderDashboard, renderLeadsBanner, renderDatasComemorativas } from './dashboard.js';
 import { abrirOperadoraForm, salvarOperadora, excluirOperadora, semearInfinitePay, atualizarOperadoraComIA, definirOperadoraPadrao } from './operadoras.js';
@@ -339,7 +339,7 @@ function setSection(pagina, secao) {
 
 // --- Global API ---
 window.App = {
-  goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker,
+  goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker,
   renderResultadosBusca, fecharResultadosBusca,
   // Auth
   switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle,

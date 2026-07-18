@@ -398,29 +398,58 @@ export function sectionTabsHtml(pagina, sections, active) {
   ).join('')}</div>`;
 }
 
-// Campo de busca + <select> filtrado embaixo — substitui um <select> comum quando a lista é
+// Campo de busca com sugestões (autocomplete) — substitui um <select> comum quando a lista é
 // grande demais para rolar (ex: escolher produto num catálogo com 100+ itens). `describe(item)`
-// gera o texto de cada opção; `onchangeSelect` é o atributo onchange (string) do <select> final.
+// gera o texto de cada opção; `onchangeSelect` é o atributo onchange (string) disparado quando a
+// escolha muda (funciona igual a antes, só que agora dispara ao CLICAR numa sugestão, não mais
+// selecionando numa lista sempre aberta).
+// Por baixo dos panos existe um <select> de verdade (oculto) guardando o valor real — quem lê
+// $(selectId).value em outro lugar do código não precisa mudar nada. O campo visível mostra o
+// nome do item escolhido (não fica um "monte de listagem" aberto o tempo todo); clicar/focar o
+// campo reabre as sugestões pra trocar a escolha.
 export function searchPickerHtml(selectId, itens, describe, onchangeSelect = '') {
   const buscaId = selectId + 'Busca';
   const opts = itens.map((it, i) => `<option value="${esc(it.id)}" ${i === 0 ? 'selected' : ''}>${esc(describe(it))}</option>`).join('');
-  return `<input id="${buscaId}" placeholder="Digite para buscar..." oninput="App.filtrarSearchPicker('${selectId}')" style="margin-bottom:6px">
-    <select id="${selectId}" size="6" style="height:auto" ${onchangeSelect ? `onchange="${onchangeSelect}"` : ''}>${opts}</select>`;
+  const valorInicial = itens.length ? describe(itens[0]) : '';
+  return `<div class="search-picker" style="position:relative;margin-bottom:6px">
+    <input id="${buscaId}" value="${esc(valorInicial)}" placeholder="Digite para buscar..." autocomplete="off"
+      oninput="App.filtrarSearchPicker('${selectId}')" onfocus="App.filtrarSearchPicker('${selectId}',true)"
+      onblur="setTimeout(()=>App.fecharSearchPicker('${selectId}'),150)">
+    <select id="${selectId}" class="hidden" ${onchangeSelect ? `onchange="${onchangeSelect}"` : ''}>${opts}</select>
+    <div id="${selectId}Lista" class="search-picker-lista hidden"></div>
+  </div>`;
 }
 
-export function filtrarSearchPicker(selectId) {
-  const q = norm($(selectId + 'Busca')?.value || '');
+// ignorarTexto=true (usado no onfocus) mostra todas as opções, ignorando o que já está digitado —
+// pra reabrir a lista completa ao focar de novo um campo que já tem uma escolha feita.
+export function filtrarSearchPicker(selectId, ignorarTexto = false) {
   const sel = $(selectId);
+  const inputEl = $(selectId + 'Busca');
+  const lista = $(selectId + 'Lista');
+  if (!sel || !inputEl || !lista) return;
+  const q = ignorarTexto ? '' : norm(inputEl.value || '');
+  const filtrados = Array.from(sel.options).filter(o => !q || norm(o.textContent).includes(q));
+  lista.innerHTML = filtrados.length
+    ? filtrados.slice(0, 60).map(o => `<div class="search-picker-item" onmousedown="App.escolherSearchPicker('${selectId}','${esc(o.value)}')">${esc(o.textContent)}</div>`).join('')
+    : '<div class="search-picker-item muted">Nada encontrado.</div>';
+  lista.classList.remove('hidden');
+}
+
+// onmousedown (não onclick) porque dispara ANTES do blur do campo de busca — com onclick, o blur
+// fecharia a lista (removendo a opção do DOM) antes do clique terminar de registrar a escolha.
+export function escolherSearchPicker(selectId, value) {
+  const sel = $(selectId);
+  const inputEl = $(selectId + 'Busca');
+  const lista = $(selectId + 'Lista');
   if (!sel) return;
-  let primeiraVisivel = null;
-  Array.from(sel.options).forEach(opt => {
-    opt.hidden = !!q && !norm(opt.textContent).includes(q);
-    if (!opt.hidden && !primeiraVisivel) primeiraVisivel = opt;
-  });
-  if (primeiraVisivel && (!sel.value || sel.selectedOptions[0]?.hidden)) {
-    sel.value = primeiraVisivel.value;
-    sel.dispatchEvent(new Event('change'));
-  }
+  sel.value = value;
+  sel.dispatchEvent(new Event('change'));
+  if (inputEl) inputEl.value = sel.selectedOptions[0]?.textContent || '';
+  if (lista) { lista.classList.add('hidden'); lista.innerHTML = ''; }
+}
+
+export function fecharSearchPicker(selectId) {
+  $(selectId + 'Lista')?.classList.add('hidden');
 }
 
 export function pill(t, c = 'gray', title = '') {
