@@ -245,20 +245,37 @@ function renderCatalogoMestreLista() {
     const itens = cmCache.filter(p => !q || norm(p.nome + ' ' + p.codigoFarmasi + ' ' + p.linha).includes(q));
     box.innerHTML = `
       <div class="toolbar"><input id="cmSearch" placeholder="Buscar por nome ou código..." oninput="App.filtrarCatalogoMestre()" value="${esc($('cmSearch')?.value || '')}"></div>
-      <div class="table"><table><thead><tr>
+      <div class="table only-desktop"><table><thead><tr>
         <th></th><th>Nome</th><th>Código</th><th>Linha</th><th>Original</th><th>Atual</th><th>Ações</th>
       </tr></thead><tbody>${itens.length ? itens.map(p => `<tr>
-        <td data-label=""><img class="thumb" src="${esc(p.imagem || '')}" onerror="this.style.visibility='hidden'"></td>
-        <td data-label="Nome">${esc(p.nome)}</td>
-        <td data-label="Código">${esc(p.codigoFarmasi || '-')}</td>
-        <td data-label="Linha">${esc(linhasDe(p).map(labelLinha).join(', ') || '-')}</td>
-        <td data-label="Original">${money(p.precoOriginal)}</td>
-        <td data-label="Atual">${money(p.precoAtual)}${descontoPercent(p.precoOriginal, p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(p.precoOriginal, p.precoAtual)}%</span>` : ''}</td>
-        <td data-label="Ações" style="display:flex;gap:4px">
+        <td><img class="thumb" src="${esc(p.imagem || '')}" onerror="this.style.visibility='hidden'"></td>
+        <td>${esc(p.nome)}</td>
+        <td>${esc(p.codigoFarmasi || '-')}</td>
+        <td>${esc(linhasDe(p).map(labelLinha).join(', ') || '-')}</td>
+        <td>${money(p.precoOriginal)}</td>
+        <td>${money(p.precoAtual)}${descontoPercent(p.precoOriginal, p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(p.precoOriginal, p.precoAtual)}%</span>` : ''}</td>
+        <td style="display:flex;gap:4px">
           <button class="btn small" onclick="App.editarProdutoMestre('${p.id}')" title="Editar">✏️</button>
           <button class="btn small" style="color:var(--error)" onclick="App.excluirProdutoMestre('${p.id}')" title="Excluir">🗑️</button>
         </td>
-      </tr>`).join('') : `<tr><td colspan="7"><p class="muted">Nenhum produto encontrado.</p></td></tr>`}</tbody></table></div>`;
+      </tr>`).join('') : `<tr><td colspan="7"><p class="muted">Nenhum produto encontrado.</p></td></tr>`}</tbody></table></div>
+      <div class="only-mobile vcards">${itens.length ? itens.map(p => `<div class="vcard">
+        <div class="vcard-top" style="align-items:flex-start">
+          <img src="${esc(p.imagem || '')}" onerror="this.style.visibility='hidden'" style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;box-shadow:var(--ring);flex:0 0 auto">
+          <div style="flex:1 1 auto;min-width:0">
+            <div style="font-size:16px;font-weight:800;overflow-wrap:break-word">${esc(p.nome)}</div>
+            <div class="prod-tags" style="margin-top:4px"><span class="prod-tag">Código <b>${esc(p.codigoFarmasi || '-')}</b></span><span class="prod-tag">Linha <b>${esc(linhasDe(p).map(labelLinha).join(', ') || '-')}</b></span></div>
+          </div>
+        </div>
+        <div class="vcard-rows">
+          <div class="vcard-row"><span>Original</span><b>${money(p.precoOriginal)}</b></div>
+          <div class="vcard-row"><span>Atual</span><b>${money(p.precoAtual)}${descontoPercent(p.precoOriginal, p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(p.precoOriginal, p.precoAtual)}%</span>` : ''}</b></div>
+        </div>
+        <div class="vcard-actions">
+          <button class="btn small" onclick="App.editarProdutoMestre('${p.id}')" title="Editar">✏️ Editar</button>
+          <button class="btn small" style="color:var(--error)" onclick="App.excluirProdutoMestre('${p.id}')" title="Excluir">🗑️ Excluir</button>
+        </div>
+      </div>`).join('') : '<p class="muted">Nenhum produto encontrado.</p>'}</div>`;
   });
 }
 
@@ -507,17 +524,30 @@ function renderConsultorasLista() {
       <div class="card"><span>Ativas</span><b>${users.filter(u => u.plano && u.plano !== 'vencido' && u.plano !== 'cancelado' && u.status !== 'suspenso').length}</b></div>
       <div class="card"><span>Administradores(as)</span><b>${users.filter(u => u.role === 'admin').length}</b></div>
     </div>
-    <div class="table"><table><thead><tr>
+    <div class="table only-desktop"><table><thead><tr>
       <th>Nome</th><th>E-mail</th><th>Papel</th><th>Plano</th><th>Status</th><th>Último login</th><th>Ações</th>
     </tr></thead><tbody>${users.map(u => `<tr>
-      <td data-label="Nome">${esc(u.nome || u.email || u.id)}</td>
-      <td data-label="E-mail">${esc(u.email || '-')}</td>
-      <td data-label="Papel">${u.role === 'admin' ? pill('Admin', 'green') : pill(porGenero(u.genero, { f: 'Usuária', m: 'Usuário', x: 'Usuário(a)' }), 'gray')}</td>
-      <td data-label="Plano">${pill(PLANOS_LABEL[u.plano] || u.plano || 'Teste', planColor(u.plano))}</td>
-      <td data-label="Status">${u.status === 'excluido' ? pill('Conta excluída', 'gray') : pill(u.status || 'ativo', u.status === 'suspenso' ? 'red' : 'green')}</td>
-      <td data-label="Login">${u.ultimoLogin?.toDate ? u.ultimoLogin.toDate().toLocaleDateString('pt-BR') : '-'}</td>
-      <td data-label="Ações"><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></td>
-    </tr>`).join('')}</tbody></table></div>`;
+      <td>${esc(u.nome || u.email || u.id)}</td>
+      <td>${esc(u.email || '-')}</td>
+      <td>${u.role === 'admin' ? pill('Admin', 'green') : pill(porGenero(u.genero, { f: 'Usuária', m: 'Usuário', x: 'Usuário(a)' }), 'gray')}</td>
+      <td>${pill(PLANOS_LABEL[u.plano] || u.plano || 'Teste', planColor(u.plano))}</td>
+      <td>${u.status === 'excluido' ? pill('Conta excluída', 'gray') : pill(u.status || 'ativo', u.status === 'suspenso' ? 'red' : 'green')}</td>
+      <td>${u.ultimoLogin?.toDate ? u.ultimoLogin.toDate().toLocaleDateString('pt-BR') : '-'}</td>
+      <td><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></td>
+    </tr>`).join('')}</tbody></table></div>
+    <div class="only-mobile vcards">${users.map(u => `<div class="vcard">
+      <div class="vcard-top">
+        <div class="vcard-cli" style="margin:0;font-size:17px">${esc(u.nome || u.email || u.id)}</div>
+        ${u.role === 'admin' ? pill('Admin', 'green') : pill(porGenero(u.genero, { f: 'Usuária', m: 'Usuário', x: 'Usuário(a)' }), 'gray')}
+      </div>
+      <div class="vcard-rows">
+        <div class="vcard-row"><span>E-mail</span><b>${esc(u.email || '-')}</b></div>
+        <div class="vcard-row"><span>Plano</span><b>${pill(PLANOS_LABEL[u.plano] || u.plano || 'Teste', planColor(u.plano))}</b></div>
+        <div class="vcard-row"><span>Status</span><b>${u.status === 'excluido' ? pill('Conta excluída', 'gray') : pill(u.status || 'ativo', u.status === 'suspenso' ? 'red' : 'green')}</b></div>
+        <div class="vcard-row"><span>Último login</span><b>${u.ultimoLogin?.toDate ? u.ultimoLogin.toDate().toLocaleDateString('pt-BR') : '-'}</b></div>
+      </div>
+      <div class="vcard-actions"><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></div>
+    </div>`).join('')}</div>`;
 }
 
 // Receita recorrente estimada (MRR): planos semestral/anual são convertidos para equivalente mensal
@@ -548,15 +578,26 @@ function renderFinanceiroLista() {
       <div class="card"><span>MRR estimado</span><b>${money(mrr)}</b></div>
     </div>
     <h4 style="margin:0 0 10px">A vencer nos próximos 15 dias (${aVencer.length})</h4>
-    <div class="table"><table><thead><tr>
+    <div class="table only-desktop"><table><thead><tr>
       <th>Nome</th><th>E-mail</th><th>Plano</th><th>Vence em</th><th>Ações</th>
     </tr></thead><tbody>${aVencer.length ? aVencer.map(u => `<tr>
-      <td data-label="Nome">${esc(u.nome || u.email || u.id)}</td>
-      <td data-label="E-mail">${esc(u.email || '-')}</td>
-      <td data-label="Plano">${pill(PLANOS_LABEL[u.plano] || u.plano, planColor(u.plano))}</td>
-      <td data-label="Vence em">${formatDateBR(u.premiumAte)}</td>
-      <td data-label="Ações"><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></td>
-    </tr>`).join('') : `<tr><td colspan="5"><p class="muted">Nenhuma consultora vencendo nos próximos 15 dias.</p></td></tr>`}</tbody></table></div>`;
+      <td>${esc(u.nome || u.email || u.id)}</td>
+      <td>${esc(u.email || '-')}</td>
+      <td>${pill(PLANOS_LABEL[u.plano] || u.plano, planColor(u.plano))}</td>
+      <td>${formatDateBR(u.premiumAte)}</td>
+      <td><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></td>
+    </tr>`).join('') : `<tr><td colspan="5"><p class="muted">Nenhuma consultora vencendo nos próximos 15 dias.</p></td></tr>`}</tbody></table></div>
+    <div class="only-mobile vcards">${aVencer.length ? aVencer.map(u => `<div class="vcard">
+      <div class="vcard-top">
+        <div class="vcard-cli" style="margin:0;font-size:17px">${esc(u.nome || u.email || u.id)}</div>
+        ${pill(PLANOS_LABEL[u.plano] || u.plano, planColor(u.plano))}
+      </div>
+      <div class="vcard-rows">
+        <div class="vcard-row"><span>E-mail</span><b>${esc(u.email || '-')}</b></div>
+        <div class="vcard-row"><span>Vence em</span><b>${formatDateBR(u.premiumAte)}</b></div>
+      </div>
+      <div class="vcard-actions"><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></div>
+    </div>`).join('') : '<p class="muted">Nenhuma consultora vencendo nos próximos 15 dias.</p>'}</div>`;
 }
 
 function planColor(plano) {
