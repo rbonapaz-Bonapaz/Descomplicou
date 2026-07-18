@@ -179,7 +179,16 @@ function goto(p) {
   // O menu de cima é uma fileira horizontal que rola de lado (mobile) — sem isso, clicar num botão
   // fora da parte visível deixava ele "sumido" fora da tela depois do clique, dando sensação de
   // salto/desalinhamento. Centraliza sozinho o botão ativo dentro da fileira.
-  document.querySelector('#nav button.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  // Rola só o próprio menu (nav.scrollLeft), nunca a página — scrollIntoView() foi trocado por isso
+  // porque seu eixo "block" podia arrastar a página inteira verticalmente como efeito colateral
+  // (mais perceptível em botões distantes no menu, tipo Admin, que precisam de mais rolagem
+  // horizontal): sobrava um espaço em branco no topo da tela só nessas páginas.
+  const navAtivo = document.querySelector('#nav button.active');
+  if (navAtivo) {
+    const navEl = navAtivo.parentElement;
+    const alvo = navAtivo.offsetLeft - (navEl.clientWidth - navAtivo.clientWidth) / 2;
+    navEl.scrollTo({ left: Math.max(0, alvo), behavior: 'smooth' });
+  }
 }
 
 // Captura o "?ref=uid" da URL de indicação assim que a página carrega (antes do login terminar)
