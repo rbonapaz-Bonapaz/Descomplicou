@@ -1,6 +1,6 @@
 import { state, SECTIONS, col, ref, db, prodById, showModal, closeModal, toast,
   runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, setDoc } from './state.js';
-import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
+import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
 
@@ -375,6 +375,13 @@ export function openEntradaManual() {
       <div class="field"><label>Preço médio (calculado)</label><input disabled value="Calculado automaticamente ao salvar"></div>
     </div>
     <p class="muted" style="margin:6px 0 0">Deixe o custo em <b>0</b> para itens recebidos como brinde da Farmasi — o preço médio é recalculado sozinho considerando todas as entradas.</p><br>
+    <div class="panel" style="background:#F7FAFC;margin-top:4px">
+      <p class="muted" style="margin:0 0 8px"><b>Comprou de outra consultora, não direto da Farmasi?</b> Preencha abaixo pra guardar de quem foi e se já pagou.</p>
+      <div class="grid">
+        <div class="field full"><label>Comprado de (opcional)</label><input id="mFornecedor" placeholder="Nome de quem vendeu pra você"></div>
+        <div class="field full">${toggleHtml('mJaPaguei', true, '', 'Já paguei')}</div>
+      </div>
+    </div><br>
     <button class="btn dark" onclick="App.saveEntradaManual()">Lançar entrada</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
 }
@@ -382,11 +389,22 @@ export function openEntradaManual() {
 export async function saveEntradaManual() {
   const p = prodById($('mProd').value);
   if (!p) return toast('Selecione um produto');
+  const qtd = Number($('mQtd').value || 1);
+  const custo = parseMoney($('mCusto').value || p.custoMedio || 0);
   try {
     await perguntarAtivarProntaEntrega(p.id);
-    await entradaEstoque(p.id, Number($('mQtd').value || 1), parseMoney($('mCusto').value || p.custoMedio || 0), $('mMotivo').value);
+    await entradaEstoque(p.id, qtd, custo, $('mMotivo').value);
+    const fornecedor = ($('mFornecedor')?.value || '').trim();
+    if (fornecedor) {
+      const jaPaguei = !!$('mJaPaguei')?.checked;
+      await setDoc(ref('despesas', 'forn_' + Date.now()), {
+        tipo: 'fornecedor', pessoa: fornecedor, produtoId: p.id, produtoNome: p.nome,
+        quantidade: qtd, valorTotal: custo * qtd, pago: jaPaguei, data: today(),
+        criadoEm: serverTimestamp()
+      });
+    }
     closeModal();
-    window.App.refresh('Entrada registrada');
+    window.App.refresh(fornecedor ? `Entrada registrada — comprado de ${fornecedor}` : 'Entrada registrada');
   } catch (e) {
     toast('Erro ao registrar entrada: ' + e.message);
   }

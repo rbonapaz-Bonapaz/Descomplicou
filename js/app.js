@@ -19,7 +19,7 @@ import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, s
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca } from './trocas.js';
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca, togglePendenteDevolucao } from './trocas.js';
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
   autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, migrarPrecoVendaAntigo, filtrarLinhaBaseColetiva,
@@ -28,7 +28,8 @@ import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTo
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
-  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa } from './preencomenda.js';
+  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
+  marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor } from './preencomenda.js';
 import { renderCatalogo, selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo,
   excluirTodoCatalogo, toggleOcultarAtual, toggleBeneficiosPdf } from './catalogo.js';
 import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, gerarPdfRelatorio } from './relatorios.js';
@@ -372,12 +373,12 @@ window.App = {
   adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
   marcarComoPedido, voltarParaComprar, confirmarChegada, abrirModalBrinde, confirmarBrinde,
   openKitForm, adicionarProdutoKit, removerProdutoKit, confirmarKit, removerKitCompleto,
-  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa,
+  registrarFreteFarmasi, removerFreteFarmasi, registrarDespesa, removerDespesa, marcarFornecedorPago, marcarFornecedorPendente, removerFornecedor,
   // Trocas
   abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
-  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca,
+  toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca, togglePendenteDevolucao,
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, migrarPrecoVendaAntigo, filtrarLinhaBaseColetiva,

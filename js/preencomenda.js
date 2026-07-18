@@ -344,6 +344,58 @@ export async function removerDespesa(id) {
   window.App.refresh('Registro de despesa removido');
 }
 
+// --- Compras de outras consultoras (registradas na Entrada de estoque com "Comprado de" preenchido) ---
+// Mesma coleção "despesas", tipo 'fornecedor' — mas NÃO entra no total de "despesas operacionais"
+// dos Relatórios (que só soma tipo 'operacional'): o custo dessa compra já está embutido no custo
+// médio do produto quando deu entrada no estoque; contar aqui de novo duplicaria o gasto.
+export async function marcarFornecedorPago(id) {
+  await setDoc(ref('despesas', id), { pago: true }, { merge: true });
+  window.App.refresh('Marcado como pago');
+}
+
+export async function marcarFornecedorPendente(id) {
+  await setDoc(ref('despesas', id), { pago: false }, { merge: true });
+  window.App.refresh('Marcado como pendente');
+}
+
+export async function removerFornecedor(id) {
+  if (!confirm('Remover este registro de compra? Isso não mexe no estoque, só apaga o controle de quem/quanto pagar.')) return;
+  await deleteDoc(ref('despesas', id));
+  window.App.refresh('Registro removido');
+}
+
+function fornecedoresPanelHtml() {
+  const compras = (state.data.despesas || [])
+    .filter(x => x.tipo === 'fornecedor')
+    .sort((a, b) => Number(a.pago) - Number(b.pago) || String(b.data).localeCompare(String(a.data)));
+  if (!compras.length) return '';
+  const pendentes = compras.filter(x => !x.pago);
+  const totalPendente = pendentes.reduce((s, x) => s + Number(x.valorTotal || 0), 0);
+  return `<div class="panel" style="margin-top:10px">
+    <div class="panel-head">
+      <h3>🧾 Compras de outras consultoras</h3>
+      ${pendentes.length ? `<span class="muted">A pagar: <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+    </div>
+    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido) — controle aqui quem ainda falta pagar.</p>
+    <div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Pessoa</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
+      ${compras.map(c => `<tr>
+        <td data-label="Data">${formatDateBR(c.data)}</td>
+        <td data-label="Pessoa">${esc(c.pessoa || '-')}</td>
+        <td data-label="Produto">${esc(c.produtoNome || '-')}</td>
+        <td data-label="Qtd">${c.quantidade || 0}</td>
+        <td data-label="Valor">${money(c.valorTotal)}</td>
+        <td data-label="Status">${c.pago ? '<span class="tag green">Pago</span>' : '<span class="tag red">A pagar</span>'}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">
+          ${c.pago
+            ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
+            : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`}
+          <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${c.id}')" title="Remover registro">🗑️</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+
 function despesasPanelHtml() {
   const despesas = (state.data.despesas || [])
     .filter(x => x.tipo === 'operacional')
@@ -514,7 +566,7 @@ export function preEncomendaTabHtml() {
       </tr>`;
     }).join('')}</tbody></table></div>`}
     `}
-  </div>${fretePanelHtml()}${despesasPanelHtml()}`;
+  </div>${fretePanelHtml()}${despesasPanelHtml()}${fornecedoresPanelHtml()}`;
 }
 
 function pillOrigem(o) {

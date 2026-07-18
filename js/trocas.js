@@ -143,6 +143,9 @@ export function openTroca(id) {
 
     <h4 style="margin:14px 0 8px;color:var(--gold)">📤 Produtos que saem (seu estoque)</h4>
     ${ladoTableHtml(id, 'saida', itensSaida)}
+    ${aberta && !itensSaida.length ? `<div style="margin-top:8px">${toggleHtml('trPendenteDevolucao', !!t.pendenteDevolucao, `App.togglePendenteDevolucao('${id}',this.checked)`,
+      'Ainda vou devolver algo pra ela (não sei o quê ainda — mantém a troca em aberto)',
+      '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Pra quando você já recebeu o produto (consignado) mas ainda não decidiu o que vai devolver — sem marcar isso, a troca fecharia como "Finalizada" mesmo sem nada lançado do seu lado.</span></span>')}</div>` : ''}
     ${podeAdicionar ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
       <div style="margin-bottom:10px">${toggleHtml('trMostrarSem', mostrarSem, `App.toggleTrocaOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque',
         '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Libera escolher produtos sem estoque disponível — use "Vou entregar depois" nesses: a baixa acontece sozinha quando chegar estoque.</span></span>')}</div>
@@ -319,8 +322,13 @@ export async function finalizarTroca(trocaId) {
     }
   }
 
+  // pendenteDevolucao (marcado manualmente pela consultora) mantém a troca em "parcial" mesmo com
+  // o lado 'saem' vazio — caso de receber um produto agora e combinar de devolver depois, sem ainda
+  // saber o quê (ex: consignado). Sem essa flag, itensSaida vazio faria a troca fechar como
+  // "finalizada" na hora, perdendo o lembrete de que ainda falta devolver algo pra parceira.
   const pendente = itensSaida.some(i => i.tipoEntrega === 'entrega_futura' && !i.processado) ||
-    itensEntrada.some(i => i.tipoEntrega === 'entrega_futura' && !i.processado);
+    itensEntrada.some(i => i.tipoEntrega === 'entrega_futura' && !i.processado) ||
+    (t.pendenteDevolucao && itensSaida.length === 0);
 
   await setDoc(ref('trocas', trocaId), {
     itensSaida, itensEntrada, status: pendente ? 'parcial' : 'finalizada',
@@ -328,7 +336,14 @@ export async function finalizarTroca(trocaId) {
   }, { merge: true });
 
   closeModal();
-  window.App.refresh(pendente ? 'Troca registrada — ainda há itens pendentes de entrega/recebimento' : 'Troca concluída!');
+  window.App.refresh(pendente ? 'Troca registrada — ainda há itens/devolução pendente' : 'Troca concluída!');
+}
+
+// Alterna o lembrete "ainda vou devolver algo" — só se aplica enquanto o lado 'saem' está vazio;
+// assim que a consultora lançar o que vai devolver, o controle normal de itens pendentes assume.
+export async function togglePendenteDevolucao(trocaId, checked) {
+  await setDoc(ref('trocas', trocaId), { pendenteDevolucao: checked, atualizadoEm: serverTimestamp() }, { merge: true });
+  window.App.refresh(checked ? 'Marcado: ainda falta devolver algo pra essa parceira' : 'Lembrete de devolução removido');
 }
 
 // Estorna os lançamentos de estoque já processados (saída volta como entrada, entrada volta como
@@ -387,7 +402,9 @@ export async function marcarItemTrocaProcessado(trocaId, lado, idx) {
   itens[idx] = item;
 
   const outroLado = lado === 'saida' ? (t.itensEntrada || []) : (t.itensSaida || []);
-  const tudoProcessado = [...itens, ...outroLado].every(i => i.tipoEntrega !== 'entrega_futura' || i.processado);
+  const itensSaidaFinal = lado === 'saida' ? itens : (t.itensSaida || []);
+  const tudoProcessado = [...itens, ...outroLado].every(i => i.tipoEntrega !== 'entrega_futura' || i.processado)
+    && !(t.pendenteDevolucao && itensSaidaFinal.length === 0);
 
   await setDoc(ref('trocas', trocaId), {
     [campo]: itens, status: tudoProcessado ? 'finalizada' : 'parcial', atualizadoEm: serverTimestamp()
