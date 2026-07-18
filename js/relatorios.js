@@ -476,6 +476,16 @@ function toastVazio() {
 // PDF do relatório: reaproveita o mesmo mecanismo de impressão dos pedidos (monta HTML dentro de
 // #printArea e chama window.print()) — sem lib externa, o navegador já sabe gerar PDF a partir
 // de "Salvar como PDF" na caixa de impressão.
+function qrDataRel(p) {
+  if (p.linkLoja) return p.linkLoja;
+  const n = String(p.whatsapp || '').replace(/\D/g, '');
+  return n ? `https://wa.me/${n.startsWith('55') ? n : '55' + n}` : location.href;
+}
+
+function qrUrlRel(p) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=1&data=${encodeURIComponent(qrDataRel(p))}`;
+}
+
 export function gerarPdfRelatorio() {
   const d = state.filters.rel;
   const r = salesAgg(d);
@@ -508,6 +518,7 @@ export function gerarPdfRelatorio() {
     <footer class="pdf-footer">
       ${logoNegocioHtml(p)}
       <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || '')}</div>
+      <img class="pdf-qr" src="${qrUrlRel(p)}">
     </footer>
   </section>`;
 

@@ -2,6 +2,17 @@ import { state, carrinhoById, cliById, numeroPedidoLabel } from './state.js';
 import { $, esc, money, normStatusPag, descontoPercent, logoNegocioHtml } from './utils.js';
 import { calcCustoCartao } from './carrinho.js';
 
+function qrData() {
+  const p = state.profile || {};
+  if (p.linkLoja) return p.linkLoja;
+  const n = String(p.whatsapp || '').replace(/\D/g, '');
+  return n ? `https://wa.me/${n.startsWith('55') ? n : '55' + n}` : location.href;
+}
+
+function qrUrl() {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=1&data=${encodeURIComponent(qrData())}`;
+}
+
 export function gerarPdfCliente(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
@@ -137,6 +148,7 @@ function gerarPdf(carr, interno) {
     <footer class="pdf-footer">
       ${logoNegocioHtml(p)}
       <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
+      <img class="pdf-qr" src="${qrUrl()}">
     </footer>
   </section>`;
 
