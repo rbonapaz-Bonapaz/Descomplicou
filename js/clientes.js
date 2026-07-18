@@ -51,34 +51,68 @@ function ordenarClientes(lista) {
   });
 }
 
+// Ações de um cliente — HTML idêntico na tabela (desktop) e no cartão (mobile), mesmo padrão de
+// vendaAcoesHtml em vendas.js, pra tabela e cartão nunca saírem de sincronia.
+function clienteAcoesHtml(c) {
+  return `
+    <button class="btn small" onclick="App.openCliente360('${c.id}')">Ver</button>
+    <button class="btn small" onclick="App.openClienteForm('${c.id}')">Editar</button>
+    ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.apelido || c.nome, telefone: c.whatsapp })}
+    <button class="btn small" style="color:var(--error)" onclick="App.excluirCliente('${c.id}')" title="Excluir">🗑️</button>`;
+}
+
+// Cartão de cliente no celular (mesma classe .vcard do cartão de Vendas) — nome em destaque no
+// topo, status em pílula, contato/última compra em linhas com separador, ações em grade.
+function clienteCardHtml(c) {
+  const ds = daysSince(lastBuy(c));
+  const carrinhoAberto = openCarrinhosForClient(c.id).length > 0;
+  const statusLabel = ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio';
+  const statusCor = ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red';
+  return `<div class="vcard">
+    <div class="vcard-top">
+      <div class="vcard-cli cli-link" style="margin:0" onclick="App.openCliente360('${c.id}')">${esc(c.nome)}</div>
+      ${pill(statusLabel, statusCor)}
+    </div>
+    ${carrinhoAberto || (c.tags || []).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      ${carrinhoAberto ? `<span class="pill blue" style="cursor:pointer" onclick="App.openCarrinhoDoCliente('${c.id}')">🛒 carrinho aberto</span>` : ''}
+      ${(c.tags || []).map(t => pill(t, 'pink')).join('')}
+    </div>` : ''}
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Contato</span><b>${esc(c.whatsapp || '-')}</b></div>
+      <div class="vcard-row"><span>Última compra</span><b>${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds}d)</small>` : '-'}</b></div>
+    </div>
+    <div class="vcard-actions">${clienteAcoesHtml(c)}</div>
+  </div>`;
+}
+
 function tableClientes() {
   const q = norm($('qcli')?.value || '');
   let l = state.data.clientes.filter(c => !q || norm(c.nome + ' ' + c.whatsapp + ' ' + c.cidade + ' ' + (c.tags || []).join(' ')).includes(q));
   if (!l.length) return '<p class="muted">Nenhum cliente.</p>';
   const sortKey = state.filters.clientesSort;
   l = ordenarClientes(l);
-  return `<div class="table"><table><thead><tr>
+
+  const tabela = `<div class="table only-desktop"><table><thead><tr>
     ${thSort('Cliente', 'nome', sortKey, 'clientesSort')}${thSort('Contato', 'contato', sortKey, 'clientesSort')}${thSort('Última compra', 'compra', sortKey, 'clientesSort')}${thSort('Status', 'status', sortKey, 'clientesSort')}<th>Ações</th>
   </tr></thead><tbody>${l.map(c => {
     const ds = daysSince(lastBuy(c));
     const carrinhoAberto = openCarrinhosForClient(c.id).length > 0;
     return `<tr>
-      <td data-label="Cliente">
+      <td>
         <b class="cli-link" onclick="App.openCliente360('${c.id}')">${esc(c.nome)}</b>
         ${carrinhoAberto ? '<span class="pill blue" style="cursor:pointer" onclick="App.openCarrinhoDoCliente(\'' + c.id + '\')">🛒 aberto</span>' : ''}
         ${(c.tags || []).length ? `<div style="margin-top:4px">${c.tags.map(t => pill(t, 'pink')).join(' ')}</div>` : ''}
       </td>
-      <td data-label="Contato">${esc(c.whatsapp || '')}</td>
-      <td data-label="Compra">${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds} dias)</small>` : '-'}</td>
-      <td data-label="Status">${pill(ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio', ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red')}</td>
-      <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn small" onclick="App.openCliente360('${c.id}')">Ver</button>
-        <button class="btn small" onclick="App.openClienteForm('${c.id}')">Editar</button>
-        ${whatsAppBtn(c.whatsapp, 'contatoFrio', { nome: c.apelido || c.nome, telefone: c.whatsapp })}
-        <button class="btn small" style="color:var(--error)" onclick="App.excluirCliente('${c.id}')" title="Excluir">🗑️</button>
-      </td>
+      <td>${esc(c.whatsapp || '')}</td>
+      <td>${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds} dias)</small>` : '-'}</td>
+      <td>${pill(ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio', ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red')}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap">${clienteAcoesHtml(c)}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
+
+  const cartoes = `<div class="only-mobile vcards">${l.map(clienteCardHtml).join('')}</div>`;
+
+  return tabela + cartoes;
 }
 
 let leadPrefill = null; // { eventoId, listaId } — pré-cadastro vindo de uma lista de desejos de evento

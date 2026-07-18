@@ -416,13 +416,17 @@ export function toggleTrocaDetalhe(id) {
 
 // Sub-lista com os produtos que saem/entram de uma troca, sem precisar abrir o modal inteiro.
 function detalheTrocaHtml(t) {
+  // Nome em cima, preço embaixo (mesmo padrão de .venda-item em vendas.js) — lado a lado com
+  // white-space:nowrap sobrepunha texto no celular quando o nome do produto era longo.
   const linha = (it, lado) => {
-    const pendente = it.tipoEntrega === 'entrega_futura' && !it.processado;
     const entregaLabel = it.tipoEntrega === 'entrega_futura' ? (it.processado ? (lado === 'saida' ? 'Entregue' : 'Recebido') : 'Futura') : 'Pronta';
     const entregaCor = it.tipoEntrega === 'entrega_futura' ? (it.processado ? 'green' : 'orange') : 'green';
-    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
-      <span>${it.quantidade}× ${esc(it.produtoNome)} ${pill(entregaLabel, entregaCor)}</span>
-      <span style="white-space:nowrap">${money(it.valorUnitario)} un. • <b>${money(it.valorTotal)}</b></span>
+    const precoLinha = it.quantidade > 1
+      ? `${money(it.valorUnitario)} un. • <b>${money(it.valorTotal)}</b>`
+      : `<b>${money(it.valorTotal)}</b>`;
+    return `<div class="venda-item">
+      <div class="venda-item-nome">${it.quantidade}× ${esc(it.produtoNome)} ${pill(entregaLabel, entregaCor)}</div>
+      <div class="venda-item-preco">${precoLinha}</div>
     </div>`;
   };
   const saida = t.itensSaida || [], entrada = t.itensEntrada || [];
@@ -432,9 +436,11 @@ function detalheTrocaHtml(t) {
   // % em cima do que saiu (referência: o que você abriu mão) — positivo = lucro (recebeu mais
   // valor do que deu), negativo = prejuízo (deu mais valor do que recebeu).
   const percentual = totalSaida > 0.004 ? (diferenca / totalSaida) * 100 : (diferenca > 0.004 ? 100 : 0);
-  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <div style="background:#EAF0F5;border-radius:10px;padding:10px"><small class="muted"><b>Saem (seus produtos)</b></small>${saida.length ? saida.map(it => linha(it, 'saida')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
-    <div style="background:#EAF7EC;border-radius:10px;padding:10px"><small class="muted"><b>Entram (recebidos)</b></small>${entrada.length ? entrada.map(it => linha(it, 'entrada')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+  // Grade 2 colunas só no desktop — no celular estreito, duas colunas de itens espremidas foi
+  // outra fonte de sobreposição. Empilha (saem em cima, entram embaixo) abaixo de 760px.
+  return `<div class="troca-detalhe-grid">
+    <div style="background:#EAF0F5;border-radius:10px;padding:10px;min-width:0"><small class="muted"><b>Saem (seus produtos)</b></small>${saida.length ? saida.map(it => linha(it, 'saida')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
+    <div style="background:#EAF7EC;border-radius:10px;padding:10px;min-width:0"><small class="muted"><b>Entram (recebidos)</b></small>${entrada.length ? entrada.map(it => linha(it, 'entrada')).join('') : '<small class="muted">Nenhum item.</small>'}</div>
   </div>
   ${(saida.length || entrada.length) && Math.abs(diferenca) > 0.004 ? `<div style="margin-top:10px;display:flex;justify-content:flex-end">
     ${pill(`${diferenca > 0 ? 'Lucro' : 'Prejuízo'} na troca: ${money(Math.abs(diferenca))} (${diferenca > 0 ? '+' : '-'}${Math.abs(percentual).toFixed(0)}%)`, diferenca > 0 ? 'green' : 'red')}
@@ -445,14 +451,14 @@ function trocaCardHtml(t) {
   const statusLabel = { aberta: 'Em andamento', parcial: 'Parcial (pendências)', finalizada: 'Finalizada', cancelada: 'Cancelada' }[t.status] || t.status;
   const statusCor = t.status === 'finalizada' ? 'green' : t.status === 'cancelada' ? 'red' : t.status === 'parcial' ? 'orange' : 'blue';
   const expandida = trocasExpandidas.has(t.id);
-  return `<div class="list-item" style="flex-direction:column;align-items:stretch">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <div>
+  return `<div class="list-item" style="flex-direction:column;align-items:stretch;min-width:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+      <div style="min-width:0">
         <button class="btn small" style="padding:3px 8px;margin-right:6px" onclick="App.toggleTrocaDetalhe('${t.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da troca'}">${expandida ? '▾' : '▸'}</button>
-        <b class="cli-link" onclick="App.toggleTrocaDetalhe('${t.id}')">${t.parceira ? esc(t.parceira) : 'Troca sem nome'}</b>
+        <b class="cli-link" onclick="App.toggleTrocaDetalhe('${t.id}')" style="overflow-wrap:break-word">${t.parceira ? esc(t.parceira) : 'Troca sem nome'}</b>
         <small>${(t.itensSaida || []).length} produto(s) saem · ${(t.itensEntrada || []).length} produto(s) entram</small>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${pill(statusLabel, statusCor)}
         <button class="btn small" onclick="App.openTroca('${t.id}')">Abrir</button>
         <button class="btn small" onclick="App.editarParceiraTroca('${t.id}')" title="Editar parceira">✏️</button>

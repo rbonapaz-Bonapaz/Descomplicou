@@ -81,5 +81,10 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 .vcard-sub{font-size:12px;color:var(--muted);text-align:right;padding:0 2px 10px;border-bottom:1px solid var(--line)}
 .vcard-toggle{width:100%;margin-top:14px;justify-content:center}
 .vcard-itens{background:#F7FAFC;border-radius:14px;padding:4px 14px;margin-top:10px;min-width:0;max-width:100%}
+
+/* Detalhe de troca (saem/entram) — 2 colunas no desktop, empilhado no celular (mesmo motivo do
+   .vcard: 2 colunas espremidas em tela estreita voltava a sobrepor texto). */
+.troca-detalhe-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.troca-detalhe-grid{grid-template-columns:1fr;gap:10px}}
 .vcard-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 .vcard-actions .btn{width:100%;min-width:0;justify-content:center;padding:11px 8px;font-size:12.5px;text-align:center;overflow-wrap:break-word;white-space:normal}

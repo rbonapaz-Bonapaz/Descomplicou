@@ -40,9 +40,15 @@ export function detalheVendaHtml(c) {
       it.tipoEntrega === 'entrega_futura' && !it.entregue ? pill('entrega futura', 'orange') : '',
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
+    // Quantidade 1 sem desconto: "un." e "total" são o mesmo número — mostra só uma vez. Com
+    // desconto, o preço original riscado já vira a pílula "-X%" acima, então também não repete
+    // aqui; só o total (ou "un. • total" quando há mais de 1 unidade) precisa aparecer.
+    const precoLinha = it.quantidade > 1
+      ? `${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b>`
+      : `<b>${money(it.precoUnitario)}</b>`;
     return `<div class="venda-item">
       <div class="venda-item-nome">${it.quantidade}× ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small> ` : ''}${esc(it.produtoNome)} ${tags}</div>
-      <div class="venda-item-preco">${temDesconto ? `<del class="muted">${money(original)}</del> ` : ''}${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b></div>
+      <div class="venda-item-preco">${precoLinha}</div>
     </div>`;
   }).join('');
 }
