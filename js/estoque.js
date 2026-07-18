@@ -4,7 +4,10 @@ import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPre
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
 
-const MOTIVOS_SAIDA = ['Brinde', 'Parceria', 'Consumo próprio', 'Troca', 'Perda', 'Ajuste'];
+const MOTIVOS_SAIDA = ['Brinde', 'Mostruário', 'Parceria', 'Consumo próprio', 'Troca', 'Perda', 'Ajuste'];
+// Motivos em que faz sentido perguntar "para quem"/"onde ficou" o produto — pra depois dar pra
+// consultora consultar quem recebeu cada brinde ou pra quem foi o mostruário, e não só o motivo genérico.
+const MOTIVOS_COM_DESTINO = ['Brinde', 'Mostruário', 'Consumo próprio'];
 
 // Liga/desliga "produto de pronta entrega" sozinho conforme o estoque fica positivo/zera — a menos
 // que a consultora tenha definido manualmente "sem pronta entrega" (produtoProntaEntrega: false +
@@ -125,7 +128,7 @@ async function converterEntregaFuturaAutomatico(produtoId, novoEstoque) {
   }
 }
 
-export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '', receita = 0) {
+export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '', receita = 0, destinatario = '') {
   const geraLucro = motivo === 'Venda';
   let novoEstoque = 0, novaProntaEntrega;
   await runTransaction(db, async tx => {
@@ -142,7 +145,7 @@ export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '
       produtoId, produtoNome: p.nome, tipo: 'saida', motivo,
       quantidade: q, estoqueAntes: e, estoqueDepois: novo,
       custoUnitario: c, valorFinanceiro: q * c, receita,
-      vendaId, geraLucro, data: today(), criadoEm: serverTimestamp()
+      vendaId, geraLucro, destinatario: destinatario || '', data: today(), criadoEm: serverTimestamp()
     });
     novoEstoque = novo;
   });
@@ -323,7 +326,7 @@ function semLucroTabHtml() {
   const motivosPresentes = Array.from(new Set(movs.map(m => m.motivo || 'Outro'))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const motivoFiltro = state.filters.semLucroMotivo || '';
   if (motivoFiltro) movs = movs.filter(m => (m.motivo || 'Outro') === motivoFiltro);
-  if (q) movs = movs.filter(m => norm(m.produtoNome || '').includes(q));
+  if (q) movs = movs.filter(m => norm((m.produtoNome || '') + ' ' + (m.destinatario || '')).includes(q));
 
   movs = [...movs].sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
 
@@ -331,15 +334,15 @@ function semLucroTabHtml() {
   const totalValor = movs.reduce((s, m) => s + Number(m.valorFinanceiro || 0), 0);
 
   return `<div class="panel">
-    <div class="panel-head"><h3>Saídas sem lucro (Brinde, Parceria, Consumo próprio, Perda, Ajuste, Troca)</h3></div>
-    <p class="muted">Toda saída de estoque que não vem de uma venda — confira se o motivo lançado em cada uma está certo. Um item marcado errado aqui (ex.: "Consumo próprio" que era venda) infla essa lista e reduz o lucro que aparece nos relatórios.</p>
+    <div class="panel-head"><h3>Saídas sem lucro (Brinde, Mostruário, Parceria, Consumo próprio, Perda, Ajuste, Troca)</h3></div>
+    <p class="muted">Toda saída de estoque que não vem de uma venda — confira se o motivo lançado em cada uma está certo. Um item marcado errado aqui (ex.: "Consumo próprio" que era venda) infla essa lista e reduz o lucro que aparece nos relatórios. Em Brinde/Mostruário/Consumo próprio, a coluna "Para quem" mostra quem recebeu ou onde ficou o produto, quando informado.</p>
     <div class="cards">
       <div class="card"><span>Registros</span><b>${movs.length}</b></div>
       <div class="card"><span>Unidades saídas</span><b>${totalQtd}</b></div>
       <div class="card"><span>Custo envolvido</span><b>${money(totalValor)}</b></div>
     </div>
     <div class="toolbar">
-      <input id="qSemLucro" placeholder="Buscar por produto..." oninput="App.renderEstoque()" value="${esc($('qSemLucro')?.value || '')}">
+      <input id="qSemLucro" placeholder="Buscar por produto ou para quem..." oninput="App.renderEstoque()" value="${esc($('qSemLucro')?.value || '')}">
     </div>
     <div class="chips">
       <button class="chip ${!motivoFiltro ? 'active' : ''}" onclick="App.setFilter('semLucroMotivo','')">Todos</button>
@@ -347,16 +350,17 @@ function semLucroTabHtml() {
     </div>
     <div class="table-wrap only-desktop">
       <table class="table">
-        <thead><tr><th>Data</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Custo</th><th>Origem</th></tr></thead>
+        <thead><tr><th>Data</th><th>Produto</th><th>Motivo</th><th>Para quem</th><th>Qtd</th><th>Custo</th><th>Origem</th></tr></thead>
         <tbody>
           ${movs.length ? movs.map(m => `<tr>
             <td>${esc(formatDateBR(m.data))}</td>
             <td>${esc(m.produtoNome || '-')}</td>
-            <td>${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
+            <td>${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Mostruário' ? 'orange' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
+            <td>${esc(m.destinatario || '-')}</td>
             <td>${m.quantidade || 0}</td>
             <td>${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</td>
             <td>${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</td>
-          </tr>`).join('') : '<tr><td colspan="6" class="muted">Nenhuma saída sem lucro para este filtro.</td></tr>'}
+          </tr>`).join('') : '<tr><td colspan="7" class="muted">Nenhuma saída sem lucro para este filtro.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -364,10 +368,11 @@ function semLucroTabHtml() {
       ${movs.length ? movs.map(m => `<div class="vcard">
         <div class="vcard-top">
           <span class="vcard-num">${esc(formatDateBR(m.data))}</span>
-          ${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}
+          ${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Mostruário' ? 'orange' : m.motivo === 'Parceria' ? 'blue' : 'orange')}
         </div>
         <div class="vcard-cli" style="margin:6px 0 8px">${esc(m.produtoNome || '-')}</div>
         <div class="vcard-rows">
+          ${m.destinatario ? `<div class="vcard-row"><span>Para quem</span><b>${esc(m.destinatario)}</b></div>` : ''}
           <div class="vcard-row"><span>Quantidade</span><b>${m.quantidade || 0}</b></div>
           <div class="vcard-row"><span>Custo</span><b>${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</b></div>
           <div class="vcard-row"><span>Origem</span><b>${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</b></div>
@@ -438,19 +443,46 @@ export async function saveEntradaManual() {
   }
 }
 
+// Rótulo do campo "para quem" varia conforme o motivo — deixa claro o que preencher em cada caso
+// (a quem foi dado o brinde, onde ficou o mostruário, quem usou pro consumo próprio).
+function labelDestinoSaida(motivo) {
+  if (motivo === 'Brinde') return 'Para quem foi o brinde (opcional)';
+  if (motivo === 'Mostruário') return 'Onde ficou o mostruário (opcional)';
+  if (motivo === 'Consumo próprio') return 'Observação (opcional)';
+  return '';
+}
+
 export function openSaidaManual() {
   const picker = searchPickerHtml('sProd', [...state.data.produtos].filter(p => Number(p.estoqueAtual || 0) > 0).sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | estoque ${p.estoqueAtual || 0}`);
   const motivos = MOTIVOS_SAIDA.map(m => `<option value="${m}">${m}</option>`).join('');
   showModal(`<h3>Saída de estoque</h3>
-    <p class="muted">Para vendas, use o carrinho. Aqui registre saídas por brinde, parceria, consumo próprio, etc.</p>
+    <p class="muted">Para vendas, use o carrinho. Aqui registre saídas por brinde, mostruário, parceria, consumo próprio, etc.</p>
     <div class="grid">
       <div class="field full"><label>Produto</label>${picker}</div>
       <div class="field"><label>Quantidade</label><input id="sQtd" type="number" value="1"></div>
-      <div class="field"><label>Motivo</label><select id="sMotivo">${motivos}</select></div>
+      <div class="field"><label>Motivo</label><select id="sMotivo" onchange="App.atualizarCampoDestinoSaida()">${motivos}</select></div>
+      <div class="field full" id="sDestinoField" style="${MOTIVOS_COM_DESTINO.includes(MOTIVOS_SAIDA[0]) ? '' : 'display:none'}">
+        <label id="sDestinoLabel">${labelDestinoSaida(MOTIVOS_SAIDA[0])}</label>
+        <input id="sDestino" placeholder="Ex: nome da cliente, feira, evento...">
+      </div>
     </div><br>
     <div class="alert-box">⚠️ Saídas que não são vendas <b>não geram lucro</b> nos relatórios.</div><br>
     <button class="btn dark" onclick="App.saveSaidaManual()">Confirmar saída</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+}
+
+// Mostra/esconde e atualiza o rótulo do campo "para quem" conforme o motivo selecionado — só faz
+// sentido perguntar destino pra Brinde/Mostruário/Consumo próprio (Perda, Ajuste, Parceria, Troca não).
+export function atualizarCampoDestinoSaida() {
+  const motivo = $('sMotivo')?.value;
+  const campo = $('sDestinoField');
+  if (!campo) return;
+  if (MOTIVOS_COM_DESTINO.includes(motivo)) {
+    campo.style.display = '';
+    $('sDestinoLabel').textContent = labelDestinoSaida(motivo);
+  } else {
+    campo.style.display = 'none';
+  }
 }
 
 export async function saveSaidaManual() {
@@ -458,8 +490,10 @@ export async function saveSaidaManual() {
   if (!p) return toast('Selecione um produto');
   const q = Number($('sQtd').value || 1);
   if (Number(p.estoqueAtual || 0) < q) return toast('Estoque insuficiente');
+  const motivo = $('sMotivo').value;
+  const destino = MOTIVOS_COM_DESTINO.includes(motivo) ? ($('sDestino')?.value || '').trim() : '';
   try {
-    await saidaEstoque(p.id, q, $('sMotivo').value);
+    await saidaEstoque(p.id, q, motivo, '', 0, destino);
     closeModal();
     window.App.refresh('Saída registrada');
   } catch (e) {
