@@ -1,5 +1,5 @@
 import { state, col, ref, db, doc, getDoc, setDoc, addDoc, deleteDoc, getDocs, collection, serverTimestamp, showModal, closeModal, toast, cliById } from './state.js';
-import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml, linhasDe } from './utils.js';
+import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml, linhasDe, logoNegocioHtml } from './utils.js';
 import { WA_ICON } from './whatsapp.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
@@ -511,6 +511,7 @@ export function gerarQrCodeEvento(id) {
       ${ev.mensagemWhatsapp ? `<p style="max-width:130mm;font-size:12pt;color:#333">${esc(ev.mensagemWhatsapp)}</p>` : ''}
     </main>
     <footer class="cat-footer">
+      ${logoNegocioHtml(p, 'pdf-foot-logo cat-foot-logo')}
       <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
     </footer>
   </section>`;
