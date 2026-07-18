@@ -414,7 +414,7 @@ export function searchPickerHtml(selectId, itens, describe, onchangeSelect = '',
   return `<div class="search-picker" style="position:relative;margin-bottom:6px">
     <div style="position:relative;display:flex;align-items:center">
       <input id="${buscaId}" value="${esc(valorInicial)}" placeholder="Digite para buscar..." autocomplete="off"
-        oninput="App.filtrarSearchPicker('${selectId}')" onfocus="App.filtrarSearchPicker('${selectId}',true)"
+        oninput="App.filtrarSearchPicker('${selectId}')" onfocus="this.select();App.filtrarSearchPicker('${selectId}',true)"
         onblur="setTimeout(()=>App.fecharSearchPicker('${selectId}'),150)"
         style="flex:1">
       <button type="button" class="search-picker-clear" onclick="App.limparSearchPicker('${selectId}')" style="display:${valorInicial ? 'block' : 'none'};position:absolute;right:8px;background:none;border:none;color:#999;cursor:pointer;font-size:18px;padding:0;width:24px;height:24px;line-height:1">✕</button>

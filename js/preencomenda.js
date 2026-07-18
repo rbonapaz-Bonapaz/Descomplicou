@@ -486,6 +486,12 @@ export function preEncomendaTabHtml() {
   const aComprar = itensFiltrados.filter(it => it.status !== 'pedido');
   const aguardando = itensFiltrados.filter(it => it.status === 'pedido');
   const kitsJaRenderizados = new Set();
+
+  // Verifica se há compras pendentes de fornecedores
+  const comprasFornecedor = (state.data.despesas || []).filter(x => x.tipo === 'fornecedor');
+  const fornecedoresPendentes = comprasFornecedor.filter(x => !x.pago);
+  const totalPendente = fornecedoresPendentes.reduce((s, x) => s + Number(x.valorTotal || 0), 0);
+
   return `<div class="panel">
     <div class="panel-head">
       <h3>Pré-encomenda</h3>
@@ -494,6 +500,9 @@ export function preEncomendaTabHtml() {
         <button class="btn small pink" onclick="App.openKitForm()">🎁 Montar kit</button>
       </div>
     </div>
+    ${fornecedoresPendentes.length ? `<div style="background:#FBE4E4;border:1px solid #E78C8C;border-radius:10px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div><b style="color:#C23B22">💰 Você deve ${money(totalPendente)} a ${fornecedoresPendentes.length} fornecedor${fornecedoresPendentes.length > 1 ? 'es' : ''}</b><br><span class="muted" style="font-size:12px">Veja a seção "Compras de outras consultoras" abaixo</span></div>
+    </div>` : ''}
     ${itens.length ? `<div class="toolbar" style="margin-bottom:12px">
       <input id="qPreEnc" placeholder="Buscar por nome ou código..." oninput="App.renderEstoque()" value="${esc($('qPreEnc')?.value || '')}">
     </div>` : ''}
