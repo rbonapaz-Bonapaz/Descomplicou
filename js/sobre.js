@@ -563,7 +563,26 @@ export function abrirManualWeb() {
       .rodape{margin-top:36px;padding-top:16px;border-top:1px solid #E6EDF4;color:#7D8AA5;font-size:12px}
       @media print{.barra{display:none}body{padding:0}}
     </style></head><body>
-    <div class="barra"><button onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button></div>
+    <div class="barra">
+      <button onclick="window.print()">🖨️ Salvar como PDF / Imprimir</button>
+      <button onclick="copiarLinkManual()">🔗 Copiar link</button>
+      <button onclick="enviarManualWhatsApp()">📱 Enviar por WhatsApp</button>
+    </div>
+    <script>
+      function copiarLinkManual() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+          alert('Link copiado! Cole em qualquer mensagem.');
+        }).catch(() => {
+          alert('Não consegui copiar. Tente manualmente: ' + url);
+        });
+      }
+      function enviarManualWhatsApp() {
+        const url = window.location.href;
+        const texto = encodeURIComponent('Veja o manual do sistema: ' + url);
+        window.open('https://wa.me/?text=' + texto, '_blank');
+      }
+    </script>
     <h1>Manual do ${esc(nome)}</h1>
     <p class="sub">Guia completo de uso • ${esc(APP_VERSION)} • Gerado em ${hoje}</p>
     <div class="grupo-titulo">O que o sistema faz</div>
