@@ -315,7 +315,7 @@ export function openCarrinho(id) {
       const reservadoOutros = reservadoEmAberto(p.id, id);
       return `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${disp}${reservadoOutros > 0 ? ` (${reservadoOutros} em outros carrinhos)` : ''} | ${money(p.precoAtual || 0)}`;
     },
-    'App.preencherPrecoItem()');
+    'App.preencherPrecoItem()', true);
 
   showModal(`<div class="carrinho-modal">
     <h3>🛒 Carrinho — ${esc(carr.clienteNome)}</h3>

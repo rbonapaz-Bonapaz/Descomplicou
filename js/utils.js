@@ -407,10 +407,10 @@ export function sectionTabsHtml(pagina, sections, active) {
 // $(selectId).value em outro lugar do código não precisa mudar nada. O campo visível mostra o
 // nome do item escolhido (não fica um "monte de listagem" aberto o tempo todo); clicar/focar o
 // campo reabre as sugestões pra trocar a escolha.
-export function searchPickerHtml(selectId, itens, describe, onchangeSelect = '') {
+export function searchPickerHtml(selectId, itens, describe, onchangeSelect = '', semPadrao = false) {
   const buscaId = selectId + 'Busca';
-  const opts = itens.map((it, i) => `<option value="${esc(it.id)}" ${i === 0 ? 'selected' : ''}>${esc(describe(it))}</option>`).join('');
-  const valorInicial = itens.length ? describe(itens[0]) : '';
+  const opts = itens.map((it, i) => `<option value="${esc(it.id)}" ${!semPadrao && i === 0 ? 'selected' : ''}>${esc(describe(it))}</option>`).join('');
+  const valorInicial = semPadrao ? '' : (itens.length ? describe(itens[0]) : '');
   return `<div class="search-picker" style="position:relative;margin-bottom:6px">
     <input id="${buscaId}" value="${esc(valorInicial)}" placeholder="Digite para buscar..." autocomplete="off"
       oninput="App.filtrarSearchPicker('${selectId}')" onfocus="App.filtrarSearchPicker('${selectId}',true)"

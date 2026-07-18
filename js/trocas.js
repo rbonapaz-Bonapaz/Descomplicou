@@ -135,10 +135,10 @@ export function openTroca(id) {
   const podeAdicionar = t.status === 'aberta';
   const mostrarSem = t.mostrarSemEstoque;
   const pickerSai = searchPickerHtml('trProdSai', state.data.produtos.filter(p => mostrarSem || estoqueDisponivel(p.id) > 0).sort(porNome),
-    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()');
+    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()', true);
   const pickerEntra = searchPickerHtml('trProdEntra',
     [{ id: '', nome: '— Produto novo (digite o nome abaixo) —' }, ...[...state.data.produtos].sort(porNome)],
-    p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome, 'App.preencherValorTrocaEntrada()');
+    p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome, 'App.preencherValorTrocaEntrada()', true);
 
   const statusLabel = { aberta: 'Em andamento', parcial: 'Parcial (pendências)', finalizada: 'Finalizada', cancelada: 'Cancelada' }[t.status] || t.status;
   const statusCor = t.status === 'finalizada' ? 'green' : t.status === 'cancelada' ? 'red' : t.status === 'parcial' ? 'orange' : 'blue';
