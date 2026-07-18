@@ -144,9 +144,9 @@ function infinitePayCheckoutHtml(id, carr) {
     return `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">✅ Pago via InfinitePay</div>`;
   }
   if (check?.status === 'pendente' && check?.url) {
-    return `<div style="margin-top:10px"><button class="btn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Ver QR Code do pagamento (aguardando)</button></div>`;
+    return `<div style="margin-top:10px"><button class="btn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Ver link de pagamento (aguardando)</button></div>`;
   }
-  return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar QR CODE do pagamento</button></div>`;
+  return `<div style="margin-top:10px"><button class="btn" id="cInfinitePayBtn" onclick="App.abrirCheckoutInfinitePay('${id}')">💳 Gerar link de pagamento</button></div>`;
 }
 
 // Débito saiu de linha (item 13-A): a consultora trabalha só com Crédito no cartão — sem seletor
@@ -925,13 +925,12 @@ export async function copiarCodigoPix(carrinhoId) {
 }
 
 function mostrarModalCheckoutInfinitePay(carrinhoId, url) {
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=${encodeURIComponent(url)}`;
   const ehMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-  showModal(`<h3>💳 Cobrança InfinitePay</h3>
-    <p class="muted">Mostre o QR Code pra cliente escanear, ou envie o link. Essa tela avisa sozinha quando o pagamento cair — pode deixar aberta ou fechar e conferir depois.</p>
-    <div style="text-align:center;margin:16px 0"><img src="${qrSrc}" alt="QR Code de pagamento" style="border-radius:12px;border:1px solid var(--line)"></div>
+  showModal(`<h3>💳 Link de Pagamento</h3>
+    <p class="muted">Compartilhe o link com a cliente ou abra a cobrança. Essa tela avisa sozinha quando o pagamento cair — pode deixar aberta ou fechar e conferir depois.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
       <button class="btn" onclick="App.copiarLinkInfinitePay('${esc(url)}')">📋 Copiar link</button>
+      <button class="btn" onclick="App.enviarLinkPagamentoWhatsApp('${esc(url)}')">📱 Enviar no WhatsApp</button>
       <a class="btn dark" href="${esc(url)}" target="_blank" rel="noopener">Abrir cobrança</a>
       ${ehMobile ? `<a class="btn green-btn" href="infinitepay://checkout?url=${encodeURIComponent(url)}">📲 Cobrar via InfiniteTap</a>` : ''}
     </div>
@@ -958,6 +957,11 @@ export function copiarLinkInfinitePay(url) {
     () => toast('Link copiado!'),
     () => toast('Não consegui copiar — selecione e copie manualmente: ' + url)
   );
+}
+
+export function enviarLinkPagamentoWhatsApp(url) {
+  const texto = encodeURIComponent('Clique no link abaixo para pagar: ' + url);
+  window.open('https://wa.me/?text=' + texto, '_blank');
 }
 
 export function fecharModalCheckoutInfinitePay() {
