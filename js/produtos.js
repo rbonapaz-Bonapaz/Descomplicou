@@ -513,7 +513,7 @@ export async function marcarProdutosEditadosComoConferidos() {
   let ok = 0;
   for (const produtoId of produtosEditados) {
     try {
-      batch.update(doc(db, 'produtos', produtoId), {
+      batch.update(ref('produtos', produtoId), {
         conferido: true,
         dataConferencia: serverTimestamp()
       });
@@ -574,7 +574,7 @@ export async function confirmarConferenciaPorHorario() {
 
   const batch = writeBatch(db);
   produtos.forEach(p => {
-    batch.update(doc(db, 'produtos', p.id), { conferido: true, dataConferencia: serverTimestamp() });
+    batch.update(ref('produtos', p.id), { conferido: true, dataConferencia: serverTimestamp() });
   });
   await batch.commit();
   closeModal();

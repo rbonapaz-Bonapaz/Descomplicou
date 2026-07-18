@@ -275,7 +275,11 @@ function setupListeners() {
   teardownListeners();
   for (const n of Object.keys(state.data)) {
     const unsub = onSnapshot(col(n), snap => {
-      state.data[n] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // serverTimestamps:'estimate' evita que campos como atualizadoEm fiquem null enquanto o
+      // Firestore ainda não confirmou a escrita no servidor (write pendente) — sem isso, telas que
+      // dependem desses campos (ex: conferência de estoque por horário) perdiam temporariamente
+      // itens recém-salvos até a próxima atualização do snapshot confirmar o valor real.
+      state.data[n] = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
       if (!_renderDebounce) {
         _renderDebounce = setTimeout(() => { _renderDebounce = null; renderAll(); }, 80);
       }
