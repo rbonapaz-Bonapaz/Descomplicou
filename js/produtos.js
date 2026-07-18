@@ -1,4 +1,4 @@
-import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
+import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, reservadoEmAberto } from './state.js';
 import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
@@ -52,8 +52,7 @@ function productCard(x) {
       <b class="cli-link" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</b>
       <div class="prod-tags"><span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span><span class="prod-tag">Linha <b>${esc(linhasDe(x.p).map(labelLinha).join(', ') || '-')}</b></span></div>
     </div>
-    <div class="metric"><small>Original / atual</small><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual || x.p.precoVenda)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda)}%</span>` : ''}</b></div>
-    <div class="metric"><small>Venda</small><b>${money(x.venda)}</b></div>
+    <div class="metric"><small>Original / atual</small><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual)}%</span>` : ''}</b></div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Estoque</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
     <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${produtoAcoesHtml(x)}</div>
@@ -70,8 +69,7 @@ function productCard(x) {
       </div>
     </div>
     <div class="vcard-rows">
-      <div class="vcard-row"><span>Original / atual</span><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual || x.p.precoVenda)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual || x.p.precoVenda)}%</span>` : ''}</b></div>
-      <div class="vcard-row"><span>Venda</span><b>${money(x.venda)}</b></div>
+      <div class="vcard-row"><span>Original / atual</span><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual)}%</span>` : ''}</b></div>
       <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
       <div class="vcard-row"><span>Estoque</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
     </div>
@@ -152,6 +150,7 @@ function renderProdutosInner() {
         ${state.data.produtos.length ? `<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
           ${state.data.produtos.some(p => norm(p.linha || '').includes('importado pedido')) ? `<button class="btn small" onclick="App.corrigirLinhaImportadoPedido()">🔧 Corrigir linha "Importado pedido"</button>` : ''}
           ${state.data.produtos.some(p => mesclarLinhas('', p.linha) !== (p.linha || 'Sem linha')) ? `<button class="btn small" onclick="App.corrigirLinhasDuplicadas()">🔧 Corrigir linhas duplicadas</button>` : ''}
+          ${state.data.produtos.some(p => Number(p.precoVenda || 0) > 0 && Number(p.precoVenda) !== Number(p.precoAtual || 0)) ? `<button class="btn small" onclick="App.migrarPrecoVendaAntigo()">🔧 Migrar "Preço de venda" antigo</button>` : ''}
           <button class="btn small" onclick="App.exportarProdutosJson()">📤 Exportar JSON</button>
           <button class="btn ghost" style="color:var(--error)" onclick="App.excluirTodosProdutos()">🗑️ Excluir todos os produtos</button>
         </div>` : ''}
@@ -207,6 +206,24 @@ export async function corrigirLinhaImportadoPedido() {
     await batch.commit();
   }
   window.App.refresh(`Linha corrigida em ${afetados.length} produto(s)`);
+}
+
+// O campo "Preço de venda" foi removido (item 26): existia separado de "Preço atual" mas todo o
+// sistema priorizava ele quando preenchido, gerando confusão — agora só existe "Preço atual", que
+// é sempre o valor usado em Vendas/Trocas/Eventos. Produtos que já tinham um "Preço de venda"
+// diferente do "Preço atual" cadastrado antes dessa mudança ficam com esse valor antigo órfão no
+// Firestore (não lido em lugar nenhum mais) — esta migração leva esse valor pra "Preço atual" antes
+// de descartá-lo, pra não mudar o preço que a consultora estava realmente cobrando sem avisar.
+export async function migrarPrecoVendaAntigo() {
+  const afetados = state.data.produtos.filter(p => Number(p.precoVenda || 0) > 0 && Number(p.precoVenda) !== Number(p.precoAtual || 0));
+  if (!afetados.length) return toast('Nenhum produto com "Preço de venda" antigo pendente de migração.');
+  if (!confirm(`Migrar "Preço de venda" pra "Preço atual" em ${afetados.length} produto(s)? O preço atual vai passar a ser o mesmo valor que estava em "Preço de venda".`)) return;
+  for (let i = 0; i < afetados.length; i += 450) {
+    const batch = writeBatch(db);
+    afetados.slice(i, i + 450).forEach(p => batch.update(ref('produtos', p.id), { precoAtual: Number(p.precoVenda || 0), precoVenda: deleteField() }));
+    await batch.commit();
+  }
+  window.App.refresh(`Preço migrado em ${afetados.length} produto(s)`);
 }
 
 // Limpa produtos que ficaram com nomes de linha repetidos no campo (ex: "Maquiagem, Cremoso,
@@ -403,9 +420,10 @@ export function openProdutoForm(id = '') {
       <div class="field"><label>Código Farmasi</label><input id="pCodigo" value="${esc(p.codigoFarmasi || '')}"></div>
       <div class="field full"><label>Linha</label>${linhaFieldHtml}</div>
       <div class="field"><label>Imagem (URL)</label><input id="pImagem" value="${esc(p.imagem || '')}"></div>
-      <div class="field"><label>Preço original</label><input id="pOriginal" value="${money(p.precoOriginal || 0)}"></div>
-      <div class="field"><label>Preço atual</label><input id="pAtual" value="${money(p.precoAtual || 0)}"></div>
-      <div class="field"><label>Preço de venda</label><input id="pVenda" value="${money(p.precoVenda || 0)}"></div>
+      <div class="field"><label>Preço original</label><input id="pOriginal" value="${money(p.precoOriginal || 0)}">
+        <small class="muted">Preço de tabela cheio (o valor "de", riscado).</small></div>
+      <div class="field"><label>Preço atual</label><input id="pAtual" value="${money(p.precoAtual || 0)}">
+        <small class="muted">O que você cobra do cliente hoje — é o valor usado em Vendas, Trocas e Eventos.</small></div>
       <div class="field"><label>Custo médio</label><input id="pCusto" value="${money(p.custoMedio || 0)}"></div>
       <div class="field"><label>Estoque atual</label><input id="pEstoque" type="number" value="${p.estoqueAtual || 0}"></div>
       <div class="field"><label>Estoque mínimo</label><input id="pMinimo" type="number" value="${p.estoqueMinimo || 1}"></div>
@@ -431,18 +449,16 @@ export function atualizarLinhasProdutoForm() {
   if ($('pLinha')) $('pLinha').value = marcadas.join(', ');
 }
 
-// Histórico de alteração de preço (venda/atual) — guarda só a mudança de verdade, não toda vez que
-// o formulário é salvo com o mesmo valor. Limitado às últimas 50 entradas pra não crescer sem fim
+// Histórico de alteração de preço atual — guarda só a mudança de verdade, não toda vez que o
+// formulário é salvo com o mesmo valor. Limitado às últimas 50 entradas pra não crescer sem fim
 // no documento do produto (isso já é mais que suficiente pra qualquer análise de tendência real).
 function registrarHistoricoPrecos(anterior, d) {
   if (!anterior) return d.historicoPrecos || [];
   const historico = [...(anterior.historicoPrecos || [])];
-  const mudouVenda = Number(anterior.precoVenda || 0) !== d.precoVenda;
   const mudouAtual = Number(anterior.precoAtual || 0) !== d.precoAtual;
-  if (mudouVenda || mudouAtual) {
+  if (mudouAtual) {
     historico.push({
       data: today(),
-      precoVendaAnterior: Number(anterior.precoVenda || 0), precoVendaNovo: d.precoVenda,
       precoAtualAnterior: Number(anterior.precoAtual || 0), precoAtualNovo: d.precoAtual
     });
   }
@@ -458,7 +474,6 @@ export async function saveProduto(id = '') {
     imagem: $('pImagem').value,
     precoOriginal: parseMoney($('pOriginal').value),
     precoAtual: parseMoney($('pAtual').value),
-    precoVenda: parseMoney($('pVenda').value),
     custoMedio: parseMoney($('pCusto').value),
     estoqueAtual: Number($('pEstoque').value || 0),
     estoqueMinimo: Number($('pMinimo').value || 1),
@@ -491,10 +506,9 @@ export function abrirHistoricoPrecos(id) {
   const historico = [...(p.historicoPrecos || [])].reverse();
   showModal(`<h3>📈 Histórico de preços — ${esc(p.nome)}</h3>
     ${historico.length ? `<div class="table table-scroll"><table><thead><tr>
-      <th>Data</th><th>Preço de venda</th><th>Preço atual</th>
+      <th>Data</th><th>Preço atual</th>
     </tr></thead><tbody>${historico.map(h => `<tr>
       <td data-label="Data">${formatDateBR(h.data)}</td>
-      <td data-label="Preço de venda">${h.precoVendaAnterior !== h.precoVendaNovo ? `<del>${money(h.precoVendaAnterior)}</del> → ${money(h.precoVendaNovo)}` : money(h.precoVendaNovo)}</td>
       <td data-label="Preço atual">${h.precoAtualAnterior !== h.precoAtualNovo ? `<del>${money(h.precoAtualAnterior)}</del> → ${money(h.precoAtualNovo)}` : money(h.precoAtualNovo)}</td>
     </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma alteração de preço registrada ainda — o histórico começa a partir da próxima vez que você editar o preço deste produto.</p>'}
     <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
@@ -711,7 +725,6 @@ export async function upsertProduto(raw) {
   if (raw.precoOriginal != null || raw.precoAtual != null) {
     d.precoOriginal = parseMoney(raw.precoOriginal || 0);
     d.precoAtual = parseMoney(raw.precoAtual || raw.precoOriginal || 0);
-    d.precoVenda = p?.precoVenda || d.precoAtual || d.precoOriginal;
   }
   // Benefícios: entre o texto já cadastrado e o que vem nesta importação, mantém sempre o mais
   // completo (maior número de caracteres) — assim uma lista com benefício detalhado não é perdida
@@ -736,7 +749,7 @@ export async function upsertProduto(raw) {
     return p.id;
   }
   const r = await addDoc(col('produtos'), {
-    imagem: '', precoOriginal: 0, precoAtual: 0, precoVenda: 0,
+    imagem: '', precoOriginal: 0, precoAtual: 0,
     ...d, estoqueAtual: 0, estoqueMinimo: 1, custoMedio: 0,
     ativoCatalogo: true, produtoProntaEntrega: false, monitorarEstoqueBaixo: false,
     ativo: true, criadoEm: serverTimestamp()

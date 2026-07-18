@@ -175,7 +175,7 @@ export function btnAdicionarPreEncomenda(produtoId) {
 let kitTemp = { nome: '', valor: '', itens: [] };
 
 function precoReferencia(p) {
-  return Number(p.precoOriginal || 0) || Number(p.precoAtual || 0) || Number(p.precoVenda || 0);
+  return Number(p.precoOriginal || 0) || Number(p.precoAtual || 0);
 }
 
 export function openKitForm(manterComposicao = false) {

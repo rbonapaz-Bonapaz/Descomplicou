@@ -239,7 +239,7 @@ function coletarDadosFormEvento() {
   }).map(p => {
     const linhasProd = linhasDe(p);
     const descontoMax = Math.max(0, ...linhasProd.filter(l => linhasSelecionadas.includes(l)).map(l => descontos[l] || 0));
-    const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+    const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     return {
       id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: linhasProd.join(', ') || 'Sem linha',
@@ -316,7 +316,7 @@ export async function sincronizarProdutoNosEventos(p) {
   const eventosAfetados = (state.data.eventos || []).filter(ev => (ev.produtos || []).some(mesmoProduto));
   if (!eventosAfetados.length) return;
   const linhasProd = linhasDe(p);
-  const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+  const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
   for (const ev of eventosAfetados) {
     const descontos = ev.descontosPorLinha || {};
     const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
@@ -354,7 +354,7 @@ export async function atualizarPrecosEvento(id) {
     const p = achar(x);
     if (!p) { semCadastro++; return x; }
     const linhasProd = linhasDe(p);
-    const precoOriginal = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+    const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
     const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     atualizados++;
@@ -731,7 +731,7 @@ export async function transformarEmCarrinho(eventoId, listaId) {
   for (const w of lista.produtosDesejados || []) {
     const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
     if (!p) continue;
-    const preco = Number(w.precoComDesconto || p.precoVenda || p.precoAtual || 0);
+    const preco = Number(w.precoComDesconto || p.precoAtual || 0);
     const estoque = Number(p.estoqueAtual || 0);
     const custoMedio = Number(p.custoMedio || 0);
     const tipoEntrega = estoque > 0 ? 'pronta_entrega' : 'entrega_futura';

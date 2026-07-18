@@ -518,7 +518,7 @@ function lerPrecoLinhaPdf(linha) {
   return m ? parseMoney('R$' + m[1]) : null;
 }
 
-function precoRefProduto(p) { return Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0); }
+function precoRefProduto(p) { return Number(p.precoAtual || p.precoOriginal || 0); }
 
 // Linhas de "status" (quantidade/preço/pontos) ficam na coluna direita da tabela do pedido —
 // separadas do fluxo de nomes/kits (coluna esquerda) pelo CONTEÚDO (não pela posição x, já que
@@ -715,7 +715,7 @@ function renderPedidoPreview() {
     <tbody>${items.map((i, k) => {
       const existente = achaProdutoExistente(i);
       const custoUnit = i.valorTotal ? i.valorTotal / i.quantidade : (i.custoUnitario || 0);
-      const precoRef = existente ? Number(existente.precoVenda || existente.precoAtual || existente.precoOriginal || 0) : 0;
+      const precoRef = existente ? Number(existente.precoAtual || existente.precoOriginal || 0) : 0;
       return `<tr>
       <td data-label="Produto"><input id="pedn_${k}" value="${esc(i.nome)}"></td>
       <td data-label="Código"><input id="pedcod_${k}" value="${esc(i.codigo || '')}"></td>

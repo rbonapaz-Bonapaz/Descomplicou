@@ -115,7 +115,7 @@ function catalogProductsByLine() {
 
 // Preço na prévia/tela (usa valores numéricos do produto)
 function priceHtml(p) {
-  const o = Number(p.precoOriginal || 0), a = Number(p.precoVenda || p.precoAtual || 0);
+  const o = Number(p.precoOriginal || 0), a = Number(p.precoAtual || 0);
   if (ocultarPrecoAtual) return `<div class="price-pair"><strong>${money(o || a)}</strong></div>`;
   if (o && a && o !== a) {
     const pct = descontoPercent(o, a);
@@ -154,7 +154,7 @@ function qrUrl() {
 
 // Preço no PDF (strings originais "R$..." quando disponíveis, senão formata numérico)
 function pdfPrice(p) {
-  const oNum = Number(p.precoOriginal || 0), aNum = Number(p.precoVenda || p.precoAtual || 0);
+  const oNum = Number(p.precoOriginal || 0), aNum = Number(p.precoAtual || 0);
   const o = money(oNum || aNum), a = money(aNum || oNum);
   if (ocultarPrecoAtual) return `<div class="cat-price"><strong>${o}</strong></div>`;
   if (oNum && aNum && oNum !== aNum) {

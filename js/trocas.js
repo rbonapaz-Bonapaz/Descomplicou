@@ -129,7 +129,7 @@ export function openTroca(id) {
   const podeAdicionar = t.status === 'aberta';
   const mostrarSem = t.mostrarSemEstoque;
   const pickerSai = searchPickerHtml('trProdSai', state.data.produtos.filter(p => mostrarSem || estoqueDisponivel(p.id) > 0).sort(porNome),
-    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoVenda || p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()');
+    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()');
   const pickerEntra = searchPickerHtml('trProdEntra',
     [{ id: '', nome: '— Produto novo (digite o nome abaixo) —' }, ...[...state.data.produtos].sort(porNome)],
     p => p.id ? `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}` : p.nome, 'App.preencherValorTrocaEntrada()');

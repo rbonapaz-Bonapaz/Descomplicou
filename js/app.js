@@ -22,7 +22,7 @@ import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, remo
   toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca } from './trocas.js';
 import { renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
   editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto,
-  autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, filtrarLinhaBaseColetiva,
+  autoSincronizarBaseColetiva, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, migrarPrecoVendaAntigo, filtrarLinhaBaseColetiva,
   atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, editarLinhaCustom, selecionarLinhaParaAtribuir,
   filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos } from './produtos.js';
 import { adicionarPreEncomenda, atualizarItemPreEncomenda, removerPreEncomenda,
@@ -380,7 +380,7 @@ window.App = {
   toggleTrocaOpt, salvarTroca, toggleTrocaDetalhe, reabrirTroca,
   // Produtos
   renderProdutos, openProdutoForm, saveProduto, excluirProduto, excluirTodosProdutos, sincronizarBaseColetiva,
-  editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, filtrarLinhaBaseColetiva,
+  editarItemBaseColetiva, removerItemBaseColetiva, confirmarBaseColetiva, gerarBeneficiosProduto, exportarProdutosJson, corrigirLinhaImportadoPedido, corrigirLinhasDuplicadas, migrarPrecoVendaAntigo, filtrarLinhaBaseColetiva,
   atualizarLinhasProdutoForm, adicionarLinhaCustom, removerLinhaCustom, editarLinhaCustom, selecionarLinhaParaAtribuir, filtrarLinhaAssoc, toggleProdutoNaLinha, sincronizarLinhasColetivas, abrirHistoricoPrecos,
   // Catálogo
   selectAllCatalogLines, clearCatalogLines, previewCatalogo, printCatalogo, excluirTodoCatalogo,

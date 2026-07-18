@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential,
   reauthenticateWithPopup, deleteUser } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, runTransaction, writeBatch, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js';
 import { $, daysSince, inPeriod, today } from './utils.js';
 
@@ -20,7 +20,7 @@ export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectRes
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential,
   reauthenticateWithPopup, deleteUser };
-export { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, runTransaction, writeBatch, onSnapshot };
+export { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, runTransaction, writeBatch, onSnapshot };
 
 export const ADMINS = ADMIN_EMAILS;
 
@@ -146,9 +146,9 @@ export function lastSaleDate(p) {
 }
 
 export function productMetrics(p) {
-  // Se ainda não tem preço de venda definido, estima o lucro potencial pelo preço original de
+  // Se ainda não tem preço atual definido, estima o lucro potencial pelo preço original de
   // tabela em vez de mostrar prejuízo (comprou mais barato que o preço original = tem lucro a ganhar).
-  const venda = Number(p.precoVenda || p.precoAtual || p.precoOriginal || 0);
+  const venda = Number(p.precoAtual || p.precoOriginal || 0);
   const custo = Number(p.custoMedio || 0);
   const est = Number(p.estoqueAtual || 0);
   const monitorar = p.monitorarEstoqueBaixo !== false;
@@ -158,10 +158,10 @@ export function productMetrics(p) {
     investido: est * custo,
     lucroUnit: venda - custo,
     lucroPot: est * (venda - custo),
-    // Sem preço de venda cadastrado mas com custo > 0, a margem "0%" passaria a falsa impressão
+    // Sem preço atual cadastrado mas com custo > 0, a margem "0%" passaria a falsa impressão
     // de que está zerado — -100% deixa claro que hoje não tem preço pra cobrir esse custo.
     margem: venda ? ((venda - custo) / venda) * 100 : (custo ? -100 : 0),
-    promo: Number(p.precoOriginal || 0) > Number(p.precoAtual || p.precoVenda || 0),
+    promo: Number(p.precoOriginal || 0) > Number(p.precoAtual || 0),
     baixo: monitorar && pronta && est > 0 && est <= Number(p.estoqueMinimo || 1),
     semCusto: est > 0 && !custo
   };

@@ -313,7 +313,7 @@ export function openCarrinho(id) {
     p => {
       const disp = estoqueDisponivel(p.id);
       const reservadoOutros = reservadoEmAberto(p.id, id);
-      return `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${disp}${reservadoOutros > 0 ? ` (${reservadoOutros} em outros carrinhos)` : ''} | ${money(p.precoVenda || p.precoAtual || 0)}`;
+      return `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${disp}${reservadoOutros > 0 ? ` (${reservadoOutros} em outros carrinhos)` : ''} | ${money(p.precoAtual || 0)}`;
     },
     'App.preencherPrecoItem()');
 
@@ -677,7 +677,7 @@ export function preencherPrecoItem() {
   const motivo = $('ciMotivo')?.value || 'Venda';
   const isVenda = motivo === 'Venda';
   if ($('ciPreco')) {
-    $('ciPreco').value = isVenda ? money(p?.precoVenda || p?.precoAtual || 0) : money(0);
+    $('ciPreco').value = isVenda ? money(p?.precoAtual || 0) : money(0);
     $('ciPreco').disabled = !isVenda;
   }
   if ($('ciMotivoInfo')) {
