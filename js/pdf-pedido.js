@@ -90,7 +90,7 @@ function gerarPdf(carr, interno) {
       <div class="pdf-sub">${interno ? 'PEDIDO INTERNO' : 'PEDIDO'}</div>
       <div class="pdf-consult">${esc(p.nome || '')}<br>${esc(p.whatsapp || '')}<br>${esc(p.instagram || '')}</div>
     </header>
-    <main class="pdf-content" style="top:35mm;bottom:26mm;left:8mm;right:8mm">
+    <main class="pdf-content" style="top:33mm;bottom:24mm;left:8mm;right:8mm">
       <div class="pedido-info-grid">
         <div class="pedido-info-col">
           <h4>Pedido${carr.numeroPedido ? ` Nº ${numeroPedidoLabel(carr)}` : ''}</h4>
