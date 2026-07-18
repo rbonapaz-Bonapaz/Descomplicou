@@ -1,6 +1,6 @@
 import { state, ref, col, addDoc, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
 import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, pill } from './utils.js';
-import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
+import { entradaEstoque, saidaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
 // (id `${produtoId}_pendente`) e outro pra "aguardando chegada" (id `${produtoId}_pedido`).
@@ -453,6 +453,17 @@ export async function adicionarItemCompraFornecedor(id) {
   if (!p) return toast('Selecione um produto');
   const qtd = Number($('cfQtd').value || 1);
   const valorUnitario = parseMoney($('cfValor').value || 0);
+
+  // Dá entrada de verdade no estoque — sem isso o produto ficava só registrado como dívida, sem
+  // aparecer nas telas de Estoque/Produtos (mesmo bug que a Entrada de estoque manual já resolve
+  // com "Comprado de": aqui é o equivalente, só que junto do controle de quem/quanto pagar).
+  try {
+    await perguntarAtivarProntaEntrega(p.id);
+    await entradaEstoque(p.id, qtd, valorUnitario, `Compra de ${c.pessoa}`, 'fornecedor');
+  } catch (e) {
+    return toast(`Erro ao dar entrada no estoque: ${e.message}`);
+  }
+
   const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd };
   const itens = [...(c.itens || []), item];
   const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
@@ -465,6 +476,21 @@ export async function removerItemCompraFornecedor(id, idx) {
   const c = state.data.despesas.find(x => x.id === id);
   if (!c) return;
   const itens = [...(c.itens || [])];
+  const item = itens[idx];
+  if (!item) return;
+
+  // Estorna a entrada de estoque que foi feita quando o item foi adicionado — senão o produto
+  // continuaria "sobrando" em estoque mesmo depois de removido da compra. Se já não tiver mais
+  // estoque suficiente (produto foi vendido nesse meio-tempo), avisa e mantém no estoque mesmo
+  // assim, mas remove o item da lista da compra igual.
+  if (item.produtoId) {
+    try {
+      await saidaEstoque(item.produtoId, item.quantidade, 'Ajuste');
+    } catch (e) {
+      toast(`Item removido da compra, mas não foi possível estornar o estoque: ${e.message}`);
+    }
+  }
+
   itens.splice(idx, 1);
   const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
   await setDoc(ref('despesas', id), { itens, valorTotal, atualizadoEm: serverTimestamp() }, { merge: true });
