@@ -320,6 +320,25 @@ export function estoqueDisponivel(produtoId, excluirCarrinhoId = '', excluirTroc
   return Math.max(0, atual - reservadoEmAberto(produtoId, excluirCarrinhoId, excluirTrocaId));
 }
 
+// Quanto desse produto já foi vendido/trocado (entrega futura) mas ainda não foi entregue — dívida
+// de produto com o cliente, diferente de reservadoEmAberto (que é estoque físico já comprometido
+// num carrinho/troca ainda aberto). Aqui o carrinho/troca pode já estar finalizado/parcial: o que
+// importa é ter item de entrega futura sem entregar, não o status do carrinho como um todo — por
+// isso cobre também vendas já concluídas onde o produto simplesmente ainda não chegou pra entregar.
+export function entregaFuturaPendente(produtoId) {
+  const emCarrinhos = state.data.carrinhos
+    .filter(c => c.status === 'aberto' || c.status === 'parcial' || c.status === 'finalizado')
+    .reduce((s, c) => s + (c.itens || [])
+      .filter(i => i.produtoId === produtoId && i.tipoEntrega === 'entrega_futura' && !i.entregue)
+      .reduce((s2, i) => s2 + Number(i.quantidade || 0), 0), 0);
+  const emTrocas = state.data.trocas
+    .filter(t => t.status === 'aberta' || t.status === 'parcial')
+    .reduce((s, t) => s + (t.itensSaida || [])
+      .filter(i => i.produtoId === produtoId && i.tipoEntrega === 'entrega_futura' && !i.processado)
+      .reduce((s2, i) => s2 + Number(i.quantidade || 0), 0), 0);
+  return emCarrinhos + emTrocas;
+}
+
 // Situação do plano da consultora logada: uso do limite de clientes no teste/gratuito, vencimento etc.
 export function planoInfo() {
   const p = state.profile || {};

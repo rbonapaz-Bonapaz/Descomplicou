@@ -1,4 +1,4 @@
-import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, cliById, reservadoEmAberto } from './state.js';
+import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, cliById, reservadoEmAberto, entregaFuturaPendente } from './state.js';
 import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
@@ -57,7 +57,7 @@ function productCard(x) {
     </div>
     <div class="metric"><small>Original / atual</small><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual)}%</span>` : ''}</b></div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
-    <div class="metric"><small>Estoque</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
+    <div class="metric"><small>Estoque</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}${entregaFuturaPendente(x.p.id) > 0 ? `<br><span class="tag orange" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Vendido mas ainda não entregue — clique para ver os carrinhos" onclick="App.abrirCarrinhosComEntregaFutura('${x.p.id}')">📤 ${entregaFuturaPendente(x.p.id)} a entregar</span>` : ''}</div>
     <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${produtoAcoesHtml(x)}</div>
   </div>
   <div class="vcard only-mobile">
@@ -74,7 +74,7 @@ function productCard(x) {
     <div class="vcard-rows">
       <div class="vcard-row"><span>Original / atual</span><b>${money(x.p.precoOriginal)} / ${money(x.p.precoAtual)}${descontoPercent(x.p.precoOriginal, x.p.precoAtual) ? ` <span class="tag green" style="font-size:10px;padding:2px 6px">-${descontoPercent(x.p.precoOriginal, x.p.precoAtual)}%</span>` : ''}</b></div>
       <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
-      <div class="vcard-row"><span>Estoque</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
+      <div class="vcard-row"><span>Estoque</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}${entregaFuturaPendente(x.p.id) > 0 ? ` <span class="tag orange" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Vendido mas ainda não entregue — clique para ver os carrinhos" onclick="App.abrirCarrinhosComEntregaFutura('${x.p.id}')">📤 ${entregaFuturaPendente(x.p.id)} a entregar</span>` : ''}</b></div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${produtoStatusHtml(x)}</div>
     <div class="vcard-actions">${produtoBotoesHtml(x)}</div>

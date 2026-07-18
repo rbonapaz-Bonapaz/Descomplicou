@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, ref, db, prodById, cliById, showModal, closeModal, toast,
-  runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, setDoc } from './state.js';
+  runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, entregaFuturaPendente, setDoc } from './state.js';
 import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
@@ -205,7 +205,7 @@ function stockCard(x) {
     <div><b class="cli-link" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</b>
       <div class="prod-tags"><span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span><span class="prod-tag">Linha <b>${esc(x.p.linha || '-')}</b></span></div>
     </div>
-    <div class="metric"><small>Qtd</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
+    <div class="metric"><small>Qtd</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}${entregaFuturaPendente(x.p.id) > 0 ? `<br><span class="tag orange" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Vendido mas ainda não entregue — clique para ver os carrinhos" onclick="App.abrirCarrinhosComEntregaFutura('${x.p.id}')">📤 ${entregaFuturaPendente(x.p.id)} a entregar</span>` : ''}</div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Investido</small><b>${money(x.investido)}</b></div>
     <div class="metric"><small>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</small><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
@@ -223,7 +223,7 @@ function stockCard(x) {
       </div>
     </div>
     <div class="vcard-rows">
-      <div class="vcard-row"><span>Qtd</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
+      <div class="vcard-row"><span>Qtd</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}${entregaFuturaPendente(x.p.id) > 0 ? ` <span class="tag orange" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Vendido mas ainda não entregue — clique para ver os carrinhos" onclick="App.abrirCarrinhosComEntregaFutura('${x.p.id}')">📤 ${entregaFuturaPendente(x.p.id)} a entregar</span>` : ''}</b></div>
       <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
       <div class="vcard-row"><span>Investido</span><b>${money(x.investido)}</b></div>
       <div class="vcard-row"><span>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
