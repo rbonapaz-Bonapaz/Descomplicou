@@ -1,4 +1,4 @@
-import { state, SECTIONS, col, ref, db, prodById, showModal, closeModal, toast,
+import { state, SECTIONS, col, ref, db, prodById, cliById, showModal, closeModal, toast,
   runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, setDoc } from './state.js';
 import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
@@ -205,7 +205,7 @@ function stockCard(x) {
     <div><b class="cli-link" onclick="App.openProdutoForm('${x.p.id}')">${esc(x.p.nome)}</b>
       <div class="prod-tags"><span class="prod-tag">Código <b>${esc(x.p.codigoFarmasi || '-')}</b></span><span class="prod-tag">Linha <b>${esc(x.p.linha || '-')}</b></span></div>
     </div>
-    <div class="metric"><small>Qtd</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
+    <div class="metric"><small>Qtd</small><b>${x.est}</b>${reservadoEmAberto(x.p.id) > 0 ? `<br><span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)} reservado</span>` : ''}</div>
     <div class="metric"><small>Custo médio</small><b>${money(x.custo)}</b></div>
     <div class="metric"><small>Investido</small><b>${money(x.investido)}</b></div>
     <div class="metric"><small>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</small><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
@@ -223,7 +223,7 @@ function stockCard(x) {
       </div>
     </div>
     <div class="vcard-rows">
-      <div class="vcard-row"><span>Qtd</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px" title="Reservado em carrinhos/trocas abertos">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
+      <div class="vcard-row"><span>Qtd</span><b>${x.est}${reservadoEmAberto(x.p.id) > 0 ? ` <span class="tag red" style="font-size:10px;padding:2px 6px;cursor:pointer" title="Clique para ver os carrinhos com este produto" onclick="App.abrirCarrinhosComProdutoReservado('${x.p.id}')">🛒 ${reservadoEmAberto(x.p.id)}</span>` : ''}</b></div>
       <div class="vcard-row"><span>Custo médio</span><b>${money(x.custo)}</b></div>
       <div class="vcard-row"><span>Investido</span><b>${money(x.investido)}</b></div>
       <div class="vcard-row"><span>${x.margem >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${x.margem >= 0 ? 'var(--success)' : 'var(--error)'}">${money(x.lucroPot)} <span style="font-size:11px;font-weight:700">(${x.margem >= 0 ? '+' : '-'}${Math.abs(x.margem).toFixed(0)}%)</span></b></div>
@@ -837,4 +837,52 @@ export async function confirmPedidoEstoque() {
     toast(`Erro ao importar (${ok}/${itens.length} item(ns) concluído(s) antes do erro): ${e.message}`);
     await window.App.refresh();
   }
+}
+
+export function abrirCarrinhosComProdutoReservado(produtoId) {
+  const p = prodById(produtoId);
+  if (!p) return toast('Produto não encontrado');
+
+  const carrinhos = state.data.carrinhos
+    .filter(c => c.status === 'aberto' && (c.itens || []).some(i =>
+      i.produtoId === produtoId && i.tipoEntrega === 'pronta_entrega' && !i.baixouEstoque
+    ))
+    .map(c => {
+      const itensComProduto = (c.itens || []).filter(i =>
+        i.produtoId === produtoId && i.tipoEntrega === 'pronta_entrega' && !i.baixouEstoque
+      );
+      const qtdTotal = itensComProduto.reduce((sum, i) => sum + Number(i.quantidade || 0), 0);
+      const cli = cliById(c.clienteId);
+      return { ...c, qtdTotal, nomeCliente: cli?.nome || 'Cliente desconhecido' };
+    })
+    .sort((a, b) => (Number(b.numeroPedido || 0)) - (Number(a.numeroPedido || 0)));
+
+  if (!carrinhos.length) return toast('Nenhum carrinho aberto com este produto');
+
+  const html = `
+    <div style="max-width:600px">
+      <h2>${esc(p.nome)}</h2>
+      <p><small>Clique em um carrinho para abri-lo</small></p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px">Pedido</th>
+          <th style="text-align:left;padding:8px">Cliente</th>
+          <th style="text-align:center;padding:8px">Qtd</th>
+          <th style="text-align:center;padding:8px">Ação</th>
+        </tr></thead>
+        <tbody>
+          ${carrinhos.map(c => `<tr style="border-bottom:1px solid var(--border-light)">
+            <td style="padding:8px"><b>${c.numeroPedido || '-'}</b></td>
+            <td style="padding:8px">${esc(c.nomeCliente)}</td>
+            <td style="padding:8px;text-align:center"><b>${c.qtdTotal}</b></td>
+            <td style="padding:8px;text-align:center">
+              <button class="btn small" onclick="App.closeModal();App.openCarrinho('${c.id}')">Abrir</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  showModal(html);
 }

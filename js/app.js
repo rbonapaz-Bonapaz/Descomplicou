@@ -15,7 +15,7 @@ import { renderAgenda, openAgendamentoForm, saveAgendamento, editarAgendamento, 
 import { renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos } from './vendas.js';
 import { renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
   readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
-  ativarProntaEntregaTodos, atualizarCampoDestinoSaida } from './estoque.js';
+  ativarProntaEntregaTodos, atualizarCampoDestinoSaida, abrirCarrinhosComProdutoReservado } from './estoque.js';
 import { abrirNovaTroca, confirmarNovaTroca, openTroca, adicionarItemTroca, removerItemTroca,
   finalizarTroca, marcarItemTrocaProcessado, cancelarTroca, preencherValorTrocaSaida, preencherValorTrocaEntrada,
   preencherNomeParceira, editarParceiraTroca, salvarParceiraTroca, excluirTroca,
@@ -382,7 +382,7 @@ window.App = {
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos,
   // Estoque
   renderEstoque, openEntradaManual, saveEntradaManual, openSaidaManual, saveSaidaManual,
-  atualizarCampoDestinoSaida,
+  atualizarCampoDestinoSaida, abrirCarrinhosComProdutoReservado,
   readPedidoPdf, confirmPedidoEstoque, removerLinhaPedido,
   ativarProntaEntregaTodos,
   // Pré-encomenda
