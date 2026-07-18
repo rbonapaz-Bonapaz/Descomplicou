@@ -172,6 +172,22 @@ async function checkAutoSyncBaseColetiva() {
 // --- Navigation ---
 document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => goto(b.dataset.page));
 
+// Menu lateral recolhível — útil quando uma janela minimizada (modalMinBar) ou outra parte da tela
+// fica espremida pelo menu. Fica só com os ícones, sem nomes das telas. Estado persiste entre
+// sessões (localStorage) porque, se a consultora prefere o menu recolhido, faz sentido continuar
+// assim ao voltar depois, não resetar a cada carregamento.
+function aplicarSidebarColapsada(colapsada) {
+  document.querySelector('.app')?.classList.toggle('side-collapsed', colapsada);
+  const btn = $('sideToggle');
+  if (btn) { btn.textContent = colapsada ? '›' : '‹'; btn.title = colapsada ? 'Expandir menu' : 'Recolher menu'; }
+}
+function toggleSidebar() {
+  const colapsada = !document.querySelector('.app')?.classList.contains('side-collapsed');
+  localStorage.setItem('sideColapsada', colapsada ? '1' : '0');
+  aplicarSidebarColapsada(colapsada);
+}
+aplicarSidebarColapsada(localStorage.getItem('sideColapsada') === '1');
+
 // Busca global: fecha o dropdown de resultados ao clicar fora do campo/lista.
 document.addEventListener('click', e => {
   if (!e.target.closest('.busca-global')) fecharResultadosBusca();
@@ -362,7 +378,7 @@ function setSection(pagina, secao) {
 
 // --- Global API ---
 window.App = {
-  goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker,
+  goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, toggleSidebar,
   renderResultadosBusca, fecharResultadosBusca,
   // Auth
   switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle,

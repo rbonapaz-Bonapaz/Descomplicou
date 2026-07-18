@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=80">
+  <link rel="stylesheet" href="css/style.css?v=81">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -92,6 +92,7 @@
 
   <section id="app" class="app hidden">
     <aside class="side">
+      <button id="sideToggle" class="side-toggle" onclick="App.toggleSidebar()" title="Recolher menu">‹</button>
       <div class="brand">
         <div class="logo sm" id="sideLogo">CV</div>
         <div><b id="brandName">CRM de Vendas</b></div>
@@ -164,6 +165,6 @@
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=180"></script>
+  <script type="module" src="js/app.js?v=181"></script>
 </body>
 </html>
