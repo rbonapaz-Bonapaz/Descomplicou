@@ -122,9 +122,9 @@ function corStatusPedido(s) {
 }
 
 // Botões de ação de um pedido — HTML idêntico na tabela (desktop) e no cartão (mobile),
-// então fica numa função só pra não sair de sincronia.
+// então fica numa função só pra não sair de sincronia. O botão de WhatsApp fica de fora
+// (ver vendaWhatsAppHtml) pra ter local fixo próprio, em vez de se misturar aos outros.
 function vendaAcoesHtml(c, isAberto, showFutura) {
-  const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
   return `
     <button class="btn small" onclick="App.openCarrinho('${c.id}')">${isAberto ? '✏️ Abrir' : '👁️ Ver'}</button>
     ${!isAberto ? `<button class="btn small" onclick="App.gerarPdfCliente('${c.id}')">PDF Cliente</button>` : ''}
@@ -133,8 +133,14 @@ function vendaAcoesHtml(c, isAberto, showFutura) {
     ${(c.status === 'finalizado' || c.status === 'parcial') && !temEntregaFuturaPendente(c) ? `<button class="btn small" onclick="App.marcarPedidoEntregue('${c.id}')">📦 Entregue</button>` : ''}
     ${!isAberto && normStatusPag(c.statusPagamento) !== 'pago' ? `<button class="btn small" style="color:var(--success)" onclick="App.registrarPagamento('${c.id}')">💰 Registrar pagamento</button>` : ''}
     ${!isAberto && c.status !== 'cancelado' ? `<button class="btn small" onclick="App.reabrirCarrinho('${c.id}')">↩️ Reabrir</button>` : ''}
-    ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}
-    ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}`;
+    ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}`;
+}
+
+// Botão de WhatsApp isolado — local fixo (embaixo do status), não entra no grid de ações
+// pra não desalinhar os botões, que agora têm largura padronizada.
+function vendaWhatsAppHtml(c, isAberto) {
+  const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
+  return whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c });
 }
 
 // Cartão de um pedido (só aparece no celular, via .only-mobile) — informação essencial em destaque
@@ -156,7 +162,10 @@ function vendaCardHtml(c, isAberto, showFutura) {
       <div class="vcard-row"><span>Pgto</span><span class="vcard-pgto">${esc(c.pagamento || '-')} ${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</span></div>
       ${temPgtoParcial ? `<div class="vcard-sub">${money(c.valorPago || 0)} de ${money(c.totalPedido)} recebido</div>` : ''}
     </div>
-    <button class="btn small ghost vcard-toggle" onclick="App.toggleVendaDetalhe('${c.id}')">${expandida ? '▾ Ocultar itens' : `▸ Ver ${nItens} ${nItens === 1 ? 'item' : 'itens'}`}</button>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:14px">
+      <button class="btn small ghost" style="flex:1;justify-content:center" onclick="App.toggleVendaDetalhe('${c.id}')">${expandida ? '▾ Ocultar itens' : `▸ Ver ${nItens} ${nItens === 1 ? 'item' : 'itens'}`}</button>
+      ${vendaWhatsAppHtml(c, isAberto)}
+    </div>
     ${expandida ? `<div class="vcard-itens">${detalheVendaHtml(c)}</div>` : ''}
     <div class="vcard-actions">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
   </div>`;
@@ -181,7 +190,7 @@ function renderSection(titulo, items, isAberto, showFutura = false) {
         <td>${money(c.totalPedido)}</td>
         <td>${money(c.lucroTotal)}</td>
         <td>${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
-        <td>${pill(c.status, corStatusPedido(c.status))}</td>
+        <td>${pill(c.status, corStatusPedido(c.status))}<br>${vendaWhatsAppHtml(c, isAberto)}</td>
         <td>
           <div class="acoes-tabela">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
         </td>
