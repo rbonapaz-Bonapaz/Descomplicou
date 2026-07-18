@@ -139,6 +139,13 @@ onAuthStateChanged(auth, async u => {
     $('app').classList.add('hidden');
   } else {
     $('app').classList.remove('hidden');
+
+    // Se foi compartilhado link com ?showManual=true, abre o manual automaticamente
+    if (localStorage.getItem('abrirManualNoCarregamento')) {
+      localStorage.removeItem('abrirManualNoCarregamento');
+      // Pequeno delay pra garantir que a página está totalmente pronta
+      setTimeout(() => abrirManualWeb(), 500);
+    }
   }
 
   checkAutoSyncBaseColetiva();
@@ -198,6 +205,14 @@ function goto(p) {
 (function capturarIndicacao() {
   const ref = new URLSearchParams(location.search).get('ref');
   if (ref) localStorage.setItem('indicadoPorUid', ref);
+})();
+
+// Detecta se foi compartilhado um link para abrir o manual automaticamente (?showManual=true)
+// Depois que carregar (onAuthStateChanged), abre o manual em uma aba nova
+(function detectarAberturaManual() {
+  if (new URLSearchParams(location.search).get('showManual') === 'true') {
+    localStorage.setItem('abrirManualNoCarregamento', 'true');
+  }
 })();
 
 // --- Profile ---

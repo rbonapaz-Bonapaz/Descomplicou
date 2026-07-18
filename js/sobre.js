@@ -583,7 +583,8 @@ export function abrirManualWeb() {
     </div>
     <script>
       function copiarLinkManual() {
-        const url = window.location.href;
+        const baseUrl = window.opener ? window.opener.location.origin + window.opener.location.pathname : window.location.origin;
+        const url = baseUrl + '?showManual=true';
         navigator.clipboard.writeText(url).then(() => {
           alert('Link copiado! Cole em qualquer mensagem.');
         }).catch(() => {
@@ -591,7 +592,8 @@ export function abrirManualWeb() {
         });
       }
       function enviarManualWhatsApp() {
-        const url = window.location.href;
+        const baseUrl = window.opener ? window.opener.location.origin + window.opener.location.pathname : window.location.origin;
+        const url = baseUrl + '?showManual=true';
         const texto = encodeURIComponent('Veja o manual do sistema: ' + url);
         window.open('https://wa.me/?text=' + texto, '_blank');
       }
