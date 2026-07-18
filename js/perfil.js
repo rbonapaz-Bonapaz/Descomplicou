@@ -93,6 +93,18 @@ export function renderPerfil() {
             <input id="perCorTextoHex" value="${esc(p.corTexto || '')}" placeholder="#14213D (padrão)" oninput="App.sincronizarCorHex('perCorTexto',this.value)">
           </div>
         </div>
+        <div class="field"><label>Cor do menu (lateral no computador, de baixo no celular)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="perCorMenu" value="${esc(p.corMenu || '#FFFFFF')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorMenuHex" value="${esc(p.corMenu || '')}" placeholder="#FFFFFF (padrão)" oninput="App.sincronizarCorHex('perCorMenu',this.value)">
+          </div>
+        </div>
+        <div class="field"><label>Cor dos cartões e painéis (campos como este)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="perCorCartoes" value="${esc(p.corCartoes || '#FFFFFF')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorCartoesHex" value="${esc(p.corCartoes || '')}" placeholder="#FFFFFF (padrão)" oninput="App.sincronizarCorHex('perCorCartoes',this.value)">
+          </div>
+        </div>
       </div>
       <p class="muted" style="font-size:12px;margin-top:8px">⚠️ Cuidado com combinações de baixo contraste (ex: texto claro num fundo claro) — confira se ainda dá pra ler bem antes de salvar.</p><br>
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
@@ -443,10 +455,14 @@ export function previewTema() {
   const fundo = $('perCorFundo')?.value || '';
   const cor = $('perCorPrimaria')?.value || '';
   const texto = $('perCorTexto')?.value || '';
+  const menu = $('perCorMenu')?.value || '';
+  const cartoes = $('perCorCartoes')?.value || '';
   if ($('perCorFundoHex')) $('perCorFundoHex').value = fundo;
   if ($('perCorPrimariaHex')) $('perCorPrimariaHex').value = cor;
   if ($('perCorTextoHex')) $('perCorTextoHex').value = texto;
-  aplicarTemaPersonalizado({ corFundo: fundo, corPrimaria: cor, corTexto: texto });
+  if ($('perCorMenuHex')) $('perCorMenuHex').value = menu;
+  if ($('perCorCartoesHex')) $('perCorCartoesHex').value = cartoes;
+  aplicarTemaPersonalizado({ corFundo: fundo, corPrimaria: cor, corTexto: texto, corMenu: menu, corCartoes: cartoes });
 }
 
 // O <input type="color"> não aceita digitar hex direto (só o seletor visual) — este campo de texto
@@ -462,8 +478,8 @@ export function sincronizarCorHex(idColorInput, hex) {
 // Remove as cores personalizadas (volta pro rosa/branco padrão do sistema) e já salva — é uma ação
 // explícita de "desfazer a personalização", não faz sentido deixar pendente de outro clique em Salvar.
 export async function restaurarTemaPadrao() {
-  await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', corTexto: '', atualizadoEm: serverTimestamp() }, { merge: true });
-  state.profile = { ...state.profile, corFundo: '', corPrimaria: '', corTexto: '' };
+  await setDoc(doc(db, 'users', state.user.uid), { corFundo: '', corPrimaria: '', corTexto: '', corMenu: '', corCartoes: '', atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, corFundo: '', corPrimaria: '', corTexto: '', corMenu: '', corCartoes: '' };
   await sincronizarPerfilNosEventos(); // sem isso, os links de evento já publicados ficavam com a cor antiga presa
   window.App.refresh('Cores padrão restauradas');
 }
@@ -496,6 +512,8 @@ export async function savePerfil() {
     corFundo: $('perCorFundo') ? ($('perCorFundoHex')?.value.trim() || $('perCorFundo').value) : (p.corFundo ?? ''),
     corPrimaria: $('perCorPrimaria') ? ($('perCorPrimariaHex')?.value.trim() || $('perCorPrimaria').value) : (p.corPrimaria ?? ''),
     corTexto: $('perCorTexto') ? ($('perCorTextoHex')?.value.trim() || $('perCorTexto').value) : (p.corTexto ?? ''),
+    corMenu: $('perCorMenu') ? ($('perCorMenuHex')?.value.trim() || $('perCorMenu').value) : (p.corMenu ?? ''),
+    corCartoes: $('perCorCartoes') ? ($('perCorCartoesHex')?.value.trim() || $('perCorCartoes').value) : (p.corCartoes ?? ''),
     mensagensPersonalizadas: $('perMsg_aniversario')
       ? Object.fromEntries(MENSAGENS_EDITAVEIS.map(m => [m.key, ($(`perMsg_${m.key}`)?.value || '').trim()]))
       : (p.mensagensPersonalizadas ?? {}),

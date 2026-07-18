@@ -254,6 +254,17 @@ export function aplicarTemaPersonalizado(perfil) {
   const texto = perfil?.corTexto;
   if (texto && /^#[0-9a-fA-F]{6}$/.test(texto)) root.setProperty('--text', texto);
   else root.removeProperty('--text');
+
+  // Cor do menu lateral (desktop) / menu de baixo (celular) — quarto slot, independente do resto.
+  const menu = perfil?.corMenu;
+  if (menu && /^#[0-9a-fA-F]{6}$/.test(menu)) root.setProperty('--side-bg', menu);
+  else root.removeProperty('--side-bg');
+
+  // Cor dos cartões/painéis (os blocos brancos como painéis, cards e campos de formulário) —
+  // quinto slot, independente do resto.
+  const cartoes = perfil?.corCartoes;
+  if (cartoes && /^#[0-9a-fA-F]{6}$/.test(cartoes)) root.setProperty('--card-bg', cartoes);
+  else root.removeProperty('--card-bg');
 }
 
 // --- Pix estático (BR Code / EMV, padrão Banco Central) ---
