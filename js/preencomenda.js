@@ -863,6 +863,16 @@ export async function renomearPedidoCompra(numero) {
   window.App.refresh('Pedido renomeado');
 }
 
+// Pedidos com a tabela de itens recolhida — mesmo padrão de trocasExpandidas/historicoExpandido
+// (só estado de tela, não persiste). Começa vazio: com 24 itens numa leva só, mostrar tudo aberto
+// de cara lota a tela — melhor abrir sob demanda, um pedido de cada vez.
+const pedidosCompraExpandidos = new Set();
+export function togglePedidoCompraExpandido(numero) {
+  if (pedidosCompraExpandidos.has(numero)) pedidosCompraExpandidos.delete(numero);
+  else pedidosCompraExpandidos.add(numero);
+  window.App.renderEstoque();
+}
+
 // Agrupa "aguardando chegada" por pedidoNumero — sem isso, um pedido novo do mesmo produto de um
 // pedido anterior ainda não chegado ficaria tudo misturado numa lista só, sem dar pra saber quanto
 // veio de cada compra. Itens antigos sem pedidoNumero (lançados antes dessa mudança) caem juntos
@@ -880,15 +890,17 @@ function aguardandoAgrupadoHtml(aguardando) {
     const totalPedido = itensDoPedido.reduce((s, it) => s + parseMoney(it.precoUnitario || 0) * Number(it.quantidade || 1), 0);
     const nomePedido = itensDoPedido.find(it => it.pedidoNome)?.pedidoNome;
     const kitsDoGrupo = new Set();
+    const expandido = pedidosCompraExpandidos.has(numero);
     return `<div style="margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#F3F6FA;border-radius:10px;padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#F3F6FA;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="App.togglePedidoCompraExpandido(${numero})">
         <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px">${expandido ? '▾' : '▸'}</span>
           <b>${nomePedido ? `📦 ${esc(nomePedido)}` : numero ? `📦 Pedido nº ${numero}` : '📦 Pedido anterior'}</b>
-          ${numero ? `<button class="btn small" style="padding:3px 8px" onclick="App.renomearPedidoCompra(${numero})" title="Dar/mudar nome deste pedido">✏️</button>` : ''}
+          ${numero ? `<button class="btn small" style="padding:3px 8px" onclick="event.stopPropagation();App.renomearPedidoCompra(${numero})" title="Dar/mudar nome deste pedido">✏️</button>` : ''}
         </div>
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
-      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
+      ${!expandido ? '' : `<div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
         <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
       </tr></thead><tbody>${agruparPorKit(itensDoPedido).map((it, idx, arr) => {
         const p = prodById(it.produtoId);
@@ -916,7 +928,7 @@ function aguardandoAgrupadoHtml(aguardando) {
             ${emKit ? '' : `<button class="btn small" style="color:var(--error)" onclick="App.removerPreEncomenda('${it.id}')" title="Remover da pré-encomenda">🗑️</button>`}
           </div></td>
         </tr>`;
-      }).join('')}</tbody></table></div>
+      }).join('')}</tbody></table></div>`}
     </div>`;
   }).join('');
 }
