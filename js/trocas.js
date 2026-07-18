@@ -132,7 +132,11 @@ export function openTroca(id) {
   if (!t) return;
   const itensSaida = t.itensSaida || [], itensEntrada = t.itensEntrada || [];
   const aberta = t.status === 'aberta' || t.status === 'parcial';
-  const podeAdicionar = t.status === 'aberta';
+  // 'parcial' também precisa poder receber itens novos — é justamente o estado de "ainda devo
+  // algo pra parceira" (ex: recebeu consignado e marcou pendenteDevolucao sem saber o quê ainda).
+  // Sem isso, a consultora ficava travada: só sobrava o botão "Reabrir troca", que estorna o que
+  // já foi processado — errado aqui, porque nada deve ser desfeito, só falta lançar a devolução.
+  const podeAdicionar = t.status === 'aberta' || t.status === 'parcial';
   const mostrarSem = t.mostrarSemEstoque;
   const pickerSai = searchPickerHtml('trProdSai', state.data.produtos.filter(p => mostrarSem || estoqueDisponivel(p.id) > 0).sort(porNome),
     p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | disp: ${estoqueDisponivel(p.id)} | ${money(p.precoAtual || 0)}`, 'App.preencherValorTrocaSaida()', true);
@@ -203,7 +207,7 @@ export function openTroca(id) {
     })()}
 
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-      ${t.status === 'aberta' ? `<button class="btn dark" onclick="App.finalizarTroca('${id}')">✓ Finalizar troca</button>
+      ${aberta ? `<button class="btn dark" onclick="App.finalizarTroca('${id}')">✓ Finalizar troca</button>
         <button class="btn" onclick="App.salvarTroca('${id}')">💾 Salvar</button>
         <button class="btn small" style="color:var(--error)" onclick="App.cancelarTroca('${id}')">✗ Cancelar</button>` : ''}
       ${t.status === 'finalizada' || t.status === 'parcial' ? `<button class="btn" onclick="App.reabrirTroca('${id}')" title="Estorna os lançamentos de estoque já processados e volta a troca para 'Em andamento'">↩️ Reabrir troca</button>` : ''}
