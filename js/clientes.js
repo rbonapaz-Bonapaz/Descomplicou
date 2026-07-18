@@ -106,7 +106,7 @@ function tableClientes() {
       <td>${esc(c.whatsapp || '')}</td>
       <td>${lastBuy(c) ? `${formatDateBR(lastBuy(c))} <small class="muted">(${ds} dias)</small>` : '-'}</td>
       <td>${pill(ds <= 30 ? 'Quente' : ds <= 60 ? 'Morno' : 'Frio', ds <= 30 ? 'green' : ds <= 60 ? 'blue' : 'red')}</td>
-      <td style="display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto">${clienteAcoesHtml(c)}</td>
+      <td class="acoes-tabela">${clienteAcoesHtml(c)}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
 
