@@ -24,7 +24,11 @@ function proximoNumeroPedidoCompra() {
   return state.data.preEncomenda.reduce((max, x) => Math.max(max, Number(x.pedidoNumero || 0)), 0) + 1;
 }
 function numeroPedidoAtual() {
-  if (!pedidoAtualNumero) pedidoAtualNumero = proximoNumeroPedidoCompra();
+  // === null (não !pedidoAtualNumero) porque 0 é um número de pedido válido — é o identificador
+  // do grupo "Pedido anterior" (itens antigos, sem pedidoNumero). Com !pedidoAtualNumero, apontar
+  // pra esse grupo (definirPedidoCompraAtivo(0)) era sempre ignorado, porque 0 é falsy em JS —
+  // todo item marcado como "Pedido" acabava criando um pedido novo em vez de entrar nele.
+  if (pedidoAtualNumero === null) pedidoAtualNumero = proximoNumeroPedidoCompra();
   return pedidoAtualNumero;
 }
 // Só pra mostrar na tela pra onde os próximos itens vão — não cria nada, ao contrário de
@@ -46,7 +50,8 @@ export function iniciarNovoPedidoCompra() {
 // marcados caírem nesse mesmo grupo.
 export function definirPedidoCompraAtivo(numero) {
   pedidoAtualNumero = Number(numero);
-  toast(`Itens marcados como "Pedido" agora entram no pedido nº ${numero} — vá em "A comprar" e marque o que faltava`);
+  const label = pedidoAtualNumero ? `pedido nº ${pedidoAtualNumero}` : 'Pedido anterior';
+  toast(`Itens marcados como "Pedido" agora entram no ${label} — vá em "A comprar" e marque o que faltava`);
 }
 
 // Nome amigável (usado nos toasts/confirms) — cai pro número se ainda não tiver nome.
@@ -888,7 +893,7 @@ export function preEncomendaTabHtml() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;flex-wrap:wrap;gap:8px">
       <h4 style="margin:0">Pedido — aguardando chegada (${aguardando.length})</h4>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${pedidoAtualPreview() ? `<span class="muted" style="font-size:12px">Próximos itens marcados vão pro <b>pedido nº ${pedidoAtualPreview()}</b></span>` : ''}
+        ${pedidoAtualPreview() !== null ? `<span class="muted" style="font-size:12px">Próximos itens marcados vão pro <b>${pedidoAtualPreview() ? `pedido nº ${pedidoAtualPreview()}` : 'Pedido anterior'}</b></span>` : ''}
         <button class="btn small" onclick="App.iniciarNovoPedidoCompra()" title="Separa os próximos itens marcados como 'Pedido' num pedido novo, sem misturar com o que já está aguardando chegar">🆕 Novo pedido</button>
         <button class="btn small" onclick="App.abrirModalBrinde()">🎁 Adicionar brinde</button>
       </div>
