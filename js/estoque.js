@@ -400,7 +400,7 @@ export async function ativarProntaEntregaTodos() {
 }
 
 export function openEntradaManual() {
-  const picker = searchPickerHtml('mProd', [...state.data.produtos].sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | estoque ${p.estoqueAtual || 0}`);
+  const picker = searchPickerHtml('mProd', [...state.data.produtos].sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | estoque ${p.estoqueAtual || 0}`, '', true);
   showModal(`<h3>Entrada de estoque</h3>
     <div class="grid">
       <div class="field full"><label>Produto</label>${picker}</div>
@@ -455,7 +455,7 @@ function labelDestinoSaida(motivo) {
 }
 
 export function openSaidaManual() {
-  const picker = searchPickerHtml('sProd', [...state.data.produtos].filter(p => Number(p.estoqueAtual || 0) > 0).sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | estoque ${p.estoqueAtual || 0}`);
+  const picker = searchPickerHtml('sProd', [...state.data.produtos].filter(p => Number(p.estoqueAtual || 0) > 0).sort(porNome), p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''} | estoque ${p.estoqueAtual || 0}`, '', true);
   const motivos = MOTIVOS_SAIDA.map(m => `<option value="${m}">${m}</option>`).join('');
   showModal(`<h3>Saída de estoque</h3>
     <p class="muted">Para vendas, use o carrinho. Aqui registre saídas por brinde, mostruário, parceria, consumo próprio, etc.</p>
