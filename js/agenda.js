@@ -2,6 +2,7 @@ import { state, col, ref, showModal, closeModal, toast, setDoc, addDoc, deleteDo
 import { $, esc, today, pill, formatDateBR, toggleHtml, porNome } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 import { sincronizarAgendamento, removerEventoGoogle, googleAgendaConectada, listarEventosGoogle } from './googleAgenda.js';
+import { ordemVisualAcoes } from './vendas.js';
 
 // Salva no Firestore e, se o Google Agenda estiver conectado, espelha lá também — sem travar o
 // fluxo caso a sincronização falhe (token expirado etc.), só avisa.
@@ -196,7 +197,7 @@ function tableAgenda() {
       </td>
       <td>${esc(a.tipo)}</td>
       <td>${pill(a.status || 'agendado', statusColor(a.status))}</td>
-      <td><div style="display:flex;gap:4px;flex-wrap:wrap">${agendamentoAcoesHtml(a, c)}</div></td>
+      <td class="acoes-tabela">${ordemVisualAcoes(agendamentoAcoesHtml(a, c))}</td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
 
