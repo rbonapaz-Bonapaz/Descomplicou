@@ -282,6 +282,7 @@ function renderEstoqueInner() {
             <button class="btn small" style="background:#EAF7EC;color:var(--success)" onclick="App.openEntradaManual()">+ Entrada</button>
             <button class="btn small pink" onclick="App.openSaidaManual()">− Saída</button>
             <button class="btn small" onclick="App.ativarProntaEntregaTodos()">✅ Ativar pronta entrega (em estoque)</button>
+            ${(window.__produtosEditadosHoje?.size || 0) > 0 ? `<button class="btn small" style="background:#E0F2FE;color:#0369a1;font-weight:bold" onclick="App.marcarProdutosEditadosComoConferidos()">📋 Confirmar ${window.__produtosEditadosHoje.size} produto(s) conferido(s)</button>` : ''}
           </div>
         </div>
         <div class="toolbar">

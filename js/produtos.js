@@ -4,6 +4,9 @@ import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 import { sincronizarProdutoNosEventos } from './eventos.js';
 
+// Rastreia produtos editados nesta sessão — usado para conferência rápida de estoque
+window.__produtosEditadosHoje = window.__produtosEditadosHoje || new Set();
+
 // Reutilizável em qualquer formulário com campos de nome/linha/benefícios (Produtos, Catálogo mestre).
 export async function gerarBeneficiosProduto(btn, idNome, idLinha, idBeneficios) {
   const nome = $(idNome)?.value, linha = $(idLinha)?.value;
@@ -401,6 +404,7 @@ export async function excluirTodosProdutos() {
 
 export function openProdutoForm(id = '') {
   const p = id ? prodById(id) : {};
+  if (id) window.__produtosEditadosHoje.add(id);
   const linhasCustom = state.profile?.linhasCustom || [];
   const linhasAtuais = linhasDe(p);
   const linhaFieldHtml = linhasCustom.length ? `
@@ -430,6 +434,7 @@ export function openProdutoForm(id = '') {
       <div class="field full">${toggleHtml('pAtivoCatalogo', p.ativoCatalogo !== false, '', 'Ativo no catálogo')}</div>
       <div class="field">${toggleHtml('pProntaEntrega', p.produtoProntaEntrega, '', 'Produto de pronta entrega')}</div>
       <div class="field">${toggleHtml('pMonitorar', p.monitorarEstoqueBaixo, '', 'Monitorar estoque baixo')}</div>
+      <div class="field">${toggleHtml('pConferido', p.conferido, '', '✓ Conferido')}</div>
       <div class="field full">
         <label>Benefícios / descrição (aparece no catálogo)</label>
         <textarea id="pBeneficios" placeholder="Ex: Hidrata profundamente, controla oleosidade, vegano...">${esc(p.beneficios || '')}</textarea>
@@ -483,6 +488,8 @@ export async function saveProduto(id = '') {
     // não desligam nem ligam essa flag sozinhas quando ela estiver desativada (só perguntam antes).
     prontaEntregaManual: true,
     monitorarEstoqueBaixo: $('pMonitorar').checked,
+    conferido: $('pConferido').checked,
+    dataConferencia: $('pConferido').checked ? serverTimestamp() : (anterior?.dataConferencia || null),
     beneficios: $('pBeneficios').value,
     observacao: $('pObs').value,
     atualizadoEm: serverTimestamp()
@@ -496,6 +503,28 @@ export async function saveProduto(id = '') {
   }
   closeModal();
   window.App.refresh('Produto salvo');
+}
+
+export async function marcarProdutosEditadosComoConferidos() {
+  const produtosEditados = Array.from(window.__produtosEditadosHoje || []);
+  if (!produtosEditados.length) return toast('Nenhum produto foi editado');
+
+  const batch = writeBatch(db);
+  let ok = 0;
+  for (const produtoId of produtosEditados) {
+    try {
+      batch.update(doc(db, 'produtos', produtoId), {
+        conferido: true,
+        dataConferencia: serverTimestamp()
+      });
+      ok++;
+    } catch (e) {
+      console.error(`Erro ao marcar ${produtoId} como conferido:`, e);
+    }
+  }
+  await batch.commit();
+  window.__produtosEditadosHoje.clear();
+  window.App.refresh(`${ok} produto(s) marcado(s) como conferido(s)`);
 }
 
 // Modal com o histórico de mudanças de preço do produto — mais recente primeiro. Só existe pra
