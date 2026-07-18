@@ -283,20 +283,34 @@ function semLucroTabHtml() {
       <button class="chip ${!motivoFiltro ? 'active' : ''}" onclick="App.setFilter('semLucroMotivo','')">Todos</button>
       ${motivosPresentes.map(m => `<button class="chip ${motivoFiltro === m ? 'active' : ''}" onclick="App.setFilter('semLucroMotivo','${esc(m)}')">${esc(m)}</button>`).join('')}
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap only-desktop">
       <table class="table">
         <thead><tr><th>Data</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Custo</th><th>Origem</th></tr></thead>
         <tbody>
           ${movs.length ? movs.map(m => `<tr>
-            <td data-label="Data">${esc(formatDateBR(m.data))}</td>
-            <td data-label="Produto">${esc(m.produtoNome || '-')}</td>
-            <td data-label="Motivo">${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
-            <td data-label="Qtd">${m.quantidade || 0}</td>
-            <td data-label="Custo">${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</td>
-            <td data-label="Origem">${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</td>
+            <td>${esc(formatDateBR(m.data))}</td>
+            <td>${esc(m.produtoNome || '-')}</td>
+            <td>${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}</td>
+            <td>${m.quantidade || 0}</td>
+            <td>${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</td>
+            <td>${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</td>
           </tr>`).join('') : '<tr><td colspan="6" class="muted">Nenhuma saída sem lucro para este filtro.</td></tr>'}
         </tbody>
       </table>
+    </div>
+    <div class="only-mobile vcards">
+      ${movs.length ? movs.map(m => `<div class="vcard">
+        <div class="vcard-top">
+          <span class="vcard-num">${esc(formatDateBR(m.data))}</span>
+          ${pill(m.motivo || 'Outro', (m.motivo || '').startsWith('Troca') ? 'blue' : m.motivo === 'Brinde' ? 'pink' : m.motivo === 'Parceria' ? 'blue' : 'orange')}
+        </div>
+        <div class="vcard-cli" style="margin:6px 0 8px">${esc(m.produtoNome || '-')}</div>
+        <div class="vcard-rows">
+          <div class="vcard-row"><span>Quantidade</span><b>${m.quantidade || 0}</b></div>
+          <div class="vcard-row"><span>Custo</span><b>${Number(m.custoUnitario || 0) ? money(m.valorFinanceiro || 0) : '<span style="color:var(--error)">⚠️ sem custo</span>'}</b></div>
+          <div class="vcard-row"><span>Origem</span><b>${esc(m.origem || (m.vendaId ? 'Carrinho' : 'Manual'))}</b></div>
+        </div>
+      </div>`).join('') : '<p class="muted">Nenhuma saída sem lucro para este filtro.</p>'}
     </div>
   </div>`;
 }

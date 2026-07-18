@@ -143,6 +143,40 @@ export function renderAgenda() {
     </div>`;
 }
 
+// Ações de um agendamento — HTML idêntico na tabela (desktop) e no cartão (mobile), mesmo padrão
+// de vendaAcoesHtml/clienteAcoesHtml, pra tabela e cartão nunca saírem de sincronia.
+function agendamentoAcoesHtml(a, c) {
+  return `
+    ${(a.status || 'agendado') === 'agendado' ? `
+      <button class="btn small" onclick="App.concluirAgendamento('${a.id}')">✓ Concluir</button>
+      <button class="btn small" onclick="App.reagendarAgendamento('${a.id}')">↻ Reagendar</button>
+      <button class="btn small" onclick="App.cancelarAgendamento('${a.id}')">✗ Cancelar</button>
+    ` : ''}
+    <button class="btn small" onclick="App.editarAgendamento('${a.id}')" title="Editar">✏️</button>
+    <button class="btn small" onclick="App.removerAgendamento('${a.id}')" title="Excluir">🗑️</button>
+    ${a.local ? `<button class="btn small" onclick="App.abrirMapaAgendamento('${a.id}')" title="Ver local no mapa">📍</button>` : ''}
+    ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeChamado(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}`;
+}
+
+// Cartão de agendamento no celular (mesma classe .vcard do cartão de Vendas/Clientes) — data/hora
+// em destaque no topo, cliente e tipo em linhas, ações em grade.
+function agendamentoCardHtml(a, c) {
+  return `<div class="vcard">
+    <div class="vcard-top">
+      <span class="vcard-num">${formatDateBR(a.data)}${a.hora ? ' às ' + esc(a.hora) : ''}</span>
+      ${pill(a.status || 'agendado', statusColor(a.status))}
+    </div>
+    <div class="vcard-cli">
+      ${a.clienteId ? `<span class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</span>` : esc(a.clienteNome)}
+      ${!a.clienteId ? (a.origemGoogle ? pill('via Google', 'blue') : pill('compromisso', 'gray')) : ''}
+    </div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>Tipo</span><b>${esc(a.tipo)}</b></div>
+    </div>
+    <div class="vcard-actions">${agendamentoAcoesHtml(a, c)}</div>
+  </div>`;
+}
+
 function tableAgenda() {
   const l = state.data.agendamentos.sort((a, b) => {
     const da = String(a.data + (a.hora || '')), db = String(b.data + (b.hora || ''));
@@ -150,33 +184,25 @@ function tableAgenda() {
   });
   if (!l.length) return '<p class="muted">Nenhum agendamento.</p>';
 
-  return `<div class="table"><table><thead><tr>
+  const tabela = `<div class="table only-desktop"><table><thead><tr>
     <th>Data</th><th>Hora</th><th>Cliente</th><th>Tipo</th><th>Status</th><th>Ações</th>
   </tr></thead><tbody>${l.map(a => {
     const c = state.data.clientes.find(c => c.id === a.clienteId);
     return `<tr>
-      <td data-label="Data">${formatDateBR(a.data)}</td>
-      <td data-label="Hora">${esc(a.hora || '-')}</td>
-      <td data-label="Cliente">
+      <td>${formatDateBR(a.data)}</td>
+      <td>${esc(a.hora || '-')}</td>
+      <td>
         ${a.clienteId ? `<b class="cli-link" onclick="App.openCliente360('${a.clienteId}')">${esc(nomeAtualDoCliente(a.clienteId, a.clienteNome))}</b>` : `<b>${esc(a.clienteNome)}</b> ${a.origemGoogle ? pill('via Google', 'blue') : pill('compromisso', 'gray')}`}
       </td>
-      <td data-label="Tipo">${esc(a.tipo)}</td>
-      <td data-label="Status">${pill(a.status || 'agendado', statusColor(a.status))}</td>
-      <td data-label="Ações">
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${(a.status || 'agendado') === 'agendado' ? `
-            <button class="btn small" onclick="App.concluirAgendamento('${a.id}')">✓ Concluir</button>
-            <button class="btn small" onclick="App.reagendarAgendamento('${a.id}')">↻ Reagendar</button>
-            <button class="btn small" onclick="App.cancelarAgendamento('${a.id}')">✗ Cancelar</button>
-          ` : ''}
-          <button class="btn small" onclick="App.editarAgendamento('${a.id}')" title="Editar">✏️</button>
-          <button class="btn small" onclick="App.removerAgendamento('${a.id}')" title="Excluir">🗑️</button>
-          ${a.local ? `<button class="btn small" onclick="App.abrirMapaAgendamento('${a.id}')" title="Ver local no mapa">📍</button>` : ''}
-          ${whatsAppBtn(c?.whatsapp, 'agenda', { nome: nomeChamado(a.clienteId, a.clienteNome), telefone: c?.whatsapp, hora: a.hora })}
-        </div>
-      </td>
+      <td>${esc(a.tipo)}</td>
+      <td>${pill(a.status || 'agendado', statusColor(a.status))}</td>
+      <td><div style="display:flex;gap:4px;flex-wrap:wrap">${agendamentoAcoesHtml(a, c)}</div></td>
     </tr>`;
   }).join('')}</tbody></table></div>`;
+
+  const cartoes = `<div class="only-mobile vcards">${l.map(a => agendamentoCardHtml(a, state.data.clientes.find(c => c.id === a.clienteId))).join('')}</div>`;
+
+  return tabela + cartoes;
 }
 
 function statusColor(s) {

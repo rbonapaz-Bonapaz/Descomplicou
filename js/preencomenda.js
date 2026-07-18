@@ -195,9 +195,12 @@ export function openKitForm(manterComposicao = false) {
     if (!p) return '';
     const refTotal = precoReferencia(p) * it.quantidade;
     const proporcional = totalRef > 0 ? valorKit * refTotal / totalRef : (kitTemp.itens.length ? valorKit / kitTemp.itens.length : 0);
-    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)">
-      <span>${it.quantidade}× ${esc(p.nome)} <small class="muted">(ref: ${money(refTotal)})</small></span>
-      <span style="white-space:nowrap">${valorKit > 0 ? `custo <b>${money(it.quantidade ? proporcional / it.quantidade : 0)}</b>/un. ` : ''}<button class="btn small" style="color:var(--error)" onclick="App.removerProdutoKit(${idx})" title="Remover produto do kit">✗</button></span>
+    return `<div class="venda-item">
+      <div class="venda-item-nome">${it.quantidade}× ${esc(p.nome)} <small class="muted">(ref: ${money(refTotal)})</small></div>
+      <div class="venda-item-preco" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span>${valorKit > 0 ? `custo <b>${money(it.quantidade ? proporcional / it.quantidade : 0)}</b>/un.` : ''}</span>
+        <button class="btn small" style="color:var(--error)" onclick="App.removerProdutoKit(${idx})" title="Remover produto do kit">✗</button>
+      </div>
     </div>`;
   }).join('');
 
