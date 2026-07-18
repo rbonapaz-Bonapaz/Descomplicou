@@ -362,7 +362,7 @@ function despesasPanelHtml() {
       <input id="despObs" placeholder="Observação (opcional)">
       <button class="btn dark small" onclick="App.registrarDespesa()">+ Registrar</button>
     </div>
-    ${despesas.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+    ${despesas.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
       ${despesas.map(d => `<tr>
         <td data-label="Data">${formatDateBR(d.data)}</td>
         <td data-label="Categoria">${esc(d.categoria || '-')}</td>
@@ -391,7 +391,7 @@ function fretePanelHtml() {
       <input id="freteObs" placeholder="Observação (ex: pedido de julho)">
       <button class="btn dark small" onclick="App.registrarFreteFarmasi()">+ Registrar</button>
     </div>
-    ${fretes.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+    ${fretes.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
       ${fretes.map(f => `<tr>
         <td data-label="Data">${formatDateBR(f.data)}</td>
         <td data-label="Valor">${money(f.valor)}</td>

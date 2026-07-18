@@ -254,7 +254,7 @@ function linhasTabHtml() {
     html += `<div class="panel">
       <div class="panel-head"><h3>Atribuir "${esc(linhaSelecionadaAtribuir)}" aos produtos</h3></div>
       <input id="qLinhaAssoc" placeholder="Buscar produto..." oninput="App.filtrarLinhaAssoc(this.value)" value="${esc(qLinhaAssoc)}">
-      <div class="table" style="margin-top:10px"><table><thead><tr><th></th><th>Produto</th><th>Código</th><th>Linhas atuais</th></tr></thead><tbody>
+      <div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th></th><th>Produto</th><th>Código</th><th>Linhas atuais</th></tr></thead><tbody>
         ${prods.map(p => `<tr>
           <td>${toggleBareHtml('toggle_' + p.id, linhasDe(p).includes(linhaSelecionadaAtribuir), `App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)`)}</td>
           <td data-label="Produto">${esc(p.nome)}</td>
@@ -490,7 +490,7 @@ export function abrirHistoricoPrecos(id) {
   if (!p) return toast('Produto não encontrado');
   const historico = [...(p.historicoPrecos || [])].reverse();
   showModal(`<h3>📈 Histórico de preços — ${esc(p.nome)}</h3>
-    ${historico.length ? `<div class="table"><table><thead><tr>
+    ${historico.length ? `<div class="table table-scroll"><table><thead><tr>
       <th>Data</th><th>Preço de venda</th><th>Preço atual</th>
     </tr></thead><tbody>${historico.map(h => `<tr>
       <td data-label="Data">${formatDateBR(h.data)}</td>

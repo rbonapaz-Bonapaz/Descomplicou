@@ -709,7 +709,7 @@ function renderPedidoPreview() {
     <div class="panel-head"><h3>Conferência (${items.length})</h3>
       <div style="display:flex;gap:6px">${pill(novos + ' novos', 'green')}${pill((items.length - novos) + ' existentes', 'blue')}</div></div>
     <p class="muted">Produtos existentes têm o estoque somado e o código preenchido/atualizado; novos são criados. O custo médio é recalculado. Edite nome/código se algo veio errado, ou remova a linha.</p>
-    ${items.length ? `<div class="table"><table><thead><tr>
+    ${items.length ? `<div class="table table-scroll"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Situação</th><th>Qtd</th><th>Custo unitário</th><th>Preço de venda cadastrado</th><th>Pronta entrega</th><th>Monitorar</th><th></th>
     </tr></thead>
     <tbody>${items.map((i, k) => {

@@ -188,7 +188,7 @@ function formHtmlEvento(ev) {
     <small class="muted">Sem marcar "todo o catálogo": só os produtos das linhas participantes aparecem no link. Marcando: todo o catálogo aparece, mas o desconto só vale pras linhas participantes escolhidas abaixo — as demais aparecem pelo preço normal. Preencher "% em Todos itens" aplica esse desconto em todas as linhas de uma vez — depois ainda dá pra ajustar uma linha específica na mão, o valor digitado nela é o que vale. Vazio = sem desconto.</small>
     <h4 style="margin:16px 0 8px">Linhas participantes e desconto</h4>
     <p class="muted">Marque as linhas que entram no evento e o desconto (%) sobre o preço de venda atual.</p>
-    <div class="table"><table><thead><tr><th>Participa</th><th>Linha</th><th>Desconto %</th></tr></thead><tbody>
+    <div class="table table-scroll"><table><thead><tr><th>Participa</th><th>Linha</th><th>Desconto %</th></tr></thead><tbody>
       ${linhas.length ? linhas.map(l => {
         const marcado = ev ? linhasNoEvento.has(l) : true;
         return `<tr>
