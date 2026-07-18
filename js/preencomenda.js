@@ -1,5 +1,5 @@
-import { state, ref, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, toggleHtml } from './utils.js';
+import { state, ref, col, addDoc, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, pill } from './utils.js';
 import { entradaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -364,129 +364,172 @@ export async function removerFornecedor(id) {
   window.App.refresh('Registro removido');
 }
 
-// Edita um lançamento de compra de fornecedor já existente — útil pra ajustar quantidade/valor
-// de uma compra que ainda não tinha os dados fechados, ou pra corrigir o nome da pessoa. Não mexe
-// no estoque (esse controle é só do "quem devo e quanto" — o produto já entrou quando foi lançado).
-export function editarFornecedor(id) {
-  const c = (state.data.despesas || []).find(x => x.id === id);
-  if (!c) return;
-  const nomesConhecidos = [...new Set(state.data.despesas.filter(x => x.tipo === 'fornecedor' && x.pessoa).map(x => x.pessoa))];
-  showModal(`<h3>Editar compra — ${esc(c.pessoa || '')}</h3>
-    <div class="grid">
-      <div class="field full"><label>Pessoa</label><input id="efPessoa" value="${esc(c.pessoa || '')}" list="efPessoaLista">
-        <datalist id="efPessoaLista">${nomesConhecidos.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-      </div>
-      <div class="field full"><label>Produto</label><input id="efProduto" value="${esc(c.produtoNome || '')}"></div>
-      <div class="field"><label>Quantidade</label><input id="efQtd" type="number" min="1" value="${c.quantidade || 1}"></div>
-      <div class="field"><label>Valor total</label><input id="efValor" value="${money(c.valorTotal || 0)}"></div>
-      <div class="field"><label>Data</label><input id="efData" type="date" value="${c.data || today()}"></div>
-    </div><br>
-    <button class="btn dark" onclick="App.salvarFornecedor('${id}')">Salvar</button>
-    <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
+// --- Pedido de compra por pessoa (itens múltiplos, buscados do catálogo) ---
+// Cada pessoa tem no máximo UM pedido "em aberto" (pago:false) por vez — comprar de novo da mesma
+// pessoa adiciona um item nesse mesmo pedido em vez de criar um lançamento novo, então a dívida
+// dela fica sempre somada num lugar só. Só quando o pedido é marcado como pago é que a próxima
+// compra dela abre um pedido novo.
+function pedidoAbertoDaPessoa(pessoa) {
+  const chave = norm(pessoa);
+  return state.data.despesas.find(x => x.tipo === 'fornecedor' && !x.pago && norm(x.pessoa || '') === chave);
 }
 
-export async function salvarFornecedor(id) {
-  const pessoa = $('efPessoa').value.trim();
-  if (!pessoa) return toast('Informe o nome da pessoa');
-  await setDoc(ref('despesas', id), {
-    pessoa, produtoNome: $('efProduto').value.trim(),
-    quantidade: Number($('efQtd').value || 1),
-    valorTotal: parseMoney($('efValor').value),
-    data: $('efData').value || today()
-  }, { merge: true });
-  closeModal();
-  window.App.refresh('Compra atualizada');
-}
-
-// Registra uma nova compra pra uma pessoa que já aparece na lista, sem precisar passar pela
-// Entrada de estoque de novo — útil pra ir "empilhando" a dívida com a mesma fornecedora conforme
-// ela vai vendendo mais produtos, mesmo antes de decidir se cada item vira estoque de verdade.
+// Passo 1: só pergunta o nome da pessoa (com sugestão de nomes já usados) — decide sozinho se
+// reaproveita um pedido em aberto dela ou cria um novo, sem o usuário precisar saber a diferença.
 export function adicionarCompraFornecedor(pessoa = '') {
-  // Sugere os nomes já usados em compras anteriores (datalist) — evita que "Analu" e "Ana Lu"
-  // virem duas pessoas diferentes na tabela agrupada por causa de uma digitação diferente.
   const nomesConhecidos = [...new Set(state.data.despesas.filter(x => x.tipo === 'fornecedor' && x.pessoa).map(x => x.pessoa))];
-  showModal(`<h3>Nova compra${pessoa ? ' — ' + esc(pessoa) : ''}</h3>
+  showModal(`<h3>Comprar de outra consultora</h3>
     <div class="grid">
-      <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}" list="ncPessoaLista">
+      <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}" list="ncPessoaLista" placeholder="Nome de quem você comprou">
         <datalist id="ncPessoaLista">${nomesConhecidos.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       </div>
-      <div class="field full"><label>Produto</label><input id="ncProduto" placeholder="Ex: Perfume Bright"></div>
-      <div class="field"><label>Quantidade</label><input id="ncQtd" type="number" min="1" value="1"></div>
-      <div class="field"><label>Valor total</label><input id="ncValor" placeholder="0,00"></div>
-      <div class="field"><label>Data</label><input id="ncData" type="date" value="${today()}"></div>
-      <div class="field full">${toggleHtml('ncJaPaguei', false, '', 'Já paguei')}</div>
     </div><br>
-    <button class="btn dark" onclick="App.salvarCompraFornecedor()">Registrar compra</button>
+    <button class="btn dark" onclick="App.iniciarCompraFornecedor()">Continuar</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
 }
 
-export async function salvarCompraFornecedor() {
+export async function iniciarCompraFornecedor() {
   const pessoa = $('ncPessoa').value.trim();
   if (!pessoa) return toast('Informe o nome da pessoa');
-  const produtoNome = $('ncProduto').value.trim();
-  if (!produtoNome) return toast('Informe o produto');
-  await setDoc(ref('despesas', 'forn_' + Date.now()), {
-    tipo: 'fornecedor', pessoa, produtoNome,
-    quantidade: Number($('ncQtd').value || 1),
-    valorTotal: parseMoney($('ncValor').value),
-    pago: !!$('ncJaPaguei')?.checked,
-    data: $('ncData').value || today(),
-    criadoEm: serverTimestamp()
+  const existente = pedidoAbertoDaPessoa(pessoa);
+  if (existente) return abrirCompraFornecedor(existente.id);
+
+  const r = await addDoc(col('despesas'), {
+    tipo: 'fornecedor', pessoa, itens: [], valorTotal: 0, pago: false,
+    data: today(), criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
   });
-  closeModal();
-  window.App.refresh(`Compra de ${pessoa} registrada`);
+  await window.App.refresh();
+  abrirCompraFornecedor(r.id);
+}
+
+// Editor do pedido — busca produto no catálogo (igual Carrinho/Trocas) e permite lançar quantos
+// itens forem precisos na mesma pessoa antes de fechar a conta.
+export function abrirCompraFornecedor(id) {
+  const c = state.data.despesas.find(x => x.id === id);
+  if (!c) return;
+  const itens = c.itens || [];
+  const total = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
+  const picker = searchPickerHtml('cfProd', [...state.data.produtos].sort(porNome),
+    p => `${p.nome}${p.codigoFarmasi ? ' | cód: ' + p.codigoFarmasi : ''}`, '', true);
+
+  showModal(`<h3>🧾 Compra — ${esc(c.pessoa)}</h3>
+    ${pill(c.pago ? 'Pago' : 'A pagar', c.pago ? 'green' : 'red')}
+    <div class="table table-scroll" style="margin-top:10px">
+      ${itens.length ? `<table><thead><tr><th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th></th></tr></thead><tbody>
+        ${itens.map((it, idx) => `<tr>
+          <td data-label="Produto">${esc(it.produtoNome)}</td>
+          <td data-label="Qtd">${it.quantidade}</td>
+          <td data-label="Valor unit.">${money(it.valorUnitario)}</td>
+          <td data-label="Total">${money(it.valorTotal)}</td>
+          <td>${!c.pago ? `<button class="btn small" style="color:var(--error)" onclick="App.removerItemCompraFornecedor('${id}',${idx})" title="Remover item">✗</button>` : ''}</td>
+        </tr>`).join('')}
+      </tbody></table>` : '<p class="muted">Nenhum item ainda.</p>'}
+    </div>
+    ${!c.pago ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
+      <div class="grid">
+        <div class="field full"><label>Produto</label>${picker}</div>
+        <div class="field"><label>Quantidade</label><input id="cfQtd" type="number" min="1" value="1"></div>
+        <div class="field"><label>Valor unitário</label><input id="cfValor" placeholder="0,00"></div>
+      </div>
+      <button class="btn dark small" style="margin-top:8px" onclick="App.adicionarItemCompraFornecedor('${id}')">+ Adicionar item</button>
+    </div>` : ''}
+    <div class="cards" style="margin-top:14px"><div class="card"><span>Total do pedido</span><b>${money(total)}</b></div></div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${c.pago
+        ? `<button class="btn" onclick="App.marcarFornecedorPendente('${id}')">↩️ Marcar como não pago</button>`
+        : `<button class="btn dark" onclick="App.marcarFornecedorPago('${id}')">✅ Marcar tudo como pago</button>`}
+      <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${id}')">🗑️ Excluir pedido</button>
+      <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
+    </div>`, { wide: true });
+}
+
+export async function adicionarItemCompraFornecedor(id) {
+  const c = state.data.despesas.find(x => x.id === id);
+  if (!c) return;
+  const p = prodById($('cfProd').value);
+  if (!p) return toast('Selecione um produto');
+  const qtd = Number($('cfQtd').value || 1);
+  const valorUnitario = parseMoney($('cfValor').value || 0);
+  const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd };
+  const itens = [...(c.itens || []), item];
+  const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
+  await setDoc(ref('despesas', id), { itens, valorTotal, atualizadoEm: serverTimestamp() }, { merge: true });
+  await window.App.refresh();
+  abrirCompraFornecedor(id);
+}
+
+export async function removerItemCompraFornecedor(id, idx) {
+  const c = state.data.despesas.find(x => x.id === id);
+  if (!c) return;
+  const itens = [...(c.itens || [])];
+  itens.splice(idx, 1);
+  const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
+  await setDoc(ref('despesas', id), { itens, valorTotal, atualizadoEm: serverTimestamp() }, { merge: true });
+  await window.App.refresh();
+  abrirCompraFornecedor(id);
+}
+
+// Itens de uma compra, tanto no formato novo (pedido com array `itens`) quanto no formato antigo
+// (lançamento único de Entrada de estoque com "Comprado de" preenchido, sem array) — mantém os
+// registros antigos funcionando na mesma listagem sem precisar migrar dados existentes.
+function itensDaCompra(c) {
+  if (c.itens) return c.itens;
+  return [{ produtoNome: c.produtoNome || '-', quantidade: c.quantidade || 0, valorUnitario: (c.valorTotal || 0) / (c.quantidade || 1), valorTotal: c.valorTotal || 0 }];
 }
 
 function fornecedoresPanelHtml() {
   const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor');
   if (!compras.length) return '';
-  const pendentes = compras.filter(x => !x.pago);
-  const totalPendente = pendentes.reduce((s, x) => s + Number(x.valorTotal || 0), 0);
+  const totalPendente = compras.filter(x => !x.pago).reduce((s, x) => s + Number(x.valorTotal || 0), 0);
 
-  // Agrupa por pessoa (texto livre, sem cadastro próprio) — cada compra continua sendo um
-  // lançamento independente, mas juntar por nome aqui mostra de cara quanto você deve NO TOTAL
-  // pra cada uma, em vez de só o total geral somando todo mundo junto.
+  // Agrupa por pessoa (texto livre, sem cadastro próprio) — mostra quanto você deve NO TOTAL pra
+  // cada uma, não só o total geral somando todo mundo junto.
   const porPessoa = new Map();
   for (const c of compras) {
     const chave = norm(c.pessoa || 'Sem nome');
-    if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: c.pessoa || 'Sem nome', itens: [] });
-    porPessoa.get(chave).itens.push(c);
+    if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: c.pessoa || 'Sem nome', compras: [] });
+    porPessoa.get(chave).compras.push(c);
   }
   const grupos = [...porPessoa.values()].map(g => ({
     ...g,
-    pendente: g.itens.reduce((s, x) => s + (x.pago ? 0 : Number(x.valorTotal || 0)), 0),
-    itens: g.itens.sort((a, b) => Number(a.pago) - Number(b.pago) || String(b.data).localeCompare(String(a.data)))
+    pendente: g.compras.reduce((s, x) => s + (x.pago ? 0 : Number(x.valorTotal || 0)), 0),
+    compras: g.compras.sort((a, b) => Number(a.pago) - Number(b.pago) || String(b.data).localeCompare(String(a.data)))
   })).sort((a, b) => b.pendente - a.pendente || porNome({ nome: a.nome }, { nome: b.nome }));
 
   return `<div class="panel" style="margin-top:10px">
     <div class="panel-head">
       <h3>🧾 Compras de outras consultoras</h3>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${pendentes.length ? `<span class="muted">A pagar (total geral): <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+        ${totalPendente > 0.004 ? `<span class="muted">A pagar (total geral): <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
         <button class="btn small pink" onclick="App.adicionarCompraFornecedor()">+ Nova compra</button>
       </div>
     </div>
-    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido, ou adicionados direto aqui) — cada compra fica registrada como um lançamento separado; abaixo agrupamos por pessoa pra mostrar o quanto você deve pra cada uma.</p>
+    <p class="muted">Produtos comprados de outra consultora — lançados aqui (com busca no catálogo) ou pela Entrada de estoque com "Comprado de" preenchido. Comprar de novo da mesma pessoa antes de pagar soma no mesmo pedido.</p>
     ${grupos.map(g => `<div style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-        <b>${esc(g.nome)}</b>
-        ${g.pendente > 0.004 ? `<span class="muted">Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}
+        <div><b>${esc(g.nome)}</b> ${g.pendente > 0.004 ? `<span class="muted">— Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}</div>
+        <button class="btn small" onclick="App.adicionarCompraFornecedor('${esc(g.nome).replace(/'/g, "\\'")}')">+ Comprar mais</button>
       </div>
-      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
-        ${g.itens.map(c => `<tr>
+      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Itens</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
+        ${g.compras.map(c => {
+    const itens = itensDaCompra(c);
+    const resumoItens = itens.map(i => `${i.quantidade}× ${esc(i.produtoNome)}`).join(', ');
+    const ehPedidoNovo = !!c.itens;
+    return `<tr>
           <td data-label="Data">${formatDateBR(c.data)}</td>
-          <td data-label="Produto">${esc(c.produtoNome || '-')}</td>
-          <td data-label="Qtd">${c.quantidade || 0}</td>
-          <td data-label="Valor">${money(c.valorTotal)}</td>
+          <td data-label="Itens">${resumoItens || '<span class="muted">Nenhum item ainda</span>'}</td>
+          <td data-label="Total">${money(c.valorTotal)}</td>
           <td data-label="Status">${c.pago ? '<span class="tag green">Pago</span>' : '<span class="tag red">A pagar</span>'}</td>
           <td style="display:flex;gap:4px;flex-wrap:wrap">
-            ${c.pago
-              ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
-              : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`}
-            <button class="btn small" onclick="App.editarFornecedor('${c.id}')" title="Editar">✏️</button>
+            ${ehPedidoNovo
+        ? `<button class="btn small" onclick="App.abrirCompraFornecedor('${c.id}')" title="Ver/editar itens">🔎 Abrir</button>`
+        : (c.pago
+          ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
+          : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`)}
             <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${c.id}')" title="Remover registro">🗑️</button>
           </td>
-        </tr>`).join('')}
+        </tr>`;
+  }).join('')}
       </tbody></table></div>
     </div>`).join('')}
   </div>`;
