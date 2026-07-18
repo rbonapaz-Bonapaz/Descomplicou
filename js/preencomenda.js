@@ -1,5 +1,5 @@
 import { state, ref, col, addDoc, setDoc, deleteDoc, writeBatch, db, serverTimestamp, prodById, cliById, toast, showModal, closeModal } from './state.js';
-import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, pill } from './utils.js';
+import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, thSort, pill } from './utils.js';
 import { entradaEstoque, saidaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
 // Cada produto pode ter até 2 registros independentes na pré-encomenda — um pra "a comprar"
@@ -812,6 +812,7 @@ function sortPreEncomenda(arr, sortKey) {
     if (field === 'codigo') return norm(x.codigoFarmasi || '');
     if (field === 'quantidade') return Number(x.quantidade || 0);
     if (field === 'preco') return Number(x.precoUnitario || 0);
+    if (field === 'pedido') return Number(x.pedidoNumero || 0);
     return norm(x.produtoNome || '');
   };
   return [...arr].sort((a, b) => {
@@ -859,7 +860,7 @@ export function preEncomendaTabHtml() {
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
     <div class="table table-scroll"><table><thead><tr>
-      <th>Produto</th><th>Código</th><th>Estoque atual</th><th>Reservado (carrinhos)</th><th>Comprar</th><th>Preço unit.</th><th>Observações</th><th>Origem</th><th>Ações</th>
+      ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Estoque atual</th><th>Reservado (carrinhos)</th>${thSort('Comprar', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Preço unit.', 'preco', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Observações</th><th>Origem</th><th>Ações</th>
     </tr></thead><tbody>${agruparPorKit(aComprar).map((it, idx, arr) => {
       const p = prodById(it.produtoId);
       const reservado = reservadoEmCarrinhos(it.produtoId);
@@ -966,7 +967,7 @@ function aguardandoAgrupadoHtml(aguardando) {
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
       ${!expandido ? '' : `<div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
-        <th>Produto</th><th>Código</th><th>Pedido</th><th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
+        ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}${thSort('Pedido', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}<th>Qtd recebida</th><th>Custo unit. pago</th><th>Total</th><th>Origem</th><th>Ações</th>
       </tr></thead><tbody>${agruparPorKit(itensDoPedido).map((it, idx, arr) => {
         const p = prodById(it.produtoId);
         const emKit = !!it.kitId;
