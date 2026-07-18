@@ -1,4 +1,4 @@
-import { state, ref, col, addDoc, setDoc, deleteDoc, serverTimestamp, prodById, toast, showModal, closeModal } from './state.js';
+import { state, ref, col, addDoc, setDoc, deleteDoc, serverTimestamp, prodById, cliById, toast, showModal, closeModal } from './state.js';
 import { $, esc, money, parseMoney, searchPickerHtml, today, formatDateBR, norm, porNome, sortBarHtml, pill } from './utils.js';
 import { entradaEstoque, saidaEstoque, perguntarAtivarProntaEntrega } from './estoque.js';
 
@@ -23,6 +23,58 @@ function reservadoEmCarrinhos(produtoId) {
     .reduce((s, c) => s + (c.itens || [])
       .filter(i => i.produtoId === produtoId && i.tipoEntrega === 'entrega_futura' && !i.entregue)
       .reduce((s2, i) => s2 + Number(i.quantidade || 0), 0), 0);
+}
+
+// Mesmo filtro de reservadoEmCarrinhos, mas devolvendo os carrinhos em vez de só a soma — pra
+// mostrar "quem" está esperando o produto. Inclui carrinho aberto, parcial e finalizado (venda já
+// concluída mas ainda deve o item pra entregar depois) — o que importa é ter item de entrega
+// futura ainda não entregue, não o status do carrinho como um todo.
+export function abrirCarrinhosComEntregaFutura(produtoId) {
+  const p = prodById(produtoId);
+  if (!p) return toast('Produto não encontrado');
+
+  const carrinhos = state.data.carrinhos
+    .filter(c => (c.status === 'aberto' || c.status === 'parcial' || c.status === 'finalizado') &&
+      (c.itens || []).some(i => i.produtoId === produtoId && i.tipoEntrega === 'entrega_futura' && !i.entregue))
+    .map(c => {
+      const qtdTotal = (c.itens || [])
+        .filter(i => i.produtoId === produtoId && i.tipoEntrega === 'entrega_futura' && !i.entregue)
+        .reduce((s, i) => s + Number(i.quantidade || 0), 0);
+      const cli = cliById(c.clienteId);
+      return { ...c, qtdTotal, nomeCliente: cli?.nome || c.clienteNome || 'Cliente desconhecido' };
+    })
+    .sort((a, b) => Number(b.numeroPedido || 0) - Number(a.numeroPedido || 0));
+
+  if (!carrinhos.length) return toast('Nenhum carrinho com entrega futura pendente deste produto');
+
+  const statusLabel = { aberto: 'Aberto', parcial: 'Parcial', finalizado: 'Aguardando entrega' };
+  const html = `
+    <div style="max-width:600px">
+      <h2>${esc(p.nome)}</h2>
+      <p><small>Carrinhos com entrega futura pendente — clique pra abrir</small></p>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px">Pedido</th>
+          <th style="text-align:left;padding:8px">Cliente</th>
+          <th style="text-align:center;padding:8px">Qtd</th>
+          <th style="text-align:center;padding:8px">Status</th>
+          <th style="text-align:center;padding:8px">Ação</th>
+        </tr></thead>
+        <tbody>
+          ${carrinhos.map(c => `<tr style="border-bottom:1px solid var(--border-light)">
+            <td style="padding:8px"><b>${c.numeroPedido || '-'}</b></td>
+            <td style="padding:8px">${esc(c.nomeCliente)}</td>
+            <td style="padding:8px;text-align:center"><b>${c.qtdTotal}</b></td>
+            <td style="padding:8px;text-align:center">${pill(statusLabel[c.status] || c.status, c.status === 'aberto' ? 'blue' : 'orange')}</td>
+            <td style="padding:8px;text-align:center">
+              <button class="btn small" onclick="App.closeModal();App.openCarrinho('${c.id}')">Abrir</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  showModal(html);
 }
 
 // Adiciona um produto à lista "a comprar". Se já tiver algo pendente desse produto, soma a
@@ -718,7 +770,7 @@ export function preEncomendaTabHtml() {
         <td data-label="Produto"><div style="display:flex;align-items:center;gap:8px">${emKit ? '<span style="color:#EC4899;font-weight:900">↳</span>' : ''}${p?.imagem ? `<img src="${esc(p.imagem)}" style="width:32px;height:32px;object-fit:contain;border-radius:8px;background:#F3F6FA" onerror="this.style.visibility='hidden'">` : ''}${esc(it.produtoNome)}</div></td>
         <td data-label="Código">${esc(it.codigoFarmasi || '-')}</td>
         <td data-label="Estoque atual">${p ? Number(p.estoqueAtual || 0) : '-'}</td>
-        <td data-label="Reservado">${reservado > 0 ? `<span style="color:var(--error);font-weight:900${p ? ';cursor:pointer;text-decoration:underline' : ''}" ${p ? `onclick="App.abrirCarrinhosComProdutoReservado('${p.id}')" title="Ver carrinhos com este produto"` : ''}>${reservado}</span>` : '0'}</td>
+        <td data-label="Reservado">${reservado > 0 ? `<span style="color:var(--error);font-weight:900;cursor:pointer;text-decoration:underline" onclick="App.abrirCarrinhosComEntregaFutura('${it.produtoId}')" title="Ver carrinhos com entrega futura pendente deste produto">${reservado}</span>` : '0'}</td>
         <td data-label="Comprar">${emKit ? Number(it.quantidade || 1) : `<input type="number" min="1" style="width:80px" value="${Number(it.quantidade || 1)}" onchange="App.atualizarItemPreEncomenda('${it.id}','quantidade',Number(this.value))">`}</td>
         <td data-label="Preço unit.">${emKit ? `${money(parseMoney(it.precoUnitario || 0))} <small class="muted" title="Vinculado ao kit — não editável">🔒</small>` : `<input style="width:90px" placeholder="0,00" value="${it.precoUnitario ? esc(it.precoUnitario) : ''}" onchange="App.atualizarItemPreEncomenda('${it.id}','precoUnitario',this.value)">`}</td>
         <td data-label="Observações">${emKit ? '-' : `<input value="${esc(it.observacoes || '')}" placeholder="Ex: cor, tamanho..." onchange="App.atualizarItemPreEncomenda('${it.id}','observacoes',this.value)">`}</td>
