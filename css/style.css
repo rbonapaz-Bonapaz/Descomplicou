@@ -47,3 +47,34 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 .busca-global-item small{display:block;color:var(--muted);font-size:11px}
 .busca-global-ico{font-size:16px;flex:0 0 auto}
 @media(max-width:760px){.busca-global{flex:1 1 100%;max-width:none;margin-top:10px}}
+
+/* Utilidades de exibição por tamanho de tela — mesma quebra do resto do app (760px). */
+.only-mobile{display:none}
+@media(max-width:760px){.only-desktop{display:none!important}.only-mobile{display:block}.vcards{display:flex;flex-direction:column;gap:12px;margin-top:12px}}
+
+/* Itens da venda detalhados (dentro do cartão ou da linha expandida) — nome em cima, preço embaixo,
+   pra nunca sobrepor texto no celular. Serve tanto em Vendas quanto no Cliente 360. */
+.venda-item{padding:7px 0;border-bottom:1px dashed var(--line)}
+.venda-item:last-child{border-bottom:0}
+.venda-item-nome{font-size:14px;line-height:1.35;overflow-wrap:break-word}
+.venda-item-preco{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* Cartão de pedido no celular (Vendas → .vcards). No desktop a tabela é usada e estes ficam ocultos
+   por .only-mobile — por isso o layout flex de .vcards fica só dentro do media query, senão o
+   display:flex venceria o display:none de .only-mobile (mesma especificidade, regra posterior) e os
+   cartões vazariam pro desktop. */
+.vcard{border:1px solid var(--line);border-radius:18px;background:#fff;padding:16px;box-shadow:0 2px 10px rgba(15,30,60,.05)}
+.vcard-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:2px}
+.vcard-num{font-size:12px;font-weight:900;color:#6B7C99;letter-spacing:.03em}
+.vcard-cli{font-size:19px;font-weight:800;line-height:1.2;margin:2px 0 12px;overflow-wrap:break-word}
+.vcard-rows{display:flex;flex-direction:column;gap:2px}
+.vcard-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0;border-bottom:1px solid #F1F4F8;font-size:15px}
+.vcard-row:last-of-type{border-bottom:0}
+.vcard-row>span:first-child{color:var(--muted);flex:0 0 auto}
+.vcard-row b{font-weight:800}
+.vcard-pgto{text-align:right;overflow-wrap:break-word}
+.vcard-sub{font-size:12px;color:var(--muted);text-align:right;padding-bottom:5px}
+.vcard-toggle{width:100%;margin-top:12px;justify-content:center}
+.vcard-itens{background:#F7FAFC;border-radius:12px;padding:6px 14px;margin-top:10px}
+.vcard-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.vcard-actions .btn{flex:1 1 auto;min-width:calc(50% - 4px);justify-content:center}

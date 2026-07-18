@@ -29,6 +29,9 @@ export function toggleVendaDetalhe(id) {
 export function detalheVendaHtml(c) {
   const itens = c.itens || [];
   if (!itens.length) return '<small class="muted">Sem itens registrados.</small>';
+  // Cada item em 2 linhas (nome em cima, preço embaixo) em vez de nome/preço lado a lado com
+  // justify-content:space-between — no celular estreito o layout lado a lado sobrepunha o texto de
+  // um item no do outro. Empilhado, o nome quebra naturalmente e o preço nunca colide.
   return itens.map(it => {
     const original = Number(it.precoOriginal || 0);
     const temDesconto = original > it.precoUnitario;
@@ -37,9 +40,9 @@ export function detalheVendaHtml(c) {
       it.tipoEntrega === 'entrega_futura' && !it.entregue ? pill('entrega futura', 'orange') : '',
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
-    return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line)">
-      <span>${it.quantidade}× ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small> ` : ''}${esc(it.produtoNome)} ${tags}</span>
-      <span style="white-space:nowrap">${temDesconto ? `<del class="muted">${money(original)}</del> ` : ''}${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b></span>
+    return `<div class="venda-item">
+      <div class="venda-item-nome">${it.quantidade}× ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small> ` : ''}${esc(it.produtoNome)} ${tags}</div>
+      <div class="venda-item-preco">${temDesconto ? `<del class="muted">${money(original)}</del> ` : ''}${money(it.precoUnitario)} un. • <b>${money(it.precoUnitario * it.quantidade)}</b></div>
     </div>`;
   }).join('');
 }
@@ -107,42 +110,81 @@ function ordenarVendas(items) {
   });
 }
 
+// Cor da pílula de status do pedido — mesma regra no desktop e no mobile.
+function corStatusPedido(s) {
+  return s === 'aberto' ? 'blue' : s === 'finalizado' || s === 'entregue' ? 'green' : s === 'parcial' ? 'orange' : 'red';
+}
+
+// Botões de ação de um pedido — HTML idêntico na tabela (desktop) e no cartão (mobile),
+// então fica numa função só pra não sair de sincronia.
+function vendaAcoesHtml(c, isAberto, showFutura) {
+  const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
+  return `
+    <button class="btn small" onclick="App.openCarrinho('${c.id}')">${isAberto ? '✏️ Abrir' : '👁️ Ver'}</button>
+    ${!isAberto ? `<button class="btn small" onclick="App.gerarPdfCliente('${c.id}')">PDF Cliente</button>` : ''}
+    ${!isAberto ? `<button class="btn small" onclick="App.gerarPdfInterno('${c.id}')">PDF Interno</button>` : ''}
+    ${showFutura ? renderBtnEntregaFutura(c) : ''}
+    ${(c.status === 'finalizado' || c.status === 'parcial') && !temEntregaFuturaPendente(c) ? `<button class="btn small" onclick="App.marcarPedidoEntregue('${c.id}')">📦 Entregue</button>` : ''}
+    ${!isAberto && normStatusPag(c.statusPagamento) !== 'pago' ? `<button class="btn small" style="color:var(--success)" onclick="App.registrarPagamento('${c.id}')">💰 Registrar pagamento</button>` : ''}
+    ${!isAberto && c.status !== 'cancelado' ? `<button class="btn small" onclick="App.reabrirCarrinho('${c.id}')">↩️ Reabrir</button>` : ''}
+    ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}
+    ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}`;
+}
+
+// Cartão de um pedido (só aparece no celular, via .only-mobile) — informação essencial em destaque
+// no topo (cliente + valor), detalhes secundários abaixo, e as ações agrupadas no rodapé. Substitui
+// a tabela "achatada" em pares RÓTULO: valor que ficava gigante e ilegível no celular.
+function vendaCardHtml(c, isAberto, showFutura) {
+  const expandida = vendasExpandidas.has(c.id);
+  const nItens = (c.itens || []).length;
+  const temPgtoParcial = !isAberto && Number(c.totalPedido || 0) > 0;
+  return `<div class="vcard">
+    <div class="vcard-top">
+      <span class="vcard-num">Nº ${numeroPedidoLabel(c)}</span>
+      ${pill(c.status, corStatusPedido(c.status))}
+    </div>
+    <div class="vcard-cli cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</div>
+    <div class="vcard-rows">
+      <div class="vcard-row"><span>${nItens} ${nItens === 1 ? 'item' : 'itens'}</span><b>${money(c.totalPedido)}</b></div>
+      <div class="vcard-row"><span>Lucro</span><b>${money(c.lucroTotal)}</b></div>
+      <div class="vcard-row"><span>Pgto</span><span class="vcard-pgto">${esc(c.pagamento || '-')} ${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</span></div>
+      ${temPgtoParcial ? `<div class="vcard-sub">${money(c.valorPago || 0)} de ${money(c.totalPedido)} recebido</div>` : ''}
+    </div>
+    <button class="btn small ghost vcard-toggle" onclick="App.toggleVendaDetalhe('${c.id}')">${expandida ? '▾ Ocultar itens' : `▸ Ver ${nItens} ${nItens === 1 ? 'item' : 'itens'}`}</button>
+    ${expandida ? `<div class="vcard-itens">${detalheVendaHtml(c)}</div>` : ''}
+    <div class="vcard-actions">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
+  </div>`;
+}
+
 function renderSection(titulo, items, isAberto, showFutura = false) {
   if (!items.length) return `<div style="margin-top:16px"><h4>${titulo}</h4><p class="muted">Nenhum item.</p></div>`;
   const sortKey = state.filters.vendasSort;
+  const ordenados = ordenarVendas(items);
 
-  return `<div style="margin-top:16px"><h4>${titulo}</h4>
-    <div class="table"><table><thead><tr>
+  const tabela = `<div class="table only-desktop"><table><thead><tr>
       ${thSort('Nº', 'numero', sortKey, 'vendasSort')}${thSort('Cliente', 'cliente', sortKey, 'vendasSort')}${thSort('Itens', 'itens', sortKey, 'vendasSort')}${thSort('Total', 'total', sortKey, 'vendasSort')}${thSort('Lucro', 'lucro', sortKey, 'vendasSort')}<th>Pgto</th>${thSort('Status', 'status', sortKey, 'vendasSort')}<th>Ações</th>
-    </tr></thead><tbody>${ordenarVendas(items).map(c => {
-      const cli = state.data.clientes.find(cl => cl.id === c.clienteId);
+    </tr></thead><tbody>${ordenados.map(c => {
       const expandida = vendasExpandidas.has(c.id);
       return `<tr>
-        <td data-label="Nº"><small class="muted">${numeroPedidoLabel(c)}</small></td>
-        <td data-label="Cliente">
+        <td><small class="muted">${numeroPedidoLabel(c)}</small></td>
+        <td>
           <button class="btn small" style="padding:3px 8px;margin-right:6px" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${expandida ? '▾' : '▸'}</button>
           <b class="cli-link" onclick="App.openCliente360('${c.clienteId}')">${esc(nomeAtualDoCliente(c.clienteId, c.clienteNome))}</b>
         </td>
-        <td data-label="Itens" style="cursor:pointer" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${(c.itens || []).length}</td>
-        <td data-label="Total">${money(c.totalPedido)}</td>
-        <td data-label="Lucro">${money(c.lucroTotal)}</td>
-        <td data-label="Pgto">${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
-        <td data-label="Status">${pill(c.status, c.status === 'aberto' ? 'blue' : c.status === 'finalizado' || c.status === 'entregue' ? 'green' : c.status === 'parcial' ? 'orange' : 'red')}</td>
-        <td data-label="Ações">
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="btn small" onclick="App.openCarrinho('${c.id}')">${isAberto ? '✏️ Abrir' : '👁️ Ver'}</button>
-            ${!isAberto ? `<button class="btn small" onclick="App.gerarPdfCliente('${c.id}')">PDF Cliente</button>` : ''}
-            ${!isAberto ? `<button class="btn small" onclick="App.gerarPdfInterno('${c.id}')">PDF Interno</button>` : ''}
-            ${showFutura ? renderBtnEntregaFutura(c) : ''}
-            ${(c.status === 'finalizado' || c.status === 'parcial') && !temEntregaFuturaPendente(c) ? `<button class="btn small" onclick="App.marcarPedidoEntregue('${c.id}')">📦 Entregue</button>` : ''}
-            ${!isAberto && normStatusPag(c.statusPagamento) !== 'pago' ? `<button class="btn small" style="color:var(--success)" onclick="App.registrarPagamento('${c.id}')">💰 Registrar pagamento</button>` : ''}
-            ${!isAberto && c.status !== 'cancelado' ? `<button class="btn small" onclick="App.reabrirCarrinho('${c.id}')">↩️ Reabrir</button>` : ''}
-            ${!isAberto ? `<button class="btn small" style="color:var(--error)" onclick="App.excluirCarrinho('${c.id}')">🗑️ Excluir</button>` : ''}
-            ${whatsAppBtn(cli?.whatsapp, isAberto ? 'resumoPedido' : 'posVenda', { nome: nomeChamado(c.clienteId, c.clienteNome), telefone: cli?.whatsapp, carrinho: c })}
-          </div>
+        <td style="cursor:pointer" onclick="App.toggleVendaDetalhe('${c.id}')" title="${expandida ? 'Ocultar itens' : 'Ver itens da venda'}">${(c.itens || []).length}</td>
+        <td>${money(c.totalPedido)}</td>
+        <td>${money(c.lucroTotal)}</td>
+        <td>${esc(c.pagamento || '-')}<br><small>${pill(labelStatusPag(c.statusPagamento), corStatusPag(c.statusPagamento), tipStatusPag(c.statusPagamento))}</small>${!isAberto && Number(c.totalPedido || 0) > 0 ? `<br><small class="muted">${money(c.valorPago || 0)} de ${money(c.totalPedido)}</small>` : ''}</td>
+        <td>${pill(c.status, corStatusPedido(c.status))}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${vendaAcoesHtml(c, isAberto, showFutura)}</div>
         </td>
-      </tr>${expandida ? `<tr><td colspan="8" data-label="Itens da venda" class="td-block" style="background:#F7FAFC"><div>${detalheVendaHtml(c)}</div></td></tr>` : ''}`;
-    }).join('')}</tbody></table></div></div>`;
+      </tr>${expandida ? `<tr><td colspan="8" style="background:#F7FAFC">${detalheVendaHtml(c)}</td></tr>` : ''}`;
+    }).join('')}</tbody></table></div>`;
+
+  const cartoes = `<div class="only-mobile vcards">${ordenados.map(c => vendaCardHtml(c, isAberto, showFutura)).join('')}</div>`;
+
+  return `<div style="margin-top:16px"><h4>${titulo}</h4>${tabela}${cartoes}</div>`;
 }
 
 // Renumera TODOS os pedidos (não só os sem número) em ordem cronológica — idempotente, então pode
