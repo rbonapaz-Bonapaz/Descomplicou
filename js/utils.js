@@ -412,9 +412,13 @@ export function searchPickerHtml(selectId, itens, describe, onchangeSelect = '',
   const opts = itens.map((it, i) => `<option value="${esc(it.id)}" ${!semPadrao && i === 0 ? 'selected' : ''}>${esc(describe(it))}</option>`).join('');
   const valorInicial = semPadrao ? '' : (itens.length ? describe(itens[0]) : '');
   return `<div class="search-picker" style="position:relative;margin-bottom:6px">
-    <input id="${buscaId}" value="${esc(valorInicial)}" placeholder="Digite para buscar..." autocomplete="off"
-      oninput="App.filtrarSearchPicker('${selectId}')" onfocus="App.filtrarSearchPicker('${selectId}',true)"
-      onblur="setTimeout(()=>App.fecharSearchPicker('${selectId}'),150)">
+    <div style="position:relative;display:flex;align-items:center">
+      <input id="${buscaId}" value="${esc(valorInicial)}" placeholder="Digite para buscar..." autocomplete="off"
+        oninput="App.filtrarSearchPicker('${selectId}')" onfocus="App.filtrarSearchPicker('${selectId}',true)"
+        onblur="setTimeout(()=>App.fecharSearchPicker('${selectId}'),150)"
+        style="flex:1">
+      <button type="button" class="search-picker-clear" onclick="App.limparSearchPicker('${selectId}')" style="display:${valorInicial ? 'block' : 'none'};position:absolute;right:8px;background:none;border:none;color:#999;cursor:pointer;font-size:18px;padding:0;width:24px;height:24px;line-height:1">✕</button>
+    </div>
     <select id="${selectId}" class="hidden" ${onchangeSelect ? `onchange="${onchangeSelect}"` : ''}>${opts}</select>
     <div id="${selectId}Lista" class="search-picker-lista hidden"></div>
   </div>`;
@@ -426,6 +430,7 @@ export function filtrarSearchPicker(selectId, ignorarTexto = false) {
   const sel = $(selectId);
   const inputEl = $(selectId + 'Busca');
   const lista = $(selectId + 'Lista');
+  const botaoX = document.querySelector(`button[onclick*="limparSearchPicker('${selectId}')"]`);
   if (!sel || !inputEl || !lista) return;
   const q = ignorarTexto ? '' : norm(inputEl.value || '');
   const filtrados = Array.from(sel.options).filter(o => !q || norm(o.textContent).includes(q));
@@ -433,6 +438,8 @@ export function filtrarSearchPicker(selectId, ignorarTexto = false) {
     ? filtrados.slice(0, 60).map(o => `<div class="search-picker-item" onmousedown="App.escolherSearchPicker('${selectId}','${esc(o.value)}')">${esc(o.textContent)}</div>`).join('')
     : '<div class="search-picker-item muted">Nada encontrado.</div>';
   lista.classList.remove('hidden');
+  // Mostra o X se há algo digitado
+  if (botaoX) botaoX.style.display = inputEl.value ? 'block' : 'none';
 }
 
 // onmousedown (não onclick) porque dispara ANTES do blur do campo de busca — com onclick, o blur
@@ -441,15 +448,31 @@ export function escolherSearchPicker(selectId, value) {
   const sel = $(selectId);
   const inputEl = $(selectId + 'Busca');
   const lista = $(selectId + 'Lista');
+  const botaoX = document.querySelector(`button[onclick*="limparSearchPicker('${selectId}')"]`);
   if (!sel) return;
   sel.value = value;
   sel.dispatchEvent(new Event('change'));
   if (inputEl) inputEl.value = sel.selectedOptions[0]?.textContent || '';
   if (lista) { lista.classList.add('hidden'); lista.innerHTML = ''; }
+  // Mostra o X quando algo é selecionado
+  if (botaoX && inputEl?.value) botaoX.style.display = 'block';
 }
 
 export function fecharSearchPicker(selectId) {
   $(selectId + 'Lista')?.classList.add('hidden');
+}
+
+export function limparSearchPicker(selectId) {
+  const sel = $(selectId);
+  const inputEl = $(selectId + 'Busca');
+  const botaoX = document.querySelector(`button[onclick*="limparSearchPicker('${selectId}')"]`);
+
+  if (sel) sel.value = '';
+  if (inputEl) inputEl.value = '';
+  if (botaoX) botaoX.style.display = 'none';
+
+  // Dispara onChange para resetar dependências
+  if (sel) sel.dispatchEvent(new Event('change'));
 }
 
 export function pill(t, c = 'gray', title = '') {
