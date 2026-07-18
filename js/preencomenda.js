@@ -370,9 +370,12 @@ export async function removerFornecedor(id) {
 export function editarFornecedor(id) {
   const c = (state.data.despesas || []).find(x => x.id === id);
   if (!c) return;
+  const nomesConhecidos = [...new Set(state.data.despesas.filter(x => x.tipo === 'fornecedor' && x.pessoa).map(x => x.pessoa))];
   showModal(`<h3>Editar compra — ${esc(c.pessoa || '')}</h3>
     <div class="grid">
-      <div class="field full"><label>Pessoa</label><input id="efPessoa" value="${esc(c.pessoa || '')}"></div>
+      <div class="field full"><label>Pessoa</label><input id="efPessoa" value="${esc(c.pessoa || '')}" list="efPessoaLista">
+        <datalist id="efPessoaLista">${nomesConhecidos.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      </div>
       <div class="field full"><label>Produto</label><input id="efProduto" value="${esc(c.produtoNome || '')}"></div>
       <div class="field"><label>Quantidade</label><input id="efQtd" type="number" min="1" value="${c.quantidade || 1}"></div>
       <div class="field"><label>Valor total</label><input id="efValor" value="${money(c.valorTotal || 0)}"></div>
@@ -399,9 +402,14 @@ export async function salvarFornecedor(id) {
 // Entrada de estoque de novo — útil pra ir "empilhando" a dívida com a mesma fornecedora conforme
 // ela vai vendendo mais produtos, mesmo antes de decidir se cada item vira estoque de verdade.
 export function adicionarCompraFornecedor(pessoa = '') {
+  // Sugere os nomes já usados em compras anteriores (datalist) — evita que "Analu" e "Ana Lu"
+  // virem duas pessoas diferentes na tabela agrupada por causa de uma digitação diferente.
+  const nomesConhecidos = [...new Set(state.data.despesas.filter(x => x.tipo === 'fornecedor' && x.pessoa).map(x => x.pessoa))];
   showModal(`<h3>Nova compra${pessoa ? ' — ' + esc(pessoa) : ''}</h3>
     <div class="grid">
-      <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}"></div>
+      <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}" list="ncPessoaLista">
+        <datalist id="ncPessoaLista">${nomesConhecidos.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      </div>
       <div class="field full"><label>Produto</label><input id="ncProduto" placeholder="Ex: Perfume Bright"></div>
       <div class="field"><label>Quantidade</label><input id="ncQtd" type="number" min="1" value="1"></div>
       <div class="field"><label>Valor total</label><input id="ncValor" placeholder="0,00"></div>
@@ -430,38 +438,57 @@ export async function salvarCompraFornecedor() {
 }
 
 function fornecedoresPanelHtml() {
-  const compras = (state.data.despesas || [])
-    .filter(x => x.tipo === 'fornecedor')
-    .sort((a, b) => Number(a.pago) - Number(b.pago) || String(b.data).localeCompare(String(a.data)));
+  const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor');
   if (!compras.length) return '';
   const pendentes = compras.filter(x => !x.pago);
   const totalPendente = pendentes.reduce((s, x) => s + Number(x.valorTotal || 0), 0);
+
+  // Agrupa por pessoa (texto livre, sem cadastro próprio) — cada compra continua sendo um
+  // lançamento independente, mas juntar por nome aqui mostra de cara quanto você deve NO TOTAL
+  // pra cada uma, em vez de só o total geral somando todo mundo junto.
+  const porPessoa = new Map();
+  for (const c of compras) {
+    const chave = norm(c.pessoa || 'Sem nome');
+    if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: c.pessoa || 'Sem nome', itens: [] });
+    porPessoa.get(chave).itens.push(c);
+  }
+  const grupos = [...porPessoa.values()].map(g => ({
+    ...g,
+    pendente: g.itens.reduce((s, x) => s + (x.pago ? 0 : Number(x.valorTotal || 0)), 0),
+    itens: g.itens.sort((a, b) => Number(a.pago) - Number(b.pago) || String(b.data).localeCompare(String(a.data)))
+  })).sort((a, b) => b.pendente - a.pendente || porNome({ nome: a.nome }, { nome: b.nome }));
+
   return `<div class="panel" style="margin-top:10px">
     <div class="panel-head">
       <h3>🧾 Compras de outras consultoras</h3>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${pendentes.length ? `<span class="muted">A pagar: <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+        ${pendentes.length ? `<span class="muted">A pagar (total geral): <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
         <button class="btn small pink" onclick="App.adicionarCompraFornecedor()">+ Nova compra</button>
       </div>
     </div>
-    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido, ou adicionados direto aqui) — controle aqui quem ainda falta pagar.</p>
-    <div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Pessoa</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
-      ${compras.map(c => `<tr>
-        <td data-label="Data">${formatDateBR(c.data)}</td>
-        <td data-label="Pessoa">${esc(c.pessoa || '-')}</td>
-        <td data-label="Produto">${esc(c.produtoNome || '-')}</td>
-        <td data-label="Qtd">${c.quantidade || 0}</td>
-        <td data-label="Valor">${money(c.valorTotal)}</td>
-        <td data-label="Status">${c.pago ? '<span class="tag green">Pago</span>' : '<span class="tag red">A pagar</span>'}</td>
-        <td style="display:flex;gap:4px;flex-wrap:wrap">
-          ${c.pago
-            ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
-            : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`}
-          <button class="btn small" onclick="App.editarFornecedor('${c.id}')" title="Editar">✏️</button>
-          <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${c.id}')" title="Remover registro">🗑️</button>
-        </td>
-      </tr>`).join('')}
-    </tbody></table></div>
+    <p class="muted">Produtos comprados de outra consultora (registrados na Entrada de estoque com "Comprado de" preenchido, ou adicionados direto aqui) — cada compra fica registrada como um lançamento separado; abaixo agrupamos por pessoa pra mostrar o quanto você deve pra cada uma.</p>
+    ${grupos.map(g => `<div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <b>${esc(g.nome)}</b>
+        ${g.pendente > 0.004 ? `<span class="muted">Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}
+      </div>
+      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>
+        ${g.itens.map(c => `<tr>
+          <td data-label="Data">${formatDateBR(c.data)}</td>
+          <td data-label="Produto">${esc(c.produtoNome || '-')}</td>
+          <td data-label="Qtd">${c.quantidade || 0}</td>
+          <td data-label="Valor">${money(c.valorTotal)}</td>
+          <td data-label="Status">${c.pago ? '<span class="tag green">Pago</span>' : '<span class="tag red">A pagar</span>'}</td>
+          <td style="display:flex;gap:4px;flex-wrap:wrap">
+            ${c.pago
+              ? `<button class="btn small" onclick="App.marcarFornecedorPendente('${c.id}')" title="Marcar como ainda não pago">↩️</button>`
+              : `<button class="btn small" style="color:var(--success)" onclick="App.marcarFornecedorPago('${c.id}')">✅ Marcar pago</button>`}
+            <button class="btn small" onclick="App.editarFornecedor('${c.id}')" title="Editar">✏️</button>
+            <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${c.id}')" title="Remover registro">🗑️</button>
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div>
+    </div>`).join('')}
   </div>`;
 }
 
