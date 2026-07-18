@@ -94,8 +94,14 @@ export function preencherValorTrocaSaida() {
 // original, se não houver atual). Produto novo (id vazio, digitado à mão) não tem preço a puxar —
 // deixa o campo em branco pra consultora informar.
 export function preencherValorTrocaEntrada() {
-  const p = prodById($('trProdEntra')?.value);
+  const id = $('trProdEntra')?.value || '';
+  const p = prodById(id);
   if ($('trValorEntra')) $('trValorEntra').value = p ? money(valorTrocaProduto(p)) : '';
+  // "Nome"/"Código Farmasi" só fazem sentido pra produto NOVO (não achado na busca) — escolher um
+  // produto já cadastrado (que já tem nome e código próprios) escondia esses campos redundantes,
+  // que ficavam visíveis o tempo todo mesmo sem uso, dando a impressão de preenchimento duplicado.
+  const produtoNovo = !id; // '' é o valor da opção "— Produto novo (digite o nome abaixo) —"
+  $('trCampoNomeNovo')?.classList.toggle('hidden', !produtoNovo);
 }
 
 function itemRowHtml(trocaId, lado, item, idx) {
@@ -168,8 +174,10 @@ export function openTroca(id) {
     ${podeAdicionar ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
       <div class="grid">
         <div class="field full"><label>Produto</label>${pickerEntra}</div>
-        <div class="field full"><label>Produto novo? Digite o nome (só se não achou na busca acima)</label><input id="trNomeEntra" placeholder="Ex: Goma de mascar"></div>
-        <div class="field"><label>Código Farmasi (opcional)</label><input id="trCodigoEntra"></div>
+        <div id="trCampoNomeNovo" style="display:contents">
+          <div class="field full"><label>Produto novo? Digite o nome (só se não achou na busca acima)</label><input id="trNomeEntra" placeholder="Ex: Goma de mascar"></div>
+          <div class="field"><label>Código Farmasi (opcional)</label><input id="trCodigoEntra"></div>
+        </div>
         <div class="field"><label>Quantidade</label><input id="trQtdEntra" type="number" value="1"></div>
         <div class="field"><label>Valor unitário (opcional)</label><input id="trValorEntra" placeholder="0,00"></div>
         <div class="field"><label>Entrega</label>
