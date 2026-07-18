@@ -359,7 +359,9 @@ export async function marcarFornecedorPendente(id) {
 }
 
 export async function removerFornecedor(id) {
-  if (!confirm('Remover este registro de compra? Isso não mexe no estoque, só apaga o controle de quem/quanto pagar.')) return;
+  const c = state.data.despesas.find(x => x.id === id);
+  const detalhe = c ? ` de ${c.pessoa || 'pessoa sem nome'} no valor de ${money(c.valorTotal || 0)}` : '';
+  if (!confirm(`Excluir esta compra${detalhe}? Isso apaga o registro pra sempre — não tem como desfazer. Isso não mexe no estoque, só some do controle de quem/quanto pagar.`)) return;
   await deleteDoc(ref('despesas', id));
   window.App.refresh('Registro removido');
 }
@@ -434,12 +436,13 @@ export function abrirCompraFornecedor(id) {
       <button class="btn dark small" style="margin-top:8px" onclick="App.adicionarItemCompraFornecedor('${id}')">+ Adicionar item</button>
     </div>` : ''}
     <div class="cards" style="margin-top:14px"><div class="card"><span>Total do pedido</span><b>${money(total)}</b></div></div>
+    ${!c.pago ? '<p class="muted" style="margin-top:10px">Os itens já ficam salvos automaticamente conforme você adiciona — pode fechar sem marcar como pago, que a dívida continua aqui até você quitar com ela.</p>' : ''}
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn dark" onclick="App.closeModal()">${c.pago ? 'Fechar' : '💾 Fechar (continua devendo)'}</button>
       ${c.pago
         ? `<button class="btn" onclick="App.marcarFornecedorPendente('${id}')">↩️ Marcar como não pago</button>`
-        : `<button class="btn dark" onclick="App.marcarFornecedorPago('${id}')">✅ Marcar tudo como pago</button>`}
+        : `<button class="btn" onclick="App.marcarFornecedorPago('${id}')" title="Só use quando ela já tiver sido paga de verdade">✅ Marcar tudo como pago</button>`}
       <button class="btn small" style="color:var(--error)" onclick="App.removerFornecedor('${id}')">🗑️ Excluir pedido</button>
-      <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>`, { wide: true });
 }
 
