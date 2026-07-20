@@ -407,7 +407,7 @@ export function openCliente360(id) {
     ${c.observacoes ? `<div class="panel" style="margin-top:12px"><h3>Observações</h3><p>${esc(c.observacoes)}</p></div>` : ''}
 
     <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>
-  </div>`);
+  </div>`, { wide: true });
 }
 
 // --- Lista de interesse (permanente no cadastro do cliente) ---

@@ -51,11 +51,13 @@ export async function marcarLeadsVistos(eventoId) {
   toggleListasEvento(eventoId);
 }
 
-// Liga a criação de cliente feita a partir de uma lista de desejo (ver clientes.js) de volta à lista.
-window.addEventListener('lead-cliente-criado', e => {
+// Liga a criação de cliente feita a partir de uma lista de desejo (ver clientes.js) de volta à
+// lista, e sincroniza os itens de "Interesse" pro cadastro dela (mesmo motivo de confirmarVinculo).
+window.addEventListener('lead-cliente-criado', async e => {
   const l = (listasCache[e.detail.eventoId] || []).find(x => x.id === e.detail.listaId);
   if (l) l._clienteId = e.detail.clienteId;
   renderListasInline(e.detail.eventoId);
+  if (l) await sincronizarInteresseDaLista(e.detail.eventoId, l, e.detail.clienteId);
 });
 
 function formatDate(d) {
@@ -769,12 +771,16 @@ export function confirmarVinculoSelecionado(eventoId, listaId) {
   confirmarVinculo(eventoId, listaId, clienteId);
 }
 
-export function confirmarVinculo(eventoId, listaId, clienteId) {
+export async function confirmarVinculo(eventoId, listaId, clienteId) {
   const l = (listasCache[eventoId] || []).find(x => x.id === listaId);
   if (l) l._clienteId = clienteId;
   closeModal();
-  toast('Vinculado! Agora você pode transformar em carrinho.');
   renderListasInline(eventoId);
+  // Sincroniza os itens de "Interesse" pro cadastro permanente do cliente automaticamente ao
+  // vincular — antes só acontecia se a consultora lembrasse de clicar em "⭐ Lista de interesse"
+  // à parte, e itens de interesse sumiam silenciosamente se ela esquecesse.
+  const novos = l ? await sincronizarInteresseDaLista(eventoId, l, clienteId) : 0;
+  toast(`Vinculado!${novos ? ` ${novos} produto(s) de interesse salvos no cadastro dela.` : ''} Agora você pode transformar em carrinho.`);
 }
 
 // A visitante digita a data livremente no evento (ex: "15/05/1990") — tenta converter para o
@@ -796,17 +802,14 @@ export function abrirNovoClienteDeLista(eventoId, listaId) {
   window.App.openClienteForm('', { eventoId, listaId, nome: lista?.nomeVisitante || '', apelido: lista?.apelido || '', whatsapp: lista?.whatsapp || '', nascimento: nascimentoISO, origem: 'Evento' });
 }
 
-// Copia os produtos da lista de desejos do evento pra lista de interesse PERMANENTE do cliente
-// (fica no cadastro dela, não só enquanto o evento existir) — pra quando ela tem interesse mas
-// não vai comprar agora, e a consultora quer lembrar de oferecer de novo depois.
-export async function marcarInteresseDaLista(eventoId, listaId) {
-  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
-  if (!lista) return toast('Lista não encontrada');
-  const clienteId = lista._clienteId;
-  if (!clienteId) return toast('Vincule esta pessoa a um cliente primeiro.');
+// Copia os produtos marcados como "🤍 Interesse" na lista de desejos do evento pra lista de
+// interesse PERMANENTE do cliente (fica no cadastro dela, não só enquanto o evento existir) — pra
+// quando ela tem interesse mas não vai comprar agora, e a consultora quer lembrar de oferecer de
+// novo depois. adicionarInteresseCliente já ignora produto repetido, então é seguro chamar de
+// novo mais tarde (ex: se a lista for editada) sem duplicar.
+async function sincronizarInteresseDaLista(eventoId, lista, clienteId) {
   const { adicionarInteresseCliente } = await import('./clientes.js');
   const evento = state.data.eventos.find(e => e.id === eventoId);
-
   let novos = 0;
   for (const w of (lista.produtosDesejados || []).filter(isInteresse)) {
     const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
@@ -815,6 +818,15 @@ export async function marcarInteresseDaLista(eventoId, listaId) {
     }, `Evento: ${evento?.nome || ''}`);
     if (adicionou) novos++;
   }
+  return novos;
+}
+
+export async function marcarInteresseDaLista(eventoId, listaId) {
+  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
+  if (!lista) return toast('Lista não encontrada');
+  const clienteId = lista._clienteId;
+  if (!clienteId) return toast('Vincule esta pessoa a um cliente primeiro.');
+  const novos = await sincronizarInteresseDaLista(eventoId, lista, clienteId);
   if (!novos) return toast('Nenhum produto marcado como "Interesse" nesta lista (ou já estavam salvos no cadastro dela).');
   window.App.refresh(`${novos} produto(s) adicionado(s) à lista de interesse permanente de ${lista.nomeVisitante}`);
 }
