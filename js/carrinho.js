@@ -1,7 +1,7 @@
 import { state, col, ref, db, showModal, closeModal, toast, setDoc, addDoc, deleteDoc,
   serverTimestamp, cliById, prodById, runTransaction, doc, estoqueDisponivel, reservadoEmAberto,
   proximoNumeroPedido, proximaSequenciaCliente, functions, httpsCallable } from './state.js';
-import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm, gerarPixCopiaECola, porNome } from './utils.js';
+import { $, esc, money, parseMoney, today, pill, normStatusPag, searchPickerHtml, formatDateBR, formatDataHoraBR, addDias, toggleHtml, toggleBareHtml, porGenero, norm, gerarPixCopiaECola, porNome } from './utils.js';
 import { saidaEstoque, entradaEstoque } from './estoque.js';
 import { adicionarPreEncomenda } from './preencomenda.js';
 import { WA_ICON } from './whatsapp.js';
@@ -465,18 +465,35 @@ export function openCarrinho(id) {
   preencherPrecoItem();
 }
 
+// Formas de pagamento disponíveis pra mostrar quando o pedido ainda está com pagamento "A
+// combinar" (carr.pagamento vazio) — informativo, pra consultora e cliente saberem as opções
+// sem precisar perguntar de novo. Pix só entra se a chave já estiver cadastrada no perfil.
+function formasPagamentoDisponiveisHtml() {
+  const chave = (state.profile?.pixChave || '').trim();
+  const maxParcelas = Number(operadoraPadrao()?.maxParcelas || 12);
+  return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
+    <h4 style="margin:0 0 8px">💡 Pagamento ainda a combinar — formas aceitas</h4>
+    <p class="muted" style="margin:0">${chave ? 'Pix' : 'Pix (cadastre sua chave em Minha Conta → Pagamento pra gerar QR Code)'} • Cartão em até ${maxParcelas}x (sujeito a taxa da maquininha)</p>
+  </div>`;
+}
+
 function openCarrinhoView(carr) {
   const itens = carr.itens || [];
   const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
   const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
+  const pago = Number(carr.valorPago || 0);
+  const restante = Math.max(0, Number(carr.totalPedido || 0) - pago);
   showModal(`<h3>Pedido — ${esc(carr.clienteNome)}</h3>
     <div class="cards">
       <div class="card"><span>Status</span><b>${pill(carr.status, carr.status === 'finalizado' ? 'green' : carr.status === 'cancelado' ? 'red' : 'blue')}</b></div>
       ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total</span><b>${money(carr.totalPedido)}</b></div>
+      ${carr.status !== 'cancelado' ? `<div class="card"><span>Valor pago</span><b>${money(pago)}</b></div>` : ''}
+      ${carr.status !== 'cancelado' && restante > 0.004 ? `<div class="card"><span>Restante</span><b style="color:var(--error)">${money(restante)}</b></div>` : ''}
       <div class="card"><span>Lucro real (após taxas)</span><b>${money(lucroReal)}</b></div>
-      <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || '-')}</b></div>
+      <div class="card"><span>Pagamento</span><b>${esc(carr.pagamento || 'A combinar')}</b></div>
     </div>
+    ${carr.status !== 'cancelado' && !carr.pagamento ? formasPagamentoDisponiveisHtml() : ''}
     <div class="table only-desktop" style="margin-top:12px"><table><thead><tr>
       <th>Cód.</th><th>Produto</th><th>Motivo</th><th>Qtd</th><th>Original</th><th>Preço</th><th>Desconto</th><th>Total</th><th>Entrega</th>
     </tr></thead><tbody>${itens.map(it => {
@@ -492,14 +509,17 @@ function openCarrinhoView(carr) {
       <td>${money(it.precoUnitario)}</td>
       <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
       <td>${money(it.totalItem)}</td>
-      <td>${pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' : 'Futura') : 'Pronta',
+      <td>${pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Futura') : 'Pronta',
         it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'green' : 'orange') : 'green')}</td>
     </tr>`;
     }).join('')}</tbody></table></div>
     <div class="only-mobile vcards" style="margin-top:12px">${itens.map((it, idx) => carrinhoItemCardHtml(it, idx, carr.id, false)).join('')}</div>
     ${carr.status !== 'cancelado' ? pagamentoResumoHtml(carr) : ''}
     ${carr.observacoes ? `<p class="muted" style="margin-top:8px">${esc(carr.observacoes)}</p>` : ''}
-    <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`, { wide: true });
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${carr.status !== 'cancelado' ? `<button class="btn small green-btn" onclick="App.enviarResumoWhatsApp('${carr.id}')">${WA_ICON} Enviar pedido</button>` : ''}
+      <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
+    </div>`, { wide: true });
 }
 
 // Decide o status de pagamento sozinho a partir do valor efetivamente recebido — evita ficar
@@ -1256,6 +1276,10 @@ export async function marcarItemEntregue(carrinhoId, idx) {
   item.entregue = true;
   item.baixouEstoque = true;
   item.dataEntrega = today();
+  // Date.now() (número), não serverTimestamp() — o sentinel de timestamp do servidor não resolve
+  // corretamente dentro de um array (fica null); como o item vive dentro de carr.itens[], usa hora
+  // do cliente mesmo, suficiente pra exibir "entregue às HH:MM" sem precisão de servidor.
+  item.entregueEm = Date.now();
 
   const todosEntregues = carr.itens.every(i => i.tipoEntrega !== 'entrega_futura' || i.entregue);
 

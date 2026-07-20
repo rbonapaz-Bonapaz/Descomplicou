@@ -618,7 +618,7 @@ function renderListasInline(eventoId) {
     const totalComprar = itens.filter(isComprar).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
     const totalInteresse = itens.filter(isInteresse).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
     return `<button class="btn small" onclick="App.abrirProdutosLista('${eventoId}','${l.id}')">📋 ${itens.length} produto${itens.length === 1 ? '' : 's'}</button>
-      <div class="muted" style="font-size:11px;margin-top:4px">🛒 ${money(totalComprar)} · 🤍 ${money(totalInteresse)}</div>`;
+      <div class="muted" style="font-size:11px;margin-top:4px">🛍️ ${money(totalComprar)} · 🤍 ${money(totalInteresse)}</div>`;
   };
   box.innerHTML = cabecalho + `<div class="table only-desktop" style="margin-top:8px"><table><thead><tr>
     <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Tratado</th><th>Ações</th>
@@ -654,9 +654,9 @@ async function persistirProdutosLista(eventoId, listaId, produtosDesejados) {
   if (l) l.produtosDesejados = produtosDesejados;
 }
 
-// Painel com cada produto da lista e botões pra alternar "🤍 Interesse" / "🛒 Comprar hoje" por
+// Painel com cada produto da lista e botões pra alternar "🤍 Interesse" / "🛍️ Sacola" por
 // item — um item pode estar marcado nos dois ao mesmo tempo; só o botão de excluir tira de vez.
-// Mobilidade bidirecional: mover um item pra "Comprar hoje" NÃO tira ele de "Interesse" sozinho.
+// Mobilidade bidirecional: mover um item pra "Sacola" NÃO tira ele de "Interesse" sozinho.
 export function abrirProdutosLista(eventoId, listaId) {
   const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
   if (!lista) return;
@@ -671,7 +671,7 @@ export function abrirProdutosLista(eventoId, listaId) {
         <div class="vcard-row"><span>Preço</span><b>${temDesconto ? `<del class="muted">${money(w.precoOriginal)}</del> ` : ''}${money(w.precoComDesconto)}</b></div>
       </div>
       <div class="vcard-actions" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="btn small ${isComprar(w) ? 'dark' : ''}" onclick="App.moverItemLista('${eventoId}','${listaId}',${idx},'comprarHoje')" title="Alternar se este item está em 'Comprar hoje'">🛒 Comprar hoje</button>
+        <button class="btn small ${isComprar(w) ? 'dark' : ''}" onclick="App.moverItemLista('${eventoId}','${listaId}',${idx},'comprarHoje')" title="Alternar se este item está na sacola">🛍️ Sacola</button>
         <button class="btn small ${isInteresse(w) ? 'dark' : ''}" onclick="App.moverItemLista('${eventoId}','${listaId}',${idx},'interesse')" title="Alternar se este item está em 'Interesse'">🤍 Interesse</button>
         <button class="btn small" style="color:var(--error)" onclick="App.excluirItemLista('${eventoId}','${listaId}',${idx})" title="Excluir este item da lista">🗑️</button>
       </div>
@@ -680,7 +680,7 @@ export function abrirProdutosLista(eventoId, listaId) {
   showModal(`<h3>Produtos — ${esc(lista.nomeVisitante)}</h3>
     <p class="muted">Clique nos botões pra marcar/desmarcar cada item em cada lista — mover pra uma não tira da outra, só o 🗑️ exclui de vez.</p>
     <div class="cards" style="margin-top:10px">
-      <div class="card"><span>🛒 Comprar hoje</span><b>${money(totalComprar)}</b></div>
+      <div class="card"><span>🛍️ Sacola</span><b>${money(totalComprar)}</b></div>
       <div class="card"><span>🤍 Interesse</span><b>${money(totalInteresse)}</b></div>
     </div>
     <div style="margin-top:12px">${itens.length ? itens.map(linha).join('') : '<p class="muted">Nenhum produto.</p>'}</div>
@@ -843,7 +843,7 @@ export async function transformarEmCarrinho(eventoId, listaId) {
       tipoEntrega, baixouEstoque: false
     });
   }
-  if (!itens.length) return toast('Nenhum produto marcado como "Comprar hoje" foi encontrado no seu catálogo atual.');
+  if (!itens.length) return toast('Nenhum produto marcado na "Sacola" foi encontrado no seu catálogo atual.');
 
   const totalPedido = itens.reduce((s, i) => s + i.totalItem, 0);
   const custoTotal = itens.reduce((s, i) => s + i.custoTotal, 0);

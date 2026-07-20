@@ -310,6 +310,33 @@ export function openCliente360(id) {
         <button class="btn small dark" onclick="App.closeModal();App.openCarrinho('${cr.id}')">Abrir carrinho</button></p>`).join('')}
     </div>` : ''}
 
+    ${(() => {
+      // Pedidos finalizados dela com saldo a receber e/ou item de entrega futura ainda não
+      // entregue — ação direta aqui, sem precisar navegar até Vendas pra resolver (mesmo fluxo
+      // de "Registrar pagamento" e "Marcar entregue" usado no resto do sistema).
+      const pendencias = state.data.carrinhos
+        .filter(cr => cr.clienteId === id && cr.status !== 'aberto' && cr.status !== 'cancelado')
+        .map(cr => {
+          const restante = Math.max(0, Number(cr.totalPedido || 0) - Number(cr.valorPago || 0));
+          const itensPendentes = (cr.itens || []).map((it, idx) => ({ ...it, idx })).filter(it => it.tipoEntrega === 'entrega_futura' && !it.entregue);
+          return { cr, restante, itensPendentes };
+        })
+        .filter(p => p.restante > 0.004 || p.itensPendentes.length);
+      if (!pendencias.length) return '';
+      return `<div class="panel" style="margin-top:12px;background:#FFF7E6">
+        <h3>⏳ Pendências</h3>
+        <p class="muted">Pagamento ou entrega ainda não concluídos nesses pedidos.</p>
+        ${pendencias.map(({ cr, restante, itensPendentes }) => `<div style="margin-top:8px;padding:10px;background:white;border-radius:10px;border:1px solid var(--line)">
+          <b>Pedido nº ${numeroPedidoLabel(cr)}</b>
+          ${restante > 0.004 ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Falta receber: <b style="color:var(--error)">${money(restante)}</b>
+            <button class="btn small dark" onclick="App.closeModal();App.registrarPagamento('${cr.id}')">💰 Registrar pagamento</button></div>` : ''}
+          ${itensPendentes.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">
+            ${itensPendentes.map(it => `<button class="btn small" onclick="App.closeModal();App.marcarItemEntregue('${cr.id}',${it.idx})" title="Marcar este item como entregue">📦 Entregar: ${esc(it.produtoNome)}</button>`).join('')}
+          </div>` : ''}
+        </div>`).join('')}
+      </div>`;
+    })()}
+
     <div class="panel" style="margin-top:12px">
       <h3>Histórico de vendas</h3>
       ${vendas.length ? (() => {

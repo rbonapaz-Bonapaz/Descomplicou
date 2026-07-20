@@ -192,7 +192,7 @@ function renderGrid() {
         ? `<del>De: ${money(p.precoOriginal)}</del><strong>Por: ${money(p.precoComDesconto)} <span class="ev-desconto-tag">-${descontoPercent(p.precoOriginal, p.precoComDesconto)}%</span></strong>`
         : `<strong>${money(p.precoComDesconto || p.precoOriginal)}</strong>`}</div>` : ''}
       <div class="ev-card-actions">
-        <button class="btn ${temComprar ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}" data-campo="comprarHoje">${temComprar ? '✓ Vou comprar hoje' : '🛒 Comprar hoje'}</button>
+        <button class="btn ${temComprar ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}" data-campo="comprarHoje">${temComprar ? '✓ Na sacola' : '🛍️ Adicionar à sacola'}</button>
         <button class="btn ${temInteresse ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}" data-campo="interesse">${temInteresse ? '✓ Tenho interesse' : '🤍 Tenho interesse'}</button>
       </div>
     </div>`;
@@ -225,7 +225,7 @@ function toggleWishlist(key, campo) {
   renderGrid();
 }
 
-// Resumo em tempo real, agora separado por lista (Comprar hoje / Interesse) — cada uma com seu
+// Resumo em tempo real, agora separado por lista (Sacola / Interesse) — cada uma com seu
 // próprio total (original x com desconto) e economia em destaque, já que um item pode contar
 // pras duas ao mesmo tempo.
 function updateWishBar() {
@@ -243,7 +243,7 @@ function updateWishBar() {
       : `<strong>${money(totalPagar)}</strong>`}</div>`;
   };
 
-  $('evResumo').innerHTML = linhaTotal(wishlist.filter(w => w.comprarHoje), '🛒 Comprar hoje')
+  $('evResumo').innerHTML = linhaTotal(wishlist.filter(w => w.comprarHoje), '🛍️ Sacola')
     + linhaTotal(wishlist.filter(w => w.interesse), '🤍 Interesse');
 }
 
@@ -295,7 +295,7 @@ async function enviarLista() {
   }
 }
 
-// Texto formatado da lista enviada, separando "Comprar hoje" de "Interesse" e mostrando o preço
+// Texto formatado da lista enviada, separando "Sacola" de "Interesse" e mostrando o preço
 // original riscado ao lado do preço com desconto quando o produto está em promoção — mesmo padrão
 // visual (de/por) já usado nos cards do catálogo.
 function montarMensagemLista(nome, lista) {
@@ -309,7 +309,7 @@ function montarMensagemLista(nome, lista) {
   const interesse = lista.filter(w => w.interesse);
   let msg = `Minha lista${evento?.nome ? ' — ' + evento.nome : ''} (${nome}):\n\n`;
   if (comprar.length) {
-    msg += `*🛒 Quero comprar hoje:*\n${comprar.map(linha).join('\n')}\n`;
+    msg += `*🛍️ Sacola:*\n${comprar.map(linha).join('\n')}\n`;
     msg += `Total: *${money(comprar.reduce((s, w) => s + Number(w.precoComDesconto || 0), 0))}*\n\n`;
   }
   if (interesse.length) {

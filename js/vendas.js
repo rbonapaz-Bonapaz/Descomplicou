@@ -1,5 +1,5 @@
 import { state, ref, setDoc, serverTimestamp, salesAgg, nomeAtualDoCliente, nomeChamado, numeroPedidoLabel, toast } from './state.js';
-import { $, esc, money, pill, normStatusPag, norm, thSort, withFocusPreserved } from './utils.js';
+import { $, esc, money, pill, normStatusPag, norm, thSort, withFocusPreserved, formatDataHoraBR } from './utils.js';
 import { whatsAppBtn } from './whatsapp.js';
 
 const LABEL_STATUS_PAG = { pendente: 'Pendente', pago: 'Pago', parcial: 'Parcial' };
@@ -37,7 +37,9 @@ export function detalheVendaHtml(c) {
     const temDesconto = original > it.precoUnitario;
     const tags = [
       it.motivo && it.motivo !== 'Venda' ? pill(it.motivo, 'pink') : '',
-      it.tipoEntrega === 'entrega_futura' && !it.entregue ? pill('entrega futura', 'orange') : '',
+      it.tipoEntrega === 'entrega_futura'
+        ? (it.entregue ? pill('Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : ''), 'green') : pill('Entrega futura', 'orange'))
+        : '',
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
     // Quantidade 1 sem desconto: "un." e "total" são o mesmo número — mostra só uma vez. Com
