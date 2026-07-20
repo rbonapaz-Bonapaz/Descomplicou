@@ -4,6 +4,13 @@ import { WA_ICON } from './whatsapp.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
 
+// Cada item da lista de desejo pode estar em "interesse" e/ou "comprarHoje" ao mesmo tempo (ex: a
+// visitante marcou os dois no catálogo, ou a consultora quer ver o item nas duas listas). Listas
+// antigas, enviadas antes desses campos existirem, não têm nenhuma das duas flags — nesse caso,
+// mantém o comportamento de antes (item conta pras duas ações) em vez de sumir de uma delas.
+const isInteresse = w => (w.interesse !== undefined || w.comprarHoje !== undefined) ? !!w.interesse : true;
+const isComprar = w => (w.interesse !== undefined || w.comprarHoje !== undefined) ? !!w.comprarHoje : true;
+
 // --- Alerta de novos leads (dashboard) ---
 // null = ainda não verificado nesta sessão; array = resultado da última verificação (pode ser
 // vazio). Verificação é sob demanda (chamada pelo dashboard), não em todo refresh — evita ficar
@@ -603,6 +610,16 @@ function renderListasInline(eventoId) {
       : `<button class="btn small dark" onclick="App.transformarEmCarrinho('${eventoId}','${l.id}')">🛒 Virar carrinho</button>
          <button class="btn small" onclick="App.marcarInteresseDaLista('${eventoId}','${l.id}')" title="Ela tem interesse mas ainda não vai comprar — salva os produtos permanentemente no cadastro dela pra você oferecer de novo depois">⭐ Lista de interesse</button>`}`;
   const situacaoLista = (l, matchId) => `${pill(l.jaCliente ? 'Já é cliente' : 'Lead novo', l.jaCliente ? 'blue' : 'green')}${l._clienteId ? pill('Vinculada', 'green') : matchId ? ` ${pill('📌 Telefone de ' + (cliById(matchId)?.nome || ''), 'orange', 'Mesmo WhatsApp de um cliente já cadastrado — clique em "Vincular cliente" pra confirmar')}` : ''}`;
+  // Resumo compacto (contagem + total de cada lista) com um botão que abre o detalhe item a item —
+  // a lista inteira não cabe legível na célula da tabela quando tem vários produtos.
+  const resumoProdutosLista = l => {
+    const itens = l.produtosDesejados || [];
+    if (!itens.length) return '-';
+    const totalComprar = itens.filter(isComprar).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
+    const totalInteresse = itens.filter(isInteresse).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
+    return `<button class="btn small" onclick="App.abrirProdutosLista('${eventoId}','${l.id}')">📋 ${itens.length} produto${itens.length === 1 ? '' : 's'}</button>
+      <div class="muted" style="font-size:11px;margin-top:4px">🛒 ${money(totalComprar)} · 🤍 ${money(totalInteresse)}</div>`;
+  };
   box.innerHTML = cabecalho + `<div class="table only-desktop" style="margin-top:8px"><table><thead><tr>
     <th>Nome</th><th>Aniversário</th><th>WhatsApp</th><th>Situação</th><th>Produtos</th><th>Tratado</th><th>Ações</th>
   </tr></thead><tbody>${listas.map(l => { const matchId = !l._clienteId ? matchCliente(l) : null; return `<tr>
@@ -610,7 +627,7 @@ function renderListasInline(eventoId) {
     <td>${esc(l.nascimento || '-')}</td>
     <td>${esc(l.whatsapp || '-')}</td>
     <td>${situacaoLista(l, matchId)}</td>
-    <td>${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</td>
+    <td>${resumoProdutosLista(l)}</td>
     <td>${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</td>
     <td style="display:flex;gap:4px;flex-wrap:wrap">${acoesLista(l)}</td>
   </tr>`; }).join('')}</tbody></table></div>
@@ -622,11 +639,82 @@ function renderListasInline(eventoId) {
     <div class="vcard-rows">
       <div class="vcard-row"><span>Aniversário</span><b>${esc(l.nascimento || '-')}</b></div>
       <div class="vcard-row"><span>WhatsApp</span><b>${esc(l.whatsapp || '-')}</b></div>
-      <div class="vcard-row"><span>Produtos</span><b style="text-align:right">${(l.produtosDesejados || []).map(p => esc(p.nome)).join(', ') || '-'}</b></div>
+      <div class="vcard-row"><span>Produtos</span><b style="text-align:right">${resumoProdutosLista(l)}</b></div>
       <div class="vcard-row"><span>Tratado</span><b>${toggleBareHtml('', !!l.tratado, `App.marcarLeadTratado('${eventoId}','${l.id}',this.checked)`)}</b></div>
     </div>
     <div class="vcard-actions">${acoesLista(l)}</div>
   </div>`; }).join('')}</div>`;
+}
+
+// Grava a lista de produtos alterada (mover item entre interesse/comprar, ou excluir) de volta no
+// Firestore e mantém o cache local em sincronia sem precisar recarregar a coleção inteira.
+async function persistirProdutosLista(eventoId, listaId, produtosDesejados) {
+  await setDoc(doc(db, 'eventosPublicos', eventoId, 'listasDesejo', listaId), { produtosDesejados }, { merge: true });
+  const l = (listasCache[eventoId] || []).find(x => x.id === listaId);
+  if (l) l.produtosDesejados = produtosDesejados;
+}
+
+// Painel com cada produto da lista e botões pra alternar "🤍 Interesse" / "🛒 Comprar hoje" por
+// item — um item pode estar marcado nos dois ao mesmo tempo; só o botão de excluir tira de vez.
+// Mobilidade bidirecional: mover um item pra "Comprar hoje" NÃO tira ele de "Interesse" sozinho.
+export function abrirProdutosLista(eventoId, listaId) {
+  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
+  if (!lista) return;
+  const itens = lista.produtosDesejados || [];
+  const totalComprar = itens.filter(isComprar).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
+  const totalInteresse = itens.filter(isInteresse).reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
+  const linha = (w, idx) => {
+    const temDesconto = Number(w.precoOriginal || 0) > Number(w.precoComDesconto || 0) + 0.004;
+    return `<div class="vcard" style="margin-bottom:8px">
+      <div class="vcard-top"><b>${esc(w.nome)}</b></div>
+      <div class="vcard-rows">
+        <div class="vcard-row"><span>Preço</span><b>${temDesconto ? `<del class="muted">${money(w.precoOriginal)}</del> ` : ''}${money(w.precoComDesconto)}</b></div>
+      </div>
+      <div class="vcard-actions" style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn small ${isComprar(w) ? 'dark' : ''}" onclick="App.moverItemLista('${eventoId}','${listaId}',${idx},'comprarHoje')" title="Alternar se este item está em 'Comprar hoje'">🛒 Comprar hoje</button>
+        <button class="btn small ${isInteresse(w) ? 'dark' : ''}" onclick="App.moverItemLista('${eventoId}','${listaId}',${idx},'interesse')" title="Alternar se este item está em 'Interesse'">🤍 Interesse</button>
+        <button class="btn small" style="color:var(--error)" onclick="App.excluirItemLista('${eventoId}','${listaId}',${idx})" title="Excluir este item da lista">🗑️</button>
+      </div>
+    </div>`;
+  };
+  showModal(`<h3>Produtos — ${esc(lista.nomeVisitante)}</h3>
+    <p class="muted">Clique nos botões pra marcar/desmarcar cada item em cada lista — mover pra uma não tira da outra, só o 🗑️ exclui de vez.</p>
+    <div class="cards" style="margin-top:10px">
+      <div class="card"><span>🛒 Comprar hoje</span><b>${money(totalComprar)}</b></div>
+      <div class="card"><span>🤍 Interesse</span><b>${money(totalInteresse)}</b></div>
+    </div>
+    <div style="margin-top:12px">${itens.length ? itens.map(linha).join('') : '<p class="muted">Nenhum produto.</p>'}</div>
+    <br><button class="btn ghost" onclick="App.closeModal()">Fechar</button>`);
+}
+
+export async function moverItemLista(eventoId, listaId, idx, campo) {
+  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
+  const item = lista?.produtosDesejados?.[idx];
+  if (!item) return;
+  const outroCampo = campo === 'interesse' ? 'comprarHoje' : 'interesse';
+  const itens = [...lista.produtosDesejados];
+  // Migra o item legado (sem flags) pra explícito na hora de alternar, preservando o outro campo
+  // como estava implicitamente (true — comportamento antigo contava pras duas listas).
+  itens[idx] = {
+    ...item,
+    [campo]: !(item[campo] !== undefined ? !!item[campo] : true),
+    [outroCampo]: item[outroCampo] !== undefined ? !!item[outroCampo] : true
+  };
+  await persistirProdutosLista(eventoId, listaId, itens);
+  abrirProdutosLista(eventoId, listaId);
+  renderListasInline(eventoId);
+}
+
+export async function excluirItemLista(eventoId, listaId, idx) {
+  const lista = (listasCache[eventoId] || []).find(l => l.id === listaId);
+  const item = lista?.produtosDesejados?.[idx];
+  if (!item) return;
+  if (!confirm(`Excluir "${item.nome}" desta lista? Não tem como desfazer.`)) return;
+  const itens = [...lista.produtosDesejados];
+  itens.splice(idx, 1);
+  await persistirProdutosLista(eventoId, listaId, itens);
+  if (itens.length) abrirProdutosLista(eventoId, listaId); else closeModal();
+  renderListasInline(eventoId);
 }
 
 // Marca/desmarca uma lista de desejo como "tratada" — libera (ou não) a exclusão do evento.
@@ -720,14 +808,14 @@ export async function marcarInteresseDaLista(eventoId, listaId) {
   const evento = state.data.eventos.find(e => e.id === eventoId);
 
   let novos = 0;
-  for (const w of lista.produtosDesejados || []) {
+  for (const w of (lista.produtosDesejados || []).filter(isInteresse)) {
     const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
     const adicionou = await adicionarInteresseCliente(clienteId, {
       produtoId: p?.id || w.nome, produtoNome: p?.nome || w.nome, codigoFarmasi: p?.codigoFarmasi || ''
     }, `Evento: ${evento?.nome || ''}`);
     if (adicionou) novos++;
   }
-  if (!novos) return toast('Esses produtos já estavam na lista de interesse dela, ou a lista está vazia.');
+  if (!novos) return toast('Nenhum produto marcado como "Interesse" nesta lista (ou já estavam salvos no cadastro dela).');
   window.App.refresh(`${novos} produto(s) adicionado(s) à lista de interesse permanente de ${lista.nomeVisitante}`);
 }
 
@@ -740,7 +828,7 @@ export async function transformarEmCarrinho(eventoId, listaId) {
   if (!cliente) return toast('Cliente não encontrado');
 
   const itens = [];
-  for (const w of lista.produtosDesejados || []) {
+  for (const w of (lista.produtosDesejados || []).filter(isComprar)) {
     const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
     if (!p) continue;
     const preco = Number(w.precoComDesconto || p.precoAtual || 0);
@@ -755,7 +843,7 @@ export async function transformarEmCarrinho(eventoId, listaId) {
       tipoEntrega, baixouEstoque: false
     });
   }
-  if (!itens.length) return toast('Nenhum produto da lista foi encontrado no seu catálogo atual.');
+  if (!itens.length) return toast('Nenhum produto marcado como "Comprar hoje" foi encontrado no seu catálogo atual.');
 
   const totalPedido = itens.reduce((s, i) => s + i.totalItem, 0);
   const custoTotal = itens.reduce((s, i) => s + i.custoTotal, 0);

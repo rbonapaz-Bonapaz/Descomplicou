@@ -405,7 +405,7 @@ export async function excluirTodosProdutos() {
 export function openProdutoForm(id = '') {
   const p = id ? prodById(id) : {};
   if (id) window.__produtosEditadosHoje.add(id);
-  const linhasCustom = state.profile?.linhasCustom || [];
+  const linhasCustom = [...(state.profile?.linhasCustom || [])].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const linhasAtuais = linhasDe(p);
   const linhaFieldHtml = linhasCustom.length ? `
     <input type="hidden" id="pLinha" value="${esc(p.linha || '')}">

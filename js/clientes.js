@@ -137,7 +137,7 @@ export function openClienteForm(id = '', prefill = null) {
     ${leadPrefill ? '<p class="muted">Pré-preenchido a partir de uma lista de desejos de evento.</p>' : ''}
     <div class="grid">
       <div class="field"><label>Nome</label><input id="cNome" value="${esc(c.nome || '')}"></div>
-      <div class="field"><label>Como deseja ser chamado(a)?</label><input id="cApelido" placeholder="Ex: Fabiula de Oliveira – Fabi" value="${esc(c.apelido || '')}"></div>
+      <div class="field"><label>Como deseja ser chamado(a)?</label><input id="cApelido" placeholder="Ex: Ana Paula Souza – Ana" value="${esc(c.apelido || '')}"></div>
       <div class="field"><label>WhatsApp</label><input id="cWhats" value="${esc(c.whatsapp || '')}"></div>
       <div class="field"><label>E-mail</label><input id="cEmail" value="${esc(c.email || '')}"></div>
       <div class="field"><label>Nascimento</label><input type="date" id="cNasc" value="${esc(c.nascimento || '')}"></div>

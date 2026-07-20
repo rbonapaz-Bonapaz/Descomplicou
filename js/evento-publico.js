@@ -176,7 +176,9 @@ function renderGrid() {
   const mostrarEstoque = evento.mostrarEstoque !== false;
 
   $('evGrid').innerHTML = itens.length ? itens.map(p => {
-    const naLista = wishlist.some(w => itemKey(w) === itemKey(p));
+    const item = wishlist.find(w => itemKey(w) === itemKey(p));
+    const temInteresse = !!item?.interesse;
+    const temComprar = !!item?.comprarHoje;
     const temDesconto = p.precoOriginal && p.precoComDesconto && p.precoOriginal !== p.precoComDesconto;
     const pronta = Number(p.prontaEntrega || 0);
     return `<div class="catalog-card">
@@ -189,45 +191,60 @@ function renderGrid() {
       ${mostrarPrecos ? `<div class="price-pair">${temDesconto
         ? `<del>De: ${money(p.precoOriginal)}</del><strong>Por: ${money(p.precoComDesconto)} <span class="ev-desconto-tag">-${descontoPercent(p.precoOriginal, p.precoComDesconto)}%</span></strong>`
         : `<strong>${money(p.precoComDesconto || p.precoOriginal)}</strong>`}</div>` : ''}
-      <button class="btn ${naLista ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}">${naLista ? '✓ Na minha lista' : '♥ Quero esse'}</button>
+      <div class="ev-card-actions">
+        <button class="btn ${temComprar ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}" data-campo="comprarHoje">${temComprar ? '✓ Vou comprar hoje' : '🛒 Comprar hoje'}</button>
+        <button class="btn ${temInteresse ? 'dark' : 'pink'} small ev-card-btn" data-key="${esc(itemKey(p))}" data-campo="interesse">${temInteresse ? '✓ Tenho interesse' : '🤍 Tenho interesse'}</button>
+      </div>
     </div>`;
   }).join('') : '<p class="muted">Nenhum produto encontrado.</p>';
 
   $('evGrid').querySelectorAll('button[data-key]').forEach(btn => {
-    btn.onclick = () => toggleWishlist(btn.dataset.key);
+    btn.onclick = () => toggleWishlist(btn.dataset.key, btn.dataset.campo);
   });
   updateWishBar();
 }
 
-function toggleWishlist(key) {
+// Cada produto pode estar marcado em "interesse" e/ou "comprarHoje" ao mesmo tempo — dois botões
+// independentes por card (ver renderGrid), não mais um único "quero esse". O item só sai da lista
+// de vez quando os dois campos ficam desmarcados.
+function toggleWishlist(key, campo) {
   const idx = wishlist.findIndex(w => itemKey(w) === key);
   if (idx >= 0) {
-    wishlist.splice(idx, 1);
+    const item = wishlist[idx];
+    item[campo] = !item[campo];
+    if (!item.interesse && !item.comprarHoje) wishlist.splice(idx, 1);
   } else {
     const p = (evento.produtos || []).find(x => itemKey(x) === key);
     if (p) wishlist.push({
       codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: p.linha || '',
       precoOriginal: Number(p.precoOriginal || p.precoComDesconto || 0),
-      precoComDesconto: Number(p.precoComDesconto || p.precoOriginal || 0)
+      precoComDesconto: Number(p.precoComDesconto || p.precoOriginal || 0),
+      interesse: campo === 'interesse', comprarHoje: campo === 'comprarHoje'
     });
   }
   renderGrid();
 }
 
-// Resumo em tempo real: valor original somado x valor que a visitante realmente vai pagar,
-// com a economia em destaque — reforça a percepção de oportunidade enquanto ela seleciona.
+// Resumo em tempo real, agora separado por lista (Comprar hoje / Interesse) — cada uma com seu
+// próprio total (original x com desconto) e economia em destaque, já que um item pode contar
+// pras duas ao mesmo tempo.
 function updateWishBar() {
   $('evCount').textContent = wishlist.length;
   $('evWishBar').classList.toggle('hidden', wishlist.length === 0);
   if (!wishlist.length) return;
 
-  const totalOriginal = wishlist.reduce((s, w) => s + Number(w.precoOriginal || 0), 0);
-  const totalPagar = wishlist.reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
-  const economia = totalOriginal - totalPagar;
+  const linhaTotal = (lista, rotulo) => {
+    if (!lista.length) return '';
+    const totalOriginal = lista.reduce((s, w) => s + Number(w.precoOriginal || 0), 0);
+    const totalPagar = lista.reduce((s, w) => s + Number(w.precoComDesconto || 0), 0);
+    const economia = totalOriginal - totalPagar;
+    return `<div class="ev-wish-linha"><span>${rotulo} (${lista.length})</span> ${economia > 0.004
+      ? `<del>${money(totalOriginal)}</del> <strong>${money(totalPagar)}</strong> <span class="ev-wish-economia">-${descontoPercent(totalOriginal, totalPagar)}%</span>`
+      : `<strong>${money(totalPagar)}</strong>`}</div>`;
+  };
 
-  $('evResumo').innerHTML = economia > 0.004
-    ? `<del>${money(totalOriginal)}</del> <strong>${money(totalPagar)}</strong> <span class="ev-wish-economia">você economiza ${money(economia)} (-${descontoPercent(totalOriginal, totalPagar)}%)</span>`
-    : `<strong>${money(totalPagar)}</strong>`;
+  $('evResumo').innerHTML = linhaTotal(wishlist.filter(w => w.comprarHoje), '🛒 Comprar hoje')
+    + linhaTotal(wishlist.filter(w => w.interesse), '🤍 Interesse');
 }
 
 $('evBusca').oninput = renderGrid;
@@ -237,9 +254,9 @@ $('evBtnEnviar').onclick = () => {
     <p class="muted">${wishlist.length} produto(s) selecionado(s): ${esc(wishlist.map(w => w.nome).join(', '))}</p>
     <div class="grid">
       <div class="field full"><label>Nome completo</label><input id="wNome" placeholder="Seu nome completo"></div>
-      <div class="field full"><label>Como você gosta de ser chamado(a)?</label><input id="wApelido" placeholder="Ex: Fabiula de Oliveira – Fabi"></div>
+      <div class="field full"><label>Como você gosta de ser chamado(a)?</label><input id="wApelido" placeholder="Ex: Ana Paula Souza – Ana"></div>
       <div class="field"><label>Data de aniversário (dia/mês/ano)</label><input id="wNascimento" placeholder="Ex: 15/05/1990"></div>
-      <div class="field"><label>WhatsApp (opcional)</label><input id="wWhats" placeholder="(11) 99999-9999"></div>
+      <div class="field"><label>WhatsApp</label><input id="wWhats" placeholder="(11) 99999-9999" required></div>
       <div class="field full"><label>Você já é cliente de ${esc(nomeInfluencer())}?</label>
         <select id="wJaCliente">
           <option value="nao">Ainda não sou cliente</option>
@@ -258,6 +275,7 @@ async function enviarLista() {
   const whats = $('wWhats').value.trim();
   const nascimento = $('wNascimento').value.trim();
   if (!nome) return toast('Informe seu nome completo');
+  if (!whats) return toast('Informe seu WhatsApp');
   const btn = $('wConfirmar');
   btn.disabled = true;
   try {
@@ -267,13 +285,55 @@ async function enviarLista() {
       produtosDesejados: wishlist,
       criadoEm: serverTimestamp()
     });
+    const listaEnviada = wishlist;
     wishlist = [];
     renderGrid();
-    showModal(`<h3>Lista enviada! 🎉</h3><p>Obrigada, ${esc(nome)}! ${esc(nomeInfluencer())} vai entrar em contato com você em breve.</p><br><button class="btn dark" onclick="closeModal()">Fechar</button>`);
+    mostrarConfirmacaoEnvio(nome, whats, listaEnviada);
   } catch (e) {
     btn.disabled = false;
     toast('Erro ao enviar: ' + e.message);
   }
+}
+
+// Texto formatado da lista enviada, separando "Comprar hoje" de "Interesse" e mostrando o preço
+// original riscado ao lado do preço com desconto quando o produto está em promoção — mesmo padrão
+// visual (de/por) já usado nos cards do catálogo.
+function montarMensagemLista(nome, lista) {
+  const linha = w => {
+    const temDesconto = Number(w.precoOriginal || 0) > Number(w.precoComDesconto || 0) + 0.004;
+    return temDesconto
+      ? `• ${w.nome} — ~${money(w.precoOriginal)}~ por *${money(w.precoComDesconto)}*`
+      : `• ${w.nome} — ${money(w.precoComDesconto)}`;
+  };
+  const comprar = lista.filter(w => w.comprarHoje);
+  const interesse = lista.filter(w => w.interesse);
+  let msg = `Minha lista${evento?.nome ? ' — ' + evento.nome : ''} (${nome}):\n\n`;
+  if (comprar.length) {
+    msg += `*🛒 Quero comprar hoje:*\n${comprar.map(linha).join('\n')}\n`;
+    msg += `Total: *${money(comprar.reduce((s, w) => s + Number(w.precoComDesconto || 0), 0))}*\n\n`;
+  }
+  if (interesse.length) {
+    msg += `*🤍 Tenho interesse:*\n${interesse.map(linha).join('\n')}\n`;
+    msg += `Total: *${money(interesse.reduce((s, w) => s + Number(w.precoComDesconto || 0), 0))}*\n\n`;
+  }
+  return msg.trim();
+}
+
+// Depois de enviar pra consultora, oferece mandar uma cópia da lista pro WhatsApp da própria
+// visitante — abre o wa.me com o número dela mesma e o texto pronto, pra ela ter tudo salvo lá.
+function mostrarConfirmacaoEnvio(nome, whats, lista) {
+  showModal(`<h3>Lista enviada! 🎉</h3>
+    <p>Obrigada, ${esc(nome)}! ${esc(nomeInfluencer())} vai entrar em contato com você em breve.</p>
+    <p class="muted">Quer receber uma cópia da sua lista no seu WhatsApp, pra guardar?</p><br>
+    <button class="btn dark" id="wCopiaWhats">📱 Sim, enviar cópia pro meu WhatsApp</button>
+    <button class="btn ghost" onclick="closeModal()">Não, obrigada</button>`);
+  $('wCopiaWhats').onclick = () => {
+    const digits = whats.replace(/\D/g, '');
+    const comPais = (digits.length === 10 || digits.length === 11) ? '55' + digits : digits;
+    const texto = encodeURIComponent(montarMensagemLista(nome, lista));
+    window.open(`https://wa.me/${comPais}?text=${texto}`, '_blank');
+    closeModal();
+  };
 }
 
 function showModal(h) { $('modalCard').innerHTML = h; $('modal').classList.remove('hidden'); }

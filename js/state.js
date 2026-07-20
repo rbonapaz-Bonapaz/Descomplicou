@@ -120,7 +120,7 @@ export function prodById(id) { return state.data.produtos.find(p => p.id === id)
 export function cliById(id) { return state.data.clientes.find(c => c.id === id); }
 export function nomeAtualDoCliente(clienteId, fallback) { return cliById(clienteId)?.nome || fallback || 'Cliente'; }
 // Como a consultora deve chamar o cliente nas mensagens de WhatsApp: o apelido cadastrado
-// ("Fabiula de Oliveira – Fabi") soa mais próximo que o nome completo formal.
+// ("Ana Paula Souza – Ana") soa mais próximo que o nome completo formal.
 export function nomeChamado(clienteId, fallback) {
   const c = cliById(clienteId);
   return (c?.apelido || c?.nome || fallback || 'Cliente').trim();

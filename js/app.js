@@ -62,7 +62,8 @@ import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, e
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
-  marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento } from './eventos.js';
+  marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
+  abrirProdutosLista, moverItemLista, excluirItemLista } from './eventos.js';
 import { renderSobre, abrirManualWeb } from './sobre.js';
 
 // --- Auth ---
@@ -453,6 +454,7 @@ window.App = {
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
   marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
+  abrirProdutosLista, moverItemLista, excluirItemLista,
   // Sobre
   renderSobre, abrirManualWeb
 };
