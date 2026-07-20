@@ -3,6 +3,11 @@ import { $, esc, money, norm, pill, labelLinha, toggleBareHtml, toggleHtml, linh
 import { WA_ICON } from './whatsapp.js';
 
 let listasCache = {}; // eventoId -> array de listas de desejo (carregadas sob demanda)
+// Eventos com a lista de desejo aberta (expandida) na tela. Fica só na sessão. Sem isso, qualquer
+// re-render de renderEventos (disparado por onSnapshot depois de vincular cliente, marcar tratado,
+// etc.) reconstruía o card do evento com o box #listas-... vazio, recolhendo a lista que a
+// consultora tinha aberto — o vínculo grava em 'clientes', o que dispara o re-render.
+const listasAbertas = new Set();
 
 // Cada item da lista de desejo pode estar em "interesse" e/ou "comprarHoje" ao mesmo tempo (ex: a
 // visitante marcou os dois no catálogo, ou a consultora quer ver o item nas duas listas). Listas
@@ -139,6 +144,11 @@ export function renderEventos() {
       <p class="muted">Crie um link público para divulgar produtos com desconto. Visitantes montam uma lista de desejos e se identificam — você recebe leads prontos para virar cliente.</p>
     </div>
     ${eventos.length ? eventos.map(eventoCard).join('') : '<div class="panel"><p class="muted">Nenhum evento criado ainda.</p></div>'}`;
+  // Repinta as listas que estavam abertas antes do re-render (ver listasAbertas) — mantém a lista
+  // de desejo aberta após vincular cliente/marcar tratado, em vez de recolher sozinha.
+  for (const eventoId of listasAbertas) {
+    if (listasCache[eventoId]) renderListasInline(eventoId);
+  }
 }
 
 function eventoCard(ev) {
@@ -569,6 +579,7 @@ export async function excluirEvento(id) {
 async function carregarListas(eventoId) {
   const box = $('listas-' + eventoId);
   if (!box) return;
+  listasAbertas.add(eventoId);
   box.innerHTML = '<p class="muted" style="margin-top:12px">Carregando...</p>';
   try {
     const snap = await getDocs(collection(db, 'eventosPublicos', eventoId, 'listasDesejo'));
@@ -587,7 +598,7 @@ async function carregarListas(eventoId) {
 export async function toggleListasEvento(eventoId) {
   const box = $('listas-' + eventoId);
   if (!box) return;
-  if (box.innerHTML.trim()) { box.innerHTML = ''; return; }
+  if (box.innerHTML.trim()) { box.innerHTML = ''; listasAbertas.delete(eventoId); return; }
   await carregarListas(eventoId);
 }
 
@@ -827,7 +838,15 @@ export async function marcarInteresseDaLista(eventoId, listaId) {
   const clienteId = lista._clienteId;
   if (!clienteId) return toast('Vincule esta pessoa a um cliente primeiro.');
   const novos = await sincronizarInteresseDaLista(eventoId, lista, clienteId);
-  if (!novos) return toast('Nenhum produto marcado como "Interesse" nesta lista (ou já estavam salvos no cadastro dela).');
+  if (!novos) {
+    // Distingue "não tem item de interesse" de "já estava tudo salvo" — desde o vínculo, a sincronia
+    // é automática, então na maioria das vezes é o segundo caso (e o toast antigo dava a entender,
+    // errado, que não havia interesse nenhum).
+    const qtdInteresse = (lista.produtosDesejados || []).filter(isInteresse).length;
+    return toast(qtdInteresse
+      ? `Os ${qtdInteresse} produto(s) de interesse desta lista já estão no cadastro de ${lista.nomeVisitante}.`
+      : 'Nenhum produto marcado como "Interesse" nesta lista.');
+  }
   window.App.refresh(`${novos} produto(s) adicionado(s) à lista de interesse permanente de ${lista.nomeVisitante}`);
 }
 
