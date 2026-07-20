@@ -1,5 +1,5 @@
 import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, cliById, reservadoEmAberto, entregaFuturaPendente } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR } from './utils.js';
+import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR, formatDataHoraBR } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 import { sincronizarProdutoNosEventos } from './eventos.js';
@@ -434,7 +434,8 @@ export function openProdutoForm(id = '') {
       <div class="field full">${toggleHtml('pAtivoCatalogo', p.ativoCatalogo !== false, '', 'Ativo no catálogo')}</div>
       <div class="field">${toggleHtml('pProntaEntrega', p.produtoProntaEntrega, '', 'Produto de pronta entrega')}</div>
       <div class="field">${toggleHtml('pMonitorar', p.monitorarEstoqueBaixo, '', 'Monitorar estoque baixo')}</div>
-      <div class="field">${toggleHtml('pConferido', p.conferido, '', '✓ Conferido')}</div>
+      <div class="field">${toggleHtml('pConferido', p.conferido, '', '✓ Conferido')}
+        ${p.conferido && p.dataConferencia ? `<small class="muted">Conferido em ${formatDataHoraBR(p.dataConferencia)}</small>` : ''}</div>
       <div class="field full">
         <label>Benefícios / descrição (aparece no catálogo)</label>
         <textarea id="pBeneficios" placeholder="Ex: Hidrata profundamente, controla oleosidade, vegano...">${esc(p.beneficios || '')}</textarea>
@@ -489,7 +490,13 @@ export async function saveProduto(id = '') {
     prontaEntregaManual: true,
     monitorarEstoqueBaixo: $('pMonitorar').checked,
     conferido: $('pConferido').checked,
-    dataConferencia: $('pConferido').checked ? serverTimestamp() : (anterior?.dataConferencia || null),
+    // Só grava uma NOVA data/hora quando o checkbox está sendo marcado agora (estava desmarcado
+    // antes). Sem essa condição, salvar o formulário com "Conferido" já marcado (ex: editando só o
+    // preço meses depois) reiniciava a data pra "agora" — dando a falsa impressão de que a
+    // conferência era recente quando na verdade nunca foi refeita de verdade.
+    dataConferencia: $('pConferido').checked
+      ? (anterior?.conferido ? (anterior?.dataConferencia || serverTimestamp()) : serverTimestamp())
+      : null,
     beneficios: $('pBeneficios').value,
     observacao: $('pObs').value,
     atualizadoEm: serverTimestamp()

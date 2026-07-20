@@ -543,6 +543,21 @@ export function formatDateBR(d) {
   return `${dd}/${m}/${y}`;
 }
 
+// Formata um Timestamp do Firestore (ou {seconds}/milissegundos) como 'DD/MM HH:MM' — usado em
+// registros de auditoria onde a hora exata importa (ex: quando um item de estoque foi conferido,
+// quando uma entrega foi marcada), não só o dia. Sem ano porque é sempre exibido perto do fato,
+// não como histórico de longo prazo — se precisar do ano, use formatDateBR num campo separado.
+export function formatDataHoraBR(ts) {
+  const ms = ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : Number(ts) || 0);
+  if (!ms) return '';
+  const d = new Date(ms);
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const hora = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dia}/${mes} ${hora}:${min}`;
+}
+
 // Soma dias a uma data 'YYYY-MM-DD', devolvendo outra data no mesmo formato.
 export function addDias(dataISO, dias) {
   const d = new Date(dataISO + 'T00:00:00');
