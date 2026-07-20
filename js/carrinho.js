@@ -186,6 +186,20 @@ function parcelamentoHtml(id, carr) {
 // já em memória (chave Pix do perfil + valor do pedido), um BR Code EMV estático (padrão Banco
 // Central), sem taxa nenhuma. Só aparece com "Pix" selecionado e a chave já cadastrada em Minha
 // Conta → Pagamento; sem chave cadastrada, mostra aviso pra configurar.
+// Monta o código Pix (Copia e Cola) + a URL da imagem do QR pra um valor/txid quaisquer — extraído
+// pra ser reaproveitado tanto no checkout do carrinho (valor = total do pedido) quanto no fluxo de
+// "lançar pagamento restante" (valor = o que está sendo recebido agora, que pode ser menor, ex: sinal).
+function gerarPixQr(valor, txid, size = 240) {
+  const chave = (state.profile?.pixChave || '').trim();
+  if (!chave) return null;
+  const codigo = gerarPixCopiaECola({
+    chave, tipoChave: state.profile?.pixChaveTipo, titular: state.profile?.pixTitular || state.profile?.nome,
+    cidade: state.profile?.pixCidade, valor, txid: String(txid).replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
+  });
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=1&data=${encodeURIComponent(codigo)}`;
+  return { codigo, qrSrc };
+}
+
 function pixCheckoutHtml(id, carr) {
   if (carr.pagamento !== 'Pix') return '';
   const chave = (state.profile?.pixChave || '').trim();
@@ -197,10 +211,7 @@ function pixCheckoutHtml(id, carr) {
     </div>`;
   }
   const total = Number(carr.totalPedido || 0);
-  const codigo = gerarPixCopiaECola({
-    chave, tipoChave: state.profile?.pixChaveTipo, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade, valor: total, txid: id.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
-  });
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&data=${encodeURIComponent(codigo)}`;
+  const { qrSrc } = gerarPixQr(total, id, 240);
   return `<div class="panel" style="background:#F7FAFC;margin-top:12px">
     <h4 style="margin:0 0 8px">📱 Pix — ${money(total)}</h4>
     <p class="muted">QR Code estático gerado na hora com sua Chave Pix — sem taxa, sem chamar API externa.</p>
@@ -208,6 +219,21 @@ function pixCheckoutHtml(id, carr) {
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
       <button class="btn dark" onclick="App.copiarCodigoPix('${id}')">📋 Copiar código Pix (Copia e Cola)</button>
     </div>
+  </div>`;
+}
+
+// Bloco compacto (imagem + botão copiar) usado dentro do modal de "lançar pagamento restante" —
+// mais enxuto que pixCheckoutHtml (sem o painel/título grandes) porque já vive dentro de outro form.
+function pixQrBlockHtml(valor, txid, onCopyAttr) {
+  const chave = (state.profile?.pixChave || '').trim();
+  if (!chave) {
+    return `<p class="muted" style="margin-top:8px">Cadastre sua Chave Pix em Minha Conta → Pagamento pra gerar o QR Code. <button class="btn small" onclick="App.goto('perfil');App.setSection('perfil','pagamento')">Cadastrar</button></p>`;
+  }
+  if (valor <= 0.004) return '<p class="muted" style="margin-top:8px">Informe o valor pra gerar o QR Code.</p>';
+  const { qrSrc } = gerarPixQr(valor, txid, 200);
+  return `<div style="text-align:center;margin:10px 0">
+    <img src="${qrSrc}" alt="QR Code Pix" style="border-radius:12px;border:1px solid var(--line);max-width:200px">
+    <br><button class="btn small dark" style="margin-top:8px" onclick="${onCopyAttr}">📋 Copiar código Pix</button>
   </div>`;
 }
 
@@ -500,8 +526,8 @@ function pagamentoResumoHtml(carr) {
       <div class="card"><span>Restante</span><b style="color:${restante > 0.004 ? 'var(--error)' : 'inherit'}">${money(restante)}</b></div>
       ${carr.clienteId && creditoDoCliente(carr.clienteId) > 0.004 ? `<div class="card"><span>Créditos do cliente</span><b style="color:var(--success)">${money(creditoDoCliente(carr.clienteId))}</b></div>` : ''}
     </div>
-    ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th></tr></thead><tbody>
-      ${pagamentos.map(p => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td></tr>`).join('')}
+    ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th></th></tr></thead><tbody>
+      ${pagamentos.map((p, idx) => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td><td><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${carr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td></tr>`).join('')}
     </tbody></table></div>` : ''}
     ${restante > 0.004 ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn dark small" onclick="App.registrarPagamento('${carr.id}')">💰 Registrar pagamento recebido</button>
@@ -581,6 +607,7 @@ export function registrarPagamento(carrinhoId) {
         </select>
       </div>
     </div>
+    <div id="pgPixWrap" class="hidden"></div>
     <p id="pgCalc" class="muted" style="margin-top:8px"></p><br>
     <button class="btn dark" onclick="App.confirmarPagamento('${carrinhoId}')">Registrar</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
@@ -604,10 +631,18 @@ export function atualizarCalcPagamento(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   const forma = $('pgForma')?.value;
   const ehCartao = forma === 'Cartão';
+  const ehPix = forma === 'Pix';
   $('pgCartaoWrap')?.classList.toggle('hidden', !ehCartao);
   const tipo = $('pgCartaoTipo')?.value || 'Crédito';
   const ehDebito = tipo === 'Débito';
   if ($('pgParcelasWrap')) $('pgParcelasWrap').style.display = ehDebito ? 'none' : '';
+
+  const pixWrap = $('pgPixWrap');
+  if (pixWrap) {
+    pixWrap.classList.toggle('hidden', !ehPix);
+    if (ehPix) pixWrap.innerHTML = pixQrBlockHtml(parseMoney($('pgValor')?.value || 0), carrinhoId + '_pg', `App.copiarCodigoPixValor('${carrinhoId}')`);
+  }
+
   if (!ehCartao) { if ($('pgCalc')) $('pgCalc').textContent = ''; return; }
 
   const valor = parseMoney($('pgValor')?.value || 0);
@@ -618,6 +653,51 @@ export function atualizarCalcPagamento(carrinhoId) {
       ? `Custo estimado da maquininha: ${money(custo.total)} — sai do seu lucro`
       : '';
   }
+}
+
+// Exclui um pagamento já lançado — corrige erro humano (ex: lançamento duplicado) sem apagar o
+// rastro: exige justificativa obrigatória e guarda o pagamento removido + o motivo num histórico
+// separado (carr.pagamentosExcluidos), pra auditoria. Devolve crédito do cliente se o pagamento
+// excluído era em "Créditos do cliente", e reverte o custo de cartão já somado numa venda finalizada.
+export async function excluirPagamento(carrinhoId, idx) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  const pagamentos = [...(carr?.pagamentos || [])];
+  const alvo = pagamentos[idx];
+  if (!alvo) return;
+  const justificativa = prompt(`Excluir o pagamento de ${money(alvo.valor)} (${alvo.forma || '-'}) de ${formatDateBR(alvo.data)}?\n\nInforme o motivo (obrigatório, fica registrado para auditoria):`);
+  if (justificativa === null) return;
+  if (!justificativa.trim()) return toast('Informe uma justificativa para excluir o pagamento.');
+
+  // Mesmo cuidado de scroll do toggle de entrega: reabrir o modal recria o container rolável.
+  const scrollAtual = document.querySelector('.modal-content-scroll')?.scrollTop || 0;
+
+  pagamentos.splice(idx, 1);
+  const valorPago = Math.round(pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0) * 100) / 100;
+  const statusPagamento = statusPagamentoAuto(carr.totalPedido, valorPago);
+  const pagamentosExcluidos = [...(carr.pagamentosExcluidos || []), { ...alvo, justificativa: justificativa.trim(), excluidoEm: today() }];
+
+  await setDoc(ref('carrinhos', carrinhoId), { pagamentos, valorPago, statusPagamento, pagamentosExcluidos, atualizadoEm: serverTimestamp() }, { merge: true });
+
+  if (alvo.forma === 'Créditos do cliente' && carr.clienteId) {
+    await ajustarCreditoCliente(carr.clienteId, Number(alvo.valor || 0));
+  }
+
+  if (Number(alvo.custoCartao || 0) > 0) {
+    const venda = state.data.vendas.find(v => v.carrinhoId === carrinhoId);
+    if (venda) {
+      const novoCustoCartao = Math.max(0, Number(venda.custoCartao || 0) - Number(alvo.custoCartao || 0));
+      const novoLucroReal = Number(venda.lucroTotal || 0) - novoCustoCartao;
+      await setDoc(ref('vendas', venda.id), {
+        custoCartao: novoCustoCartao, lucroReal: novoLucroReal,
+        margemReal: venda.totalPedido ? (novoLucroReal / venda.totalPedido) * 100 : 0
+      }, { merge: true });
+    }
+  }
+
+  await window.App.refresh(`Pagamento de ${money(alvo.valor)} excluído`);
+  openCarrinho(carrinhoId);
+  const cont = document.querySelector('.modal-content-scroll');
+  if (cont) cont.scrollTop = scrollAtual;
 }
 
 export async function confirmarPagamento(carrinhoId) {
@@ -920,14 +1000,26 @@ export async function abrirCheckoutInfinitePay(carrinhoId) {
 export async function copiarCodigoPix(carrinhoId) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   if (!carr) return;
-  const chave = (state.profile?.pixChave || '').trim();
-  if (!chave) return toast('Cadastre sua Chave Pix em Minha Conta → Pagamento primeiro.');
-  const codigo = gerarPixCopiaECola({
-    chave, tipoChave: state.profile?.pixChaveTipo, titular: state.profile?.pixTitular || state.profile?.nome, cidade: state.profile?.pixCidade,
-    valor: Number(carr.totalPedido || 0), txid: carrinhoId.replace(/[^A-Za-z0-9]/g, '').slice(0, 25)
-  });
+  const pix = gerarPixQr(Number(carr.totalPedido || 0), carrinhoId);
+  if (!pix) return toast('Cadastre sua Chave Pix em Minha Conta → Pagamento primeiro.');
   try {
-    await navigator.clipboard.writeText(codigo);
+    await navigator.clipboard.writeText(pix.codigo);
+    toast('Código Pix copiado — cole no app do banco.');
+  } catch (e) {
+    toast('Não consegui copiar automaticamente — selecione e copie o código manualmente.');
+  }
+}
+
+// Mesma cópia, mas usando o valor digitado no campo de "pagamento restante" (registrarPagamento) —
+// pode ser menor que o total do pedido (ex: recebendo só um sinal agora), então o código Pix
+// precisa levar esse valor parcial, não o total do carrinho.
+export async function copiarCodigoPixValor(carrinhoId) {
+  const valor = parseMoney($('pgValor')?.value || 0);
+  if (valor <= 0.004) return toast('Informe um valor maior que zero.');
+  const pix = gerarPixQr(valor, carrinhoId + '_pg');
+  if (!pix) return toast('Cadastre sua Chave Pix em Minha Conta → Pagamento primeiro.');
+  try {
+    await navigator.clipboard.writeText(pix.codigo);
     toast('Código Pix copiado — cole no app do banco.');
   } catch (e) {
     toast('Não consegui copiar automaticamente — selecione e copie o código manualmente.');
