@@ -1,5 +1,5 @@
-import { state, SECTIONS, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, cliById, reservadoEmAberto, entregaFuturaPendente } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, sectionTabsHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR, formatDataHoraBR } from './utils.js';
+import { state, col, ref, db, doc, collection, getDoc, getDocs, showModal, closeModal, toast, setDoc, addDoc, deleteDoc, deleteField, writeBatch, serverTimestamp, stockAgg, prodById, cliById, reservadoEmAberto, entregaFuturaPendente } from './state.js';
+import { $, esc, money, parseMoney, norm, pill, sortWrapped, sortBarHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, descontoPercent, today, combinarLinhas, formatDateBR, formatDataHoraBR } from './utils.js';
 import { gerarBeneficios } from './gemini.js';
 import { btnAdicionarPreEncomenda } from './preencomenda.js';
 import { sincronizarProdutoNosEventos } from './eventos.js';
@@ -123,8 +123,7 @@ function renderProdutosInner() {
         <div class="card"><span>Em estoque</span><b>${s.em.length}</b></div>
         <div class="card"><span>Sem estoque</span><b>${s.ps.filter(x => x.est <= 0).length}</b></div>
         <div class="card"><span>Sem custo</span><b>${s.sem.length}</b></div>
-      </div>
-      ${sectionTabsHtml('produtos', SECTIONS.produtos, sec)}`;
+      </div>`;
 
     if (sec === 'produtos') {
       html += `${state.profile?.usaBaseColetiva ? `<div class="panel" style="background:#F7FAFC">

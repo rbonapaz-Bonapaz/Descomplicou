@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=82">
+  <link rel="stylesheet" href="css/style.css?v=83">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -106,8 +106,8 @@
         <button data-page="clientes"><span class="nav-ico">👥</span>Clientes</button>
         <button data-page="agenda"><span class="nav-ico">📅</span>Agenda</button>
         <button data-page="vendas"><span class="nav-ico">🛒</span>Vendas / Carrinhos</button>
-        <button data-page="estoque"><span class="nav-ico">📦</span>Estoque</button>
-        <button data-page="produtos"><span class="nav-ico">🏷️</span>Produtos</button>
+        <button class="nav-parent" id="navProdEstToggle"><span class="nav-ico">🏷️</span>Produtos &amp; Estoque<span class="nav-chevron" id="navProdEstChevron">▸</span></button>
+        <div class="nav-children hidden" id="navProdEstChildren"></div>
         <div class="nav-section">Gestão</div>
         <button data-page="relatorios"><span class="nav-ico">📊</span>Relatórios</button>
         <button data-page="perfil"><span class="nav-ico">⚙️</span>Minha Conta</button>
@@ -160,11 +160,22 @@
     <button data-page="produtos"><span>🏷️</span>Produtos</button>
   </nav>
 
+  <!-- Folha inferior (bottom sheet) do celular: ao tocar em "Produtos & Estoque" no menu, abre aqui
+       a lista vertical dos destinos, fácil de tocar com o polegar — em vez de espremer uma sanfona
+       na barra horizontal. No desktop esse mesmo grupo vira sanfona na barra lateral (ver CSS). -->
+  <div id="prodEstSheet" class="prodest-sheet hidden">
+    <div class="prodest-sheet-backdrop" onclick="App.fecharProdEstSheet()"></div>
+    <div class="prodest-sheet-panel">
+      <div class="prodest-sheet-head"><b>Produtos &amp; Estoque</b><button class="prodest-sheet-close" onclick="App.fecharProdEstSheet()">✕</button></div>
+      <div id="prodEstSheetBody"></div>
+    </div>
+  </div>
+
   <div id="modal" class="modal hidden"><div id="modalCard"></div></div>
   <button id="modalMinBar" class="hidden" onclick="App.restaurarModal()">🗔 Janela minimizada — clique para voltar</button>
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=188"></script>
+  <script type="module" src="js/app.js?v=189"></script>
 </body>
 </html>

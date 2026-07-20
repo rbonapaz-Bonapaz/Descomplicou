@@ -33,8 +33,8 @@ const DESTINOS = [
 ];
 
 function abrirDestino(d) {
-  window.App.goto(d.page);
-  if (d.section) window.App.setSection(d.page, d.section);
+  if (d.section) window.App.gotoSecao(d.page, d.section);
+  else window.App.goto(d.page);
   fecharResultadosBusca();
 }
 

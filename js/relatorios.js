@@ -388,9 +388,9 @@ export function renderRelatorios() {
           </div>`),
         trocas: collapsibleCardHtml('trocas', 'Trocas', `
           <div class="list">
-            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
-            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Em andamento / pendentes</b></div><span class="tag orange">${tr.pendentes}</span></div>
-            <div class="list-item clickable" onclick="App.goto('estoque');App.setSection('estoque','trocas')"><div><b>Finalizadas</b></div><span class="tag green">${tr.finalizadas}</span></div>
+            <div class="list-item clickable" onclick="App.gotoSecao('estoque','trocas')"><div><b>Total de trocas</b></div><span class="tag blue">${tr.total}</span></div>
+            <div class="list-item clickable" onclick="App.gotoSecao('estoque','trocas')"><div><b>Em andamento / pendentes</b></div><span class="tag orange">${tr.pendentes}</span></div>
+            <div class="list-item clickable" onclick="App.gotoSecao('estoque','trocas')"><div><b>Finalizadas</b></div><span class="tag green">${tr.finalizadas}</span></div>
             <div class="list-item"><div><b>Valor total saído</b><small>${tr.itensSaida} item(ns)</small></div><span class="tag pink">${money(tr.valorSaida)}</span></div>
             <div class="list-item"><div><b>Valor total recebido</b><small>${tr.itensEntrada} item(ns)</small></div><span class="tag green">${money(tr.valorEntrada)}</span></div>
             <div class="list-item"><div><b>Diferença</b><small>Recebido - saído</small></div><span class="tag ${tr.valorEntrada - tr.valorSaida >= 0 ? 'green' : 'pink'}">${money(tr.valorEntrada - tr.valorSaida)}</span></div>

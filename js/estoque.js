@@ -1,6 +1,6 @@
-import { state, SECTIONS, col, ref, db, prodById, cliById, showModal, closeModal, toast,
+import { state, col, ref, db, prodById, cliById, showModal, closeModal, toast,
   runTransaction, serverTimestamp, doc, stockAgg, writeBatch, reservadoEmAberto, entregaFuturaPendente, setDoc } from './state.js';
-import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, sectionTabsHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
+import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
 
@@ -265,17 +265,17 @@ function renderEstoqueInner() {
     const todasLinhas = Array.from(new Set(state.data.produtos.flatMap(linhasDe))).sort((a, b) => labelLinha(a).localeCompare(labelLinha(b), 'pt-BR'));
 
     const sec = state.section.estoque;
-    let html = `
+    let html = '';
+
+    if (sec === 'estoque') {
+      html += `
       <div class="cards">
         <div class="card"><span>Produtos em estoque</span><b>${s.em.length}</b></div>
         <div class="card"><span>Unidades</span><b>${s.un}</b></div>
         <div class="card"><span>Valor investido</span><b>${money(s.invest)}</b></div>
         <div class="card"><span>${s.pot >= 0 ? 'Lucro potencial' : 'Prejuízo potencial'}</span><b style="color:${s.pot >= 0 ? 'var(--success)' : 'var(--error)'}">${money(s.pot)} <span style="font-size:11px;font-weight:700">(${s.pot >= 0 ? '+' : '-'}${s.invest ? Math.abs(s.pot / s.invest * 100).toFixed(0) : 0}%)</span></b></div>
       </div>
-      ${sectionTabsHtml('estoque', SECTIONS.estoque, sec)}`;
-
-    if (sec === 'estoque') {
-      html += `<div class="panel">
+      <div class="panel">
         <div class="panel-head">
           <h3>Visão do estoque</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap">

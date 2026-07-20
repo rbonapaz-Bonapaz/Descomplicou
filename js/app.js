@@ -171,7 +171,93 @@ async function checkAutoSyncBaseColetiva() {
 }
 
 // --- Navigation ---
-document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => goto(b.dataset.page));
+// Fonte de dados ÚNICA do grupo "Produtos & Estoque" — os dois renderizadores (sanfona da barra
+// lateral no desktop e folha inferior no celular) leem daqui, então nunca saem de sincronia. Cada
+// destino é um par (página, seção) já existente em SECTIONS/state.section.
+const SUBNAV_PROD_EST = [
+  { page: 'produtos', section: 'produtos', label: 'Lista de produtos', ico: '🏷️' },
+  { page: 'estoque', section: 'estoque', label: 'Estoque', ico: '📦' },
+  { page: 'estoque', section: 'preEncomenda', label: 'Pré-encomenda', ico: '📋' },
+  { page: 'estoque', section: 'trocas', label: 'Trocas', ico: '🔄' },
+  { page: 'estoque', section: 'semLucro', label: 'Saídas sem lucro', ico: '🎁' },
+  { page: 'estoque', section: 'importar', label: 'Importar pedido', ico: '📥' },
+  { page: 'produtos', section: 'linhas', label: 'Linhas', ico: '🎨' }
+];
+
+// Preenche a sanfona (desktop) e a folha inferior (mobile) a partir de SUBNAV_PROD_EST e liga os
+// cliques em gotoSecao. Chamado uma vez na inicialização.
+function renderSubnavProdEst() {
+  const filhosHtml = SUBNAV_PROD_EST.map(i =>
+    `<button class="nav-child" data-page="${i.page}" data-section="${i.section}"><span class="nav-ico">${i.ico}</span>${i.label}</button>`).join('');
+  const cont = $('navProdEstChildren');
+  if (cont) cont.innerHTML = filhosHtml;
+
+  const sheetHtml = SUBNAV_PROD_EST.map(i =>
+    `<button class="prodest-sheet-item" data-page="${i.page}" data-section="${i.section}"><span>${i.ico}</span>${i.label}</button>`).join('');
+  const sheetBody = $('prodEstSheetBody');
+  if (sheetBody) sheetBody.innerHTML = sheetHtml;
+
+  document.querySelectorAll('#navProdEstChildren button, #prodEstSheetBody button').forEach(b =>
+    b.onclick = () => gotoSecao(b.dataset.page, b.dataset.section));
+}
+
+// Vai pra uma tela+seção num passo só (substitui o antigo par goto+setSection usado em deep-links
+// espalhados pelo app). Quando o destino é um dos sub-itens de "Produtos & Estoque", também abre a
+// sanfona e troca o título do topo pro rótulo do sub-item (senão o cabeçalho ficaria preso em
+// "Estoque" mesmo vendo Trocas); pra qualquer outra página/seção (ex: perfil), só navega normal —
+// sem mexer no estado da sanfona, que é exclusiva desse grupo.
+function gotoSecao(page, section) {
+  state.section[page] = section;
+  fecharProdEstSheet();
+  const item = SUBNAV_PROD_EST.find(i => i.page === page && i.section === section);
+  if (item) { localStorage.setItem('prodEstAberto', '1'); aplicarEstadoProdEst(); }
+  goto(page);
+  if (item) { $('title').textContent = item.label; $('eyebrow').textContent = 'Produtos & Estoque'; }
+  marcarNavAtivo();
+}
+
+// Clique no pai "Produtos & Estoque": no celular abre a folha inferior; no desktop/tablet alterna a
+// sanfona (e lembra o estado).
+function toggleProdEst() {
+  if (window.matchMedia('(max-width:760px)').matches) {
+    $('prodEstSheet')?.classList.remove('hidden');
+    return;
+  }
+  const cont = $('navProdEstChildren');
+  const expandido = cont && cont.classList.contains('hidden');
+  localStorage.setItem('prodEstAberto', expandido ? '1' : '0');
+  aplicarEstadoProdEst();
+}
+function fecharProdEstSheet() { $('prodEstSheet')?.classList.add('hidden'); }
+function aplicarEstadoProdEst() {
+  const cont = $('navProdEstChildren');
+  if (!cont) return;
+  const aberto = localStorage.getItem('prodEstAberto') === '1';
+  cont.classList.toggle('hidden', !aberto);
+  const chev = $('navProdEstChevron');
+  if (chev) chev.textContent = aberto ? '▾' : '▸';
+}
+
+// Destaque do item ativo, ciente de sub-seções: um filho só fica ativo se página E seção baterem;
+// o pai fica ativo quando qualquer filho está ativo; itens simples ativam só pela página.
+function marcarNavAtivo() {
+  const p = paginaAtiva, sec = state.section[p];
+  document.querySelectorAll('#nav button, #bottomNav button, #prodEstSheetBody button').forEach(b => {
+    let active;
+    if (b.classList.contains('nav-parent')) active = SUBNAV_PROD_EST.some(i => i.page === p && i.section === sec);
+    else if (b.dataset.section) active = b.dataset.page === p && b.dataset.section === sec;
+    else active = b.dataset.page === p;
+    b.classList.toggle('active', active);
+  });
+}
+
+document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => {
+  if (b.classList.contains('nav-parent')) return toggleProdEst();
+  if (b.dataset.section) return gotoSecao(b.dataset.page, b.dataset.section);
+  goto(b.dataset.page);
+});
+renderSubnavProdEst();
+aplicarEstadoProdEst();
 
 // Menu lateral recolhível — útil quando uma janela minimizada (modalMinBar) ou outra parte da tela
 // fica espremida pelo menu. Fica só com os ícones, sem nomes das telas. Estado persiste entre
@@ -196,7 +282,7 @@ document.addEventListener('click', e => {
 
 function goto(p) {
   paginaAtiva = p;
-  document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  marcarNavAtivo();
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   $(p).classList.add('active');
   RENDER_PAGE[p]?.(); // lazy render: desenha a tela de destino agora, com os dados atuais
@@ -379,7 +465,7 @@ function setSection(pagina, secao) {
 
 // --- Global API ---
 window.App = {
-  goto, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, toggleSidebar,
+  goto, gotoSecao, fecharProdEstSheet, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, toggleSidebar,
   renderResultadosBusca, fecharResultadosBusca,
   // Auth
   switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle,
