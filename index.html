@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=83">
+  <link rel="stylesheet" href="css/style.css?v=84">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -98,19 +98,19 @@
         <div><b id="brandName">CRM de Vendas</b></div>
       </div>
       <nav id="nav">
-        <button class="active" data-page="dashboard"><span class="nav-ico">🏠</span>Painel Inicial</button>
+        <button class="active" data-page="dashboard"><span class="nav-ico">🏠</span><span class="nav-label-full">Painel Inicial</span><span class="nav-label-short">Painel</span></button>
         <div class="nav-section">Catálogo</div>
         <button data-page="catalogo"><span class="nav-ico">📖</span>Catálogo</button>
-        <button data-page="eventos"><span class="nav-ico">🎫</span>Catálogo de Eventos</button>
+        <button data-page="eventos"><span class="nav-ico">🎫</span><span class="nav-label-full">Catálogo de Eventos</span><span class="nav-label-short">Eventos</span></button>
         <div class="nav-section">Operação</div>
         <button data-page="clientes"><span class="nav-ico">👥</span>Clientes</button>
         <button data-page="agenda"><span class="nav-ico">📅</span>Agenda</button>
-        <button data-page="vendas"><span class="nav-ico">🛒</span>Vendas / Carrinhos</button>
-        <button class="nav-parent" id="navProdEstToggle"><span class="nav-ico">🏷️</span>Produtos &amp; Estoque<span class="nav-chevron" id="navProdEstChevron">▸</span></button>
+        <button data-page="vendas"><span class="nav-ico">🛒</span><span class="nav-label-full">Vendas / Carrinhos</span><span class="nav-label-short">Vendas</span></button>
+        <button class="nav-parent" id="navProdEstToggle"><span class="nav-ico">🏷️</span><span class="nav-label-full">Produtos &amp; Estoque</span><span class="nav-label-short">Produtos</span><span class="nav-chevron" id="navProdEstChevron">▸</span></button>
         <div class="nav-children hidden" id="navProdEstChildren"></div>
         <div class="nav-section">Gestão</div>
         <button data-page="relatorios"><span class="nav-ico">📊</span>Relatórios</button>
-        <button data-page="perfil"><span class="nav-ico">⚙️</span>Minha Conta</button>
+        <button data-page="perfil"><span class="nav-ico">⚙️</span><span class="nav-label-full">Minha Conta</span><span class="nav-label-short">Conta</span></button>
         <button data-page="admin" class="admin-only hidden"><span class="nav-ico">🛠️</span>Admin</button>
         <button data-page="sobre"><span class="nav-ico">ℹ️</span>Sobre</button>
       </nav>

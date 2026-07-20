@@ -43,6 +43,22 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 .nav-ico{display:inline-block;width:20px;overflow:hidden;margin-right:10px;font-size:15px;text-align:center;vertical-align:middle}
 @media(max-width:760px){.nav-ico{margin-right:6px}}
 
+/* Rótulos longos ("Catálogo de Eventos", "Vendas / Carrinhos", "Produtos & Estoque"...) viram
+   versão curta só no mobile (fileira horizontal do #nav) — sem isso, ficam bem mais largos que os
+   vizinhos curtos ("Agenda", "Sobre"), e como o botão inativo não tem fundo, o trecho final deles
+   parece um vazio enorme na rolagem em vez de fazer parte do próprio botão. */
+.nav-label-short{display:none}
+@media(max-width:760px){
+  .nav-label-full{display:none}
+  .nav-label-short{display:inline}
+  /* Fundo sutil em TODO botão do menu mobile (não só o ativo) — dá contorno visível à fileira
+     inteira, eliminando a ilusão de "buraco" nos botões inativos mais largos. #nav (id) tem mais
+     especificidade que a regra genérica "nav button.active" (classe) — por isso repete aqui o
+     destaque ativo explicitamente, senão o cinza claro venceria até o botão selecionado. */
+  #nav button{background:#F7FAFC;border-color:var(--line);padding:9px 12px}
+  #nav button.active{background:color-mix(in srgb,var(--p) 14%,white);border-color:color-mix(in srgb,var(--p) 35%,white);color:var(--ps)}
+}
+
 /* Sanfona "Produtos & Estoque" (desktop/tablet, coluna vertical da sidebar) — o pai só
    expande/recolhe os filhos, nunca abre tela sozinho. No mobile (ver bloco abaixo) os filhos ficam
    sempre escondidos aqui: quem assume a lista de destinos lá é a folha inferior (prodest-sheet). */
