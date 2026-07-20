@@ -590,12 +590,17 @@ export function abrirCompraFornecedor(id) {
   showModal(`<h3>🧾 Compra — ${esc(c.pessoa)}</h3>
     ${pill(c.pago ? 'Pago' : 'A pagar', c.pago ? 'green' : 'red')}
     <div class="table table-scroll" style="margin-top:10px">
-      ${itens.length ? `<table><thead><tr><th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th></th></tr></thead><tbody>
+      ${itens.length ? `<table><thead><tr><th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Estoque</th><th></th></tr></thead><tbody>
         ${itens.map((it, idx) => `<tr>
           <td data-label="Produto">${esc(it.produtoNome)}</td>
           <td data-label="Qtd">${it.quantidade}</td>
           <td data-label="Valor unit.">${money(it.valorUnitario)}</td>
           <td data-label="Total">${money(it.valorTotal)}</td>
+          <td data-label="Estoque">${it.estoqueLancado
+      ? '<span class="tag green" title="Já deu entrada no estoque">✓ No estoque</span>'
+      : it.produtoId
+        ? `<button class="btn small" style="color:var(--error)" onclick="App.lancarEntradaItemFornecedor('${id}',${idx})" title="Este item ainda não entrou no estoque — clique pra dar a entrada que faltou">⚠️ Dar entrada</button>`
+        : '<span class="muted">-</span>'}</td>
           <td>${!c.pago ? `<button class="btn small" style="color:var(--error)" onclick="App.removerItemCompraFornecedor('${id}',${idx})" title="Remover item">✗</button>` : ''}</td>
         </tr>`).join('')}
       </tbody></table>` : '<p class="muted">Nenhum item ainda.</p>'}
@@ -637,11 +642,38 @@ export async function adicionarItemCompraFornecedor(id) {
     return toast(`Erro ao dar entrada no estoque: ${e.message}`);
   }
 
-  const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd };
+  // estoqueLancado:true marca que este item já deu entrada no estoque acima — distingue os itens
+  // novos (que entram na hora) dos itens históricos, lançados antes de a entrada automática existir,
+  // que ficam só como dívida sem estoque. Só os sem essa flag ganham o botão de reparo no editor.
+  const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd, estoqueLancado: true };
   const itens = [...(c.itens || []), item];
   const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
   await setDoc(ref('despesas', id), { itens, valorTotal, atualizadoEm: serverTimestamp() }, { merge: true });
   await window.App.refresh();
+  abrirCompraFornecedor(id);
+}
+
+// Reparo de itens históricos: compras de fornecedor lançadas antes de a entrada automática existir
+// ficaram só como dívida, sem nunca somar no estoque (ex: a compra da Analu). Este botão dá a
+// entrada que faltou, de forma explícita e um item por vez — com confirmação, porque não há como o
+// sistema saber sozinho se um item antigo já entrou ou não (contaria em dobro se lançasse tudo).
+export async function lancarEntradaItemFornecedor(id, idx) {
+  const c = state.data.despesas.find(x => x.id === id);
+  if (!c) return;
+  const itens = [...(c.itens || [])];
+  const item = itens[idx];
+  if (!item || !item.produtoId) return toast('Item sem produto vinculado — não dá pra lançar no estoque.');
+  if (item.estoqueLancado) return toast('Este item já entrou no estoque.');
+  if (!confirm(`Isso vai somar ${item.quantidade} un. de "${item.produtoNome}" no estoque. Use só se este item ainda NÃO entrou no estoque. Continuar?`)) return;
+  try {
+    await perguntarAtivarProntaEntrega(item.produtoId);
+    await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario || 0, `Compra de ${c.pessoa}`, 'fornecedor');
+  } catch (e) {
+    return toast(`Erro ao dar entrada no estoque: ${e.message}`);
+  }
+  itens[idx] = { ...item, estoqueLancado: true };
+  await setDoc(ref('despesas', id), { itens, atualizadoEm: serverTimestamp() }, { merge: true });
+  await window.App.refresh(`Entrada de ${item.quantidade} un. de ${item.produtoNome} registrada no estoque`);
   abrirCompraFornecedor(id);
 }
 

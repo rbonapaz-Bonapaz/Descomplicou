@@ -744,12 +744,21 @@ export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   const it = carr?.itens?.[idx];
   if (!it) return;
+  // Reabrir o modal recria o container rolável (.modal-content-scroll), zerando o scrollTop e
+  // pulando a tela pro topo. Guarda a posição atual antes de re-renderizar e restaura depois, pra
+  // marcar/desmarcar a entrega sem sair do lugar (principalmente no mobile, com a lista longa).
+  const scrollAtual = document.querySelector('.modal-content-scroll')?.scrollTop || 0;
+  const restaurarScroll = () => {
+    const cont = document.querySelector('.modal-content-scroll');
+    if (cont) cont.scrollTop = scrollAtual;
+  };
   // Exclui as reservas do próprio carrinho da conta — senão o item, já reservado por ele mesmo
   // quando "pronta_entrega", contaria contra si na hora de tentar religar.
   const disp = estoqueDisponivel(it.produtoId, carrinhoId);
   if (entregarAgora && disp < it.quantidade) {
     toast(`Sem estoque disponível pra entregar "${it.produtoNome}" agora (disponível: ${disp} de ${it.quantidade}).`);
     openCarrinho(carrinhoId);
+    restaurarScroll();
     return;
   }
   it.tipoEntrega = entregarAgora ? 'pronta_entrega' : 'entrega_futura';
@@ -761,6 +770,7 @@ export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
   }, { merge: true });
   await window.App.refresh();
   openCarrinho(carrinhoId);
+  restaurarScroll();
 }
 
 export async function removerItemCarrinho(carrinhoId, idx) {
