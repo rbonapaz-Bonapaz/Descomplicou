@@ -35,14 +35,17 @@ export function detalheVendaHtml(c) {
   return itens.map(it => {
     const original = Number(it.precoOriginal || 0);
     const temDesconto = original > it.precoUnitario;
-    // Todo item mostra "Entregue" (com data/hora, se tiver) ou "Entrega futura" — pronta entrega
-    // conta como entregue assim que baixou o estoque na finalização (mesma convenção do carrinho).
+    // Todo item mostra "Entregue" ou "Entrega futura" — pronta entrega conta como entregue assim
+    // que baixou o estoque na finalização (mesma convenção do carrinho). A data/hora da entrega vai
+    // pequena numa linha à parte, embaixo do nome (pedido do usuário), não dentro da pílula.
     const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
     const tags = [
       it.motivo && it.motivo !== 'Venda' ? pill(it.motivo, 'pink') : '',
-      pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange'),
+      pill(entregue ? 'Entregue' : 'Entrega futura', entregue ? 'green' : 'orange'),
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
+    const dataEntregaHtml = entregue && it.entregueEm
+      ? `<div class="muted" style="font-size:10px;margin-top:2px">Entregue em ${formatDataHoraBR(it.entregueEm)}</div>` : '';
     // Quantidade 1 sem desconto: "un." e "total" são o mesmo número — mostra só uma vez. Com
     // desconto, o preço original riscado já vira a pílula "-X%" acima, então também não repete
     // aqui; só o total (ou "un. • total" quando há mais de 1 unidade) precisa aparecer.
@@ -51,6 +54,7 @@ export function detalheVendaHtml(c) {
       : `<b>${money(it.precoUnitario)}</b>`;
     return `<div class="venda-item">
       <div class="venda-item-nome">${it.quantidade}× ${it.kitNome ? `<small class="muted">🎁 ${esc(it.kitNome)}</small> ` : ''}${esc(it.produtoNome)} ${tags}</div>
+      ${dataEntregaHtml}
       <div class="venda-item-preco">${precoLinha}</div>
     </div>`;
   }).join('');

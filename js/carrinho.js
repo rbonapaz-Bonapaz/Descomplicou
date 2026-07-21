@@ -20,12 +20,14 @@ function carrinhoItemCardHtml(it, idx, id, editavel) {
   const temDesconto = original > it.precoUnitario;
   const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
   const temEstoqueAgora = editavel ? estoqueDisponivel(it.produtoId, id) >= it.quantidade : null;
-  // Fora de edição (pedido já finalizado): todo item mostra "Entregue" (com data/hora, se tiver) ou
-  // "Entrega futura" — pronta entrega conta como entregue assim que baixou o estoque na finalização.
+  // Fora de edição (pedido já finalizado): todo item mostra "Entregue" ou "Entrega futura" — pronta
+  // entrega conta como entregue assim que baixou o estoque na finalização. Data/hora vai pequena
+  // numa linha à parte, embaixo da pílula (não dentro dela).
   const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
   const entregaPill = editavel
     ? pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')
-    : pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange');
+    : pill(entregue ? 'Entregue' : 'Entrega futura', entregue ? 'green' : 'orange')
+      + (entregue && it.entregueEm ? `<br><small class="muted" style="font-size:10px">${formatDataHoraBR(it.entregueEm)}</small>` : '');
   return `<div class="vcard">
     <div class="vcard-top" style="align-items:flex-start">
       <div style="min-width:0">
@@ -575,7 +577,8 @@ function openCarrinhoView(carr) {
       <td>${money(it.totalItem)}</td>
       <td>${(() => {
         const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
-        return pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange');
+        return pill(entregue ? 'Entregue' : 'Entrega futura', entregue ? 'green' : 'orange')
+          + (entregue && it.entregueEm ? `<br><small class="muted" style="font-size:10px">${formatDataHoraBR(it.entregueEm)}</small>` : '');
       })()}</td>
     </tr>`;
     }).join('')}</tbody></table></div>
