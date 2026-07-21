@@ -1,5 +1,5 @@
 import { state, carrinhoById, cliById, numeroPedidoLabel } from './state.js';
-import { $, esc, money, normStatusPag, descontoPercent, logoNegocioHtml } from './utils.js';
+import { $, esc, money, normStatusPag, descontoPercent, logoNegocioHtml, porGenero } from './utils.js';
 import { calcCustoCartao } from './carrinho.js';
 
 function qrData() {
@@ -37,6 +37,11 @@ function itemRowHtml(it, interno) {
   const beneficios = prod?.beneficios || '';
   const original = Number(it.precoOriginal || it.precoUnitario || 0);
   const temDesconto = original > it.precoUnitario;
+  // Item de motivo não-venda (Brinde, Mostruário, Parceria, Consumo próprio, Perda, Ajuste) sempre
+  // tem precoUnitario:0 — descontoPercent(original, 0) devolve 0 (trata "atual zerado" como valor
+  // inválido, não como "100% off"), o que mostrava "Desconto de 0%" num item que na verdade é de
+  // graça. Mostra o motivo em vez de calcular percentual nesse caso.
+  const ehNaoVenda = it.motivo && it.motivo !== 'Venda';
   return `<div class="pedido-item">
     ${prod?.imagem ? `<img src="${esc(prod.imagem)}">` : '<div class="pedido-item-noimg">sem foto</div>'}
     <div class="pedido-item-main">
@@ -44,7 +49,8 @@ function itemRowHtml(it, interno) {
       <div class="pedido-item-nome">${esc(it.produtoNome)}</div>
       <div class="pedido-item-cod">Código ${esc(it.codigoFarmasi || '-')}</div>
       ${beneficios ? `<div class="pedido-item-benef">${esc(beneficios)}</div>` : ''}
-      ${temDesconto ? `<div><span class="pedido-desc-tag">Desconto de ${descontoPercent(original, it.precoUnitario)}% neste item</span></div>` : ''}
+      ${ehNaoVenda ? `<div><span class="pedido-desc-tag">🎁 ${esc(it.motivo)}</span></div>`
+        : temDesconto ? `<div><span class="pedido-desc-tag">Desconto de ${descontoPercent(original, it.precoUnitario)}% neste item</span></div>` : ''}
       ${interno ? `<div class="pedido-item-interno">Custo ${money(it.custoMedioUsado)}/un. • custo total ${money(it.custoTotal)} • lucro ${money(it.lucroTotal)}${it.tipoEntrega === 'entrega_futura' ? ` • ${it.entregue ? 'entregue' : 'pendente'}` : ''}</div>` : ''}
     </div>
     <div class="pedido-qtd">${it.quantidade}×</div>
@@ -139,8 +145,13 @@ function gerarPdf(carr, interno) {
   }
 
   if (!interno) {
+    // Mensagem de quem agradece (a consultora/consultor, não a cliente) — usa o gênero cadastrado
+    // no perfil dela/dele em vez de assumir feminino sempre.
+    const msgPadrao = porGenero(p.genero, {
+      f: 'Obrigada pela preferência! 💕', m: 'Obrigado pela preferência! 💕', x: 'Agradecemos a preferência! 💕'
+    });
     html += `<div class="pedido-agradecimento">
-      <p>${esc(p.mensagemPadrao || 'Obrigada pela preferência! 💕')}</p>
+      <p>${esc(p.mensagemPadrao || msgPadrao)}</p>
     </div>`;
   }
 

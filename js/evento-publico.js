@@ -323,10 +323,10 @@ function montarMensagemLista(nome, lista) {
 // visitante — abre o wa.me com o número dela mesma e o texto pronto, pra ela ter tudo salvo lá.
 function mostrarConfirmacaoEnvio(nome, whats, lista) {
   showModal(`<h3>Lista enviada! 🎉</h3>
-    <p>Obrigada, ${esc(nome)}! ${esc(nomeInfluencer())} vai entrar em contato com você em breve.</p>
+    <p>Agradecemos, ${esc(nome)}! ${esc(nomeInfluencer())} vai entrar em contato com você em breve.</p>
     <p class="muted">Quer receber uma cópia da sua lista no seu WhatsApp, pra guardar?</p><br>
     <button class="btn dark" id="wCopiaWhats">📱 Sim, enviar cópia pro meu WhatsApp</button>
-    <button class="btn ghost" onclick="closeModal()">Não, obrigada</button>`);
+    <button class="btn ghost" onclick="closeModal()">Agora não</button>`);
   $('wCopiaWhats').onclick = () => {
     const digits = whats.replace(/\D/g, '');
     const comPais = (digits.length === 10 || digits.length === 11) ? '55' + digits : digits;

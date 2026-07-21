@@ -74,7 +74,7 @@ a:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid 
 
 /* No celular (barra horizontal), a sanfona não faz sentido — o pai vira um chip que abre a folha
    inferior (prodest-sheet) em vez de expandir filhos ali dentro da fileira rolável. */
-@media(max-width:760px){.nav-children{display:none!important}.nav-chevron{display:none}}
+@media(max-width:760px){.nav-children{display:none!important}.nav-chevron{display:none}.nav-parent{width:auto}}
 
 /* Folha inferior (bottom sheet) do celular — lista vertical dos destinos de "Produtos & Estoque",
    fácil de tocar com o polegar. Só é aberta pelo JS quando a viewport é mobile. */
