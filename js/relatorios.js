@@ -403,7 +403,7 @@ export function renderRelatorios() {
           ${qtdSaidasSemCusto ? `<p class="muted" style="margin-top:8px">⚠️ ${qtdSaidasSemCusto} saída(s) acima com custo R$0 registrado (produto sem custo médio cadastrado na época) — valor real provavelmente maior.</p>` : ''}`),
         curvaAbc: collapsibleHtml('relCurvaAbc', '<h3>Curva ABC detalhada</h3>', `
           <p class="muted" style="margin:0 0 8px">Produtos ordenados por faturamento no período — classe A é quem puxa até 80% do total, B até 95%, C o resto. Foco de reposição/promoção deve ser nos produtos A.</p>
-          ${abcDetalhe.length ? `<div class="table table-scroll"><table><thead><tr>
+          ${abcDetalhe.length ? `<div class="table"><table><thead><tr>
             <th>Produto</th><th>Faturamento</th><th>% do total</th><th>% acumulado</th><th>Classe</th>
           </tr></thead><tbody>${abcDetalhe.map(x => `<tr>
             <td data-label="Produto">${esc(x.nome)}</td>
@@ -422,7 +422,7 @@ export function renderRelatorios() {
 
     <div id="relPorProduto">${collapsibleHtml('relPorProdutoCard', '<h3>Relatório completo por produto</h3>', `
       <p class="muted">Todos os produtos vendidos no período — clique no cabeçalho pra ordenar.</p>
-      ${produtosVendidos.length ? `<div class="table table-scroll"><table><thead><tr>
+      ${produtosVendidos.length ? `<div class="table"><table><thead><tr>
         ${thSort('Produto', 'nome', relProdSort, 'relProdSort')}
         ${thSort('Qtd vendida', 'q', relProdSort, 'relProdSort')}
         ${thSort('Preço médio', 'precoMedio', relProdSort, 'relProdSort')}
