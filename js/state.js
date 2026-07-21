@@ -206,7 +206,24 @@ export function salesAgg(days = 30) {
     const ck = v.clienteId || v.clienteNome;
     cli[ck] = cli[ck] || { nome: v.clienteNome, q: 0, rec: 0, luc: 0 };
     cli[ck].q++; cli[ck].rec += r; cli[ck].luc += l;
-    pay[v.pagamento || 'Não informado'] = (pay[v.pagamento || 'Não informado'] || 0) + r;
+    // Forma de pagamento REALMENTE efetivada: soma pelo que foi de fato registrado em
+    // carr.pagamentos[] (cada lançamento tem sua própria forma — Pix, Cartão etc.), não pelo campo
+    // único v.pagamento (que é só a escolha feita na hora de finalizar e nunca muda depois, mesmo
+    // que o pedido tenha sido fechado como "A combinar" e o pagamento real só tenha vindo depois via
+    // "Registrar pagamento"). O que ainda não foi recebido continua contando como "A combinar" —
+    // não é receita perdida, só ainda não tem forma definida de verdade.
+    const pagamentosReais = carr?.pagamentos || [];
+    if (pagamentosReais.length) {
+      pagamentosReais.forEach(p => {
+        const forma = p.forma || 'Não informado';
+        pay[forma] = (pay[forma] || 0) + Number(p.valor || 0);
+      });
+      const totalPago = pagamentosReais.reduce((s, p) => s + Number(p.valor || 0), 0);
+      const faltaReceber = r - totalPago;
+      if (faltaReceber > 0.004) pay['A combinar'] = (pay['A combinar'] || 0) + faltaReceber;
+    } else {
+      pay[v.pagamento || 'Não informado'] = (pay[v.pagamento || 'Não informado'] || 0) + r;
+    }
   });
   const top5 = (o, k) => Object.values(o).sort((a, b) => b[k] - a[k]).slice(0, 5);
   const top = (o, k) => top5(o, k)[0];
