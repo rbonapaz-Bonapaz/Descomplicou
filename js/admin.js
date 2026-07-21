@@ -1,5 +1,5 @@
-import { state, SECTIONS, db, setDoc, getDoc, getDocs, addDoc, deleteDoc, writeBatch, serverTimestamp, doc, collection, showModal, closeModal, toast } from './state.js';
-import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, sectionTabsHtml, formatDateBR, addDias, today, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero, combinarLinhas } from './utils.js';
+import { state, db, setDoc, getDoc, getDocs, addDoc, deleteDoc, writeBatch, serverTimestamp, doc, collection, showModal, closeModal, toast } from './state.js';
+import { $, esc, money, parseMoney, norm, pill, withFocusPreserved, formatDateBR, addDias, today, toggleHtml, linhasDe, labelLinha, descontoPercent, porGenero, combinarLinhas } from './utils.js';
 import { extractProdutos, dedupBatch } from './importar.js';
 
 const PLANOS = ['teste', 'gratuito', 'mensal', 'semestral', 'anual', 'vencido', 'cancelado'];
@@ -15,7 +15,7 @@ export function renderAdmin() {
   }
   const sec = state.section.admin;
   const cfg = state.config || {};
-  let html = sectionTabsHtml('admin', SECTIONS.admin, sec);
+  let html = '';
 
   if (sec === 'consultoras') {
     html += `<div class="panel">

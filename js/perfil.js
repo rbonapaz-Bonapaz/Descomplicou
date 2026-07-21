@@ -1,6 +1,6 @@
-import { state, SECTIONS, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
+import { state, db, col, ref, setDoc, serverTimestamp, doc, getDocs, writeBatch, planoInfo, toast,
   auth, GoogleAuthProvider, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from './state.js';
-import { $, esc, money, pill, fileToDataURL, sectionTabsHtml, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml, normalizarChavePix, aplicarTemaPersonalizado } from './utils.js';
+import { $, esc, money, pill, fileToDataURL, formatDateBR, today, toggleHtml, toggleBareHtml, senhaInputHtml, normalizarChavePix, aplicarTemaPersonalizado } from './utils.js';
 import { biometriaDisponivel, temBiometriaAtiva } from './biometria.js';
 import { ehLoginEmail, traduzErro } from './auth.js';
 import { conectarGoogleAgenda, desconectarGoogleAgenda, googleAgendaConectada } from './googleAgenda.js';
@@ -19,7 +19,7 @@ export function renderPerfil() {
   const foto = p.fotoPerfil || state.user?.photoURL || '';
   const logo = p.logoNegocio || '';
   const sec = state.section.perfil;
-  let html = sectionTabsHtml('perfil', SECTIONS.perfil, sec);
+  let html = '';
 
   if (sec === 'conta') {
     html += `<div class="panel">

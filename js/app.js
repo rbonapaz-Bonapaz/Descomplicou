@@ -171,80 +171,115 @@ async function checkAutoSyncBaseColetiva() {
 }
 
 // --- Navigation ---
-// Fonte de dados ÚNICA do grupo "Produtos & Estoque" — os dois renderizadores (sanfona da barra
-// lateral no desktop e folha inferior no celular) leem daqui, então nunca saem de sincronia. Cada
-// destino é um par (página, seção) já existente em SECTIONS/state.section.
-const SUBNAV_PROD_EST = [
-  { page: 'produtos', section: 'produtos', label: 'Lista de produtos', ico: '🏷️' },
-  { page: 'estoque', section: 'estoque', label: 'Estoque', ico: '📦' },
-  { page: 'estoque', section: 'preEncomenda', label: 'Pré-encomenda', ico: '📋' },
-  { page: 'estoque', section: 'trocas', label: 'Trocas', ico: '🔄' },
-  { page: 'estoque', section: 'semLucro', label: 'Saídas sem lucro', ico: '🎁' },
-  { page: 'estoque', section: 'importar', label: 'Importar pedido', ico: '📥' },
-  { page: 'produtos', section: 'linhas', label: 'Linhas', ico: '🎨' }
-];
+// Fonte de dados ÚNICA de cada grupo de menu com sub-itens — os dois renderizadores (sanfona da
+// barra lateral no desktop e folha inferior no celular) leem daqui, então nunca saem de sincronia.
+// Cada destino é um par (página, seção) já existente em SECTIONS/state.section. "Produtos & Estoque"
+// funde dois itens de sidebar que antes eram soltos; os demais grupos são cada um uma única página
+// (Minha Conta, Admin, Sobre) cujas abas horizontais internas viram sub-itens do menu.
+const NAV_GROUPS = {
+  prodEst: { label: 'Produtos & Estoque', itens: [
+    { page: 'produtos', section: 'produtos', label: 'Lista de produtos', ico: '🏷️' },
+    { page: 'estoque', section: 'estoque', label: 'Estoque', ico: '📦' },
+    { page: 'estoque', section: 'preEncomenda', label: 'Pré-encomenda', ico: '📋' },
+    { page: 'estoque', section: 'trocas', label: 'Trocas', ico: '🔄' },
+    { page: 'estoque', section: 'semLucro', label: 'Saídas sem lucro', ico: '🎁' },
+    { page: 'estoque', section: 'importar', label: 'Importar pedido', ico: '📥' },
+    { page: 'produtos', section: 'linhas', label: 'Linhas', ico: '🎨' }
+  ] },
+  perfil: { label: 'Minha Conta', itens: [
+    { page: 'perfil', section: 'conta', label: 'Conta', ico: '👤' },
+    { page: 'perfil', section: 'pagamento', label: 'Pagamentos', ico: '💳' },
+    { page: 'perfil', section: 'integracoes', label: 'Integrações', ico: '🔌' },
+    { page: 'perfil', section: 'relatorios', label: 'Relatórios (config.)', ico: '📊' },
+    { page: 'perfil', section: 'plano', label: 'Meu plano', ico: '💎' },
+    { page: 'perfil', section: 'seguranca', label: 'Segurança', ico: '🔒' }
+  ] },
+  admin: { label: 'Admin', itens: [
+    { page: 'admin', section: 'consultoras', label: 'Consultoras', ico: '👥' },
+    { page: 'admin', section: 'financeiro', label: 'Financeiro', ico: '💰' },
+    { page: 'admin', section: 'catalogoMestre', label: 'Catálogo mestre', ico: '📚' },
+    { page: 'admin', section: 'planos', label: 'Planos', ico: '🗂️' }
+  ] },
+  sobre: { label: 'Sobre', itens: [
+    { page: 'sobre', section: 'apresentacao', label: 'Sobre o sistema', ico: 'ℹ️' },
+    { page: 'sobre', section: 'dados', label: 'Dados do sistema', ico: '🗄️' },
+    { page: 'sobre', section: 'manual', label: 'Manual', ico: '📖' },
+    { page: 'sobre', section: 'novidades', label: 'Novidades', ico: '🆕' }
+  ] }
+};
 
-// Preenche a sanfona (desktop) e a folha inferior (mobile) a partir de SUBNAV_PROD_EST e liga os
-// cliques em gotoSecao. Chamado uma vez na inicialização.
-function renderSubnavProdEst() {
-  const filhosHtml = SUBNAV_PROD_EST.map(i =>
-    `<button class="nav-child" data-page="${i.page}" data-section="${i.section}"><span class="nav-ico">${i.ico}</span>${i.label}</button>`).join('');
-  const cont = $('navProdEstChildren');
-  if (cont) cont.innerHTML = filhosHtml;
-
-  const sheetHtml = SUBNAV_PROD_EST.map(i =>
-    `<button class="prodest-sheet-item" data-page="${i.page}" data-section="${i.section}"><span>${i.ico}</span>${i.label}</button>`).join('');
-  const sheetBody = $('prodEstSheetBody');
-  if (sheetBody) sheetBody.innerHTML = sheetHtml;
-
-  document.querySelectorAll('#navProdEstChildren button, #prodEstSheetBody button').forEach(b =>
-    b.onclick = () => gotoSecao(b.dataset.page, b.dataset.section));
+// Preenche a sanfona (desktop) de cada grupo a partir de NAV_GROUPS e liga os cliques em gotoSecao.
+// Chamado uma vez na inicialização.
+function renderNavGroups() {
+  for (const [key, grupo] of Object.entries(NAV_GROUPS)) {
+    const cont = document.querySelector(`[data-group-children="${key}"]`);
+    if (!cont) continue;
+    cont.innerHTML = grupo.itens.map(i =>
+      `<button class="nav-child" data-page="${i.page}" data-section="${i.section}"><span class="nav-ico">${i.ico}</span>${i.label}</button>`).join('');
+    cont.querySelectorAll('button').forEach(b => b.onclick = () => gotoSecao(b.dataset.page, b.dataset.section));
+  }
 }
 
 // Vai pra uma tela+seção num passo só (substitui o antigo par goto+setSection usado em deep-links
-// espalhados pelo app). Quando o destino é um dos sub-itens de "Produtos & Estoque", também abre a
-// sanfona e troca o título do topo pro rótulo do sub-item (senão o cabeçalho ficaria preso em
-// "Estoque" mesmo vendo Trocas); pra qualquer outra página/seção (ex: perfil), só navega normal —
-// sem mexer no estado da sanfona, que é exclusiva desse grupo.
+// espalhados pelo app). Quando o destino é um sub-item de algum grupo (NAV_GROUPS), também abre a
+// sanfona daquele grupo e troca o título do topo pro rótulo do sub-item (senão o cabeçalho ficaria
+// preso em "Estoque" mesmo vendo Trocas); pra qualquer página/seção fora de um grupo, só navega
+// normal — sem mexer em nenhuma sanfona.
 function gotoSecao(page, section) {
   state.section[page] = section;
-  fecharProdEstSheet();
-  const item = SUBNAV_PROD_EST.find(i => i.page === page && i.section === section);
-  if (item) { localStorage.setItem('prodEstAberto', '1'); aplicarEstadoProdEst(); }
+  fecharNavGroupSheet();
+  const achado = acharGrupoDoItem(page, section);
+  if (achado) { localStorage.setItem('navGroupAberto_' + achado.key, '1'); aplicarEstadoNavGroup(achado.key); }
   goto(page);
-  if (item) { $('title').textContent = item.label; $('eyebrow').textContent = 'Produtos & Estoque'; }
+  if (achado) { $('title').textContent = achado.item.label; $('eyebrow').textContent = achado.grupo.label; }
   marcarNavAtivo();
 }
 
-// Clique no pai "Produtos & Estoque": no celular abre a folha inferior; no desktop/tablet alterna a
-// sanfona (e lembra o estado).
-function toggleProdEst() {
+function acharGrupoDoItem(page, section) {
+  for (const [key, grupo] of Object.entries(NAV_GROUPS)) {
+    const item = grupo.itens.find(i => i.page === page && i.section === section);
+    if (item) return { key, grupo, item };
+  }
+  return null;
+}
+
+// Clique no pai de um grupo (ex: "Produtos & Estoque", "Minha Conta"): no celular abre a folha
+// inferior compartilhada com os itens daquele grupo; no desktop/tablet alterna a sanfona dele (e
+// lembra o estado por grupo).
+function toggleNavGroup(key) {
+  const grupo = NAV_GROUPS[key];
+  if (!grupo) return;
   if (window.matchMedia('(max-width:760px)').matches) {
-    $('prodEstSheet')?.classList.remove('hidden');
+    $('navGroupSheetTitle').textContent = grupo.label;
+    $('navGroupSheetBody').innerHTML = grupo.itens.map(i =>
+      `<button class="prodest-sheet-item" data-page="${i.page}" data-section="${i.section}"><span>${i.ico}</span>${i.label}</button>`).join('');
+    $('navGroupSheetBody').querySelectorAll('button').forEach(b => b.onclick = () => gotoSecao(b.dataset.page, b.dataset.section));
+    $('navGroupSheet')?.classList.remove('hidden');
     return;
   }
-  const cont = $('navProdEstChildren');
+  const cont = document.querySelector(`[data-group-children="${key}"]`);
   const expandido = cont && cont.classList.contains('hidden');
-  localStorage.setItem('prodEstAberto', expandido ? '1' : '0');
-  aplicarEstadoProdEst();
+  localStorage.setItem('navGroupAberto_' + key, expandido ? '1' : '0');
+  aplicarEstadoNavGroup(key);
 }
-function fecharProdEstSheet() { $('prodEstSheet')?.classList.add('hidden'); }
-function aplicarEstadoProdEst() {
-  const cont = $('navProdEstChildren');
+function fecharNavGroupSheet() { $('navGroupSheet')?.classList.add('hidden'); }
+function aplicarEstadoNavGroup(key) {
+  const cont = document.querySelector(`[data-group-children="${key}"]`);
   if (!cont) return;
-  const aberto = localStorage.getItem('prodEstAberto') === '1';
+  const aberto = localStorage.getItem('navGroupAberto_' + key) === '1';
   cont.classList.toggle('hidden', !aberto);
-  const chev = $('navProdEstChevron');
+  const chev = document.querySelector(`[data-group="${key}"] .nav-chevron`);
   if (chev) chev.textContent = aberto ? '▾' : '▸';
 }
 
 // Destaque do item ativo, ciente de sub-seções: um filho só fica ativo se página E seção baterem;
-// o pai fica ativo quando qualquer filho está ativo; itens simples ativam só pela página.
+// o pai de um grupo fica ativo quando qualquer filho dele está ativo; itens simples ativam só pela
+// página.
 function marcarNavAtivo() {
   const p = paginaAtiva, sec = state.section[p];
-  document.querySelectorAll('#nav button, #bottomNav button, #prodEstSheetBody button').forEach(b => {
+  document.querySelectorAll('#nav button, #bottomNav button, #navGroupSheetBody button').forEach(b => {
     let active;
-    if (b.classList.contains('nav-parent')) active = SUBNAV_PROD_EST.some(i => i.page === p && i.section === sec);
+    if (b.dataset.group) active = NAV_GROUPS[b.dataset.group]?.itens.some(i => i.page === p && i.section === sec);
     else if (b.dataset.section) active = b.dataset.page === p && b.dataset.section === sec;
     else active = b.dataset.page === p;
     b.classList.toggle('active', active);
@@ -252,12 +287,12 @@ function marcarNavAtivo() {
 }
 
 document.querySelectorAll('#nav button, #bottomNav button').forEach(b => b.onclick = () => {
-  if (b.classList.contains('nav-parent')) return toggleProdEst();
+  if (b.dataset.group) return toggleNavGroup(b.dataset.group);
   if (b.dataset.section) return gotoSecao(b.dataset.page, b.dataset.section);
   goto(b.dataset.page);
 });
-renderSubnavProdEst();
-aplicarEstadoProdEst();
+renderNavGroups();
+for (const key of Object.keys(NAV_GROUPS)) aplicarEstadoNavGroup(key);
 
 // Menu lateral recolhível — útil quando uma janela minimizada (modalMinBar) ou outra parte da tela
 // fica espremida pelo menu. Fica só com os ícones, sem nomes das telas. Estado persiste entre
@@ -465,7 +500,7 @@ function setSection(pagina, secao) {
 
 // --- Global API ---
 window.App = {
-  goto, gotoSecao, fecharProdEstSheet, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, toggleSidebar,
+  goto, gotoSecao, fecharNavGroupSheet, setFilter, setSection, closeModal, minimizarModal, restaurarModal, refresh, filtrarSearchPicker, escolherSearchPicker, fecharSearchPicker, toggleSidebar,
   renderResultadosBusca, fecharResultadosBusca,
   // Auth
   switchLoginTab, loginEmail, cadastrarEmail, resetPassword, alterarSenha, criarSenhaGoogle,

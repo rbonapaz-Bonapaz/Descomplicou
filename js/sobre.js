@@ -1,5 +1,5 @@
-import { state, SECTIONS, toast } from './state.js';
-import { $, esc, sectionTabsHtml, formatDateBR, collapsibleHtml } from './utils.js';
+import { state, toast } from './state.js';
+import { $, esc, formatDateBR, collapsibleHtml } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
@@ -610,7 +610,7 @@ function manualHtml() {
 
 export function renderSobre() {
   const sec = state.section.sobre;
-  let html = sectionTabsHtml('sobre', SECTIONS.sobre, sec);
+  let html = '';
   if (sec === 'apresentacao') html += apresentacaoHtml();
   if (sec === 'dados') html += dadosSistemaHtml();
   if (sec === 'novidades') html += novidadesHtml();

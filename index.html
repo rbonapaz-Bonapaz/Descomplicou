@@ -106,13 +106,16 @@
         <button data-page="clientes"><span class="nav-ico">👥</span>Clientes</button>
         <button data-page="agenda"><span class="nav-ico">📅</span>Agenda</button>
         <button data-page="vendas"><span class="nav-ico">🛒</span><span class="nav-label-full">Vendas / Carrinhos</span><span class="nav-label-short">Vendas</span></button>
-        <button class="nav-parent" id="navProdEstToggle"><span class="nav-ico">🏷️</span><span class="nav-label-full">Produtos &amp; Estoque</span><span class="nav-label-short">Produtos</span><span class="nav-chevron" id="navProdEstChevron">▸</span></button>
-        <div class="nav-children hidden" id="navProdEstChildren"></div>
+        <button class="nav-parent" data-group="prodEst"><span class="nav-ico">🏷️</span><span class="nav-label-full">Produtos &amp; Estoque</span><span class="nav-label-short">Produtos</span><span class="nav-chevron">▸</span></button>
+        <div class="nav-children hidden" data-group-children="prodEst"></div>
         <div class="nav-section">Gestão</div>
         <button data-page="relatorios"><span class="nav-ico">📊</span>Relatórios</button>
-        <button data-page="perfil"><span class="nav-ico">⚙️</span><span class="nav-label-full">Minha Conta</span><span class="nav-label-short">Conta</span></button>
-        <button data-page="admin" class="admin-only hidden"><span class="nav-ico">🛠️</span>Admin</button>
-        <button data-page="sobre"><span class="nav-ico">ℹ️</span>Sobre</button>
+        <button class="nav-parent" data-group="perfil"><span class="nav-ico">⚙️</span><span class="nav-label-full">Minha Conta</span><span class="nav-label-short">Conta</span><span class="nav-chevron">▸</span></button>
+        <div class="nav-children hidden" data-group-children="perfil"></div>
+        <button class="nav-parent admin-only hidden" data-group="admin"><span class="nav-ico">🛠️</span>Admin<span class="nav-chevron">▸</span></button>
+        <div class="nav-children hidden" data-group-children="admin"></div>
+        <button class="nav-parent" data-group="sobre"><span class="nav-ico">ℹ️</span>Sobre<span class="nav-chevron">▸</span></button>
+        <div class="nav-children hidden" data-group-children="sobre"></div>
       </nav>
       <button id="btnLogout" class="btn side-logout">Sair</button>
     </aside>
@@ -160,14 +163,16 @@
     <button data-page="produtos"><span>🏷️</span>Produtos</button>
   </nav>
 
-  <!-- Folha inferior (bottom sheet) do celular: ao tocar em "Produtos & Estoque" no menu, abre aqui
-       a lista vertical dos destinos, fácil de tocar com o polegar — em vez de espremer uma sanfona
-       na barra horizontal. No desktop esse mesmo grupo vira sanfona na barra lateral (ver CSS). -->
-  <div id="prodEstSheet" class="prodest-sheet hidden">
-    <div class="prodest-sheet-backdrop" onclick="App.fecharProdEstSheet()"></div>
+  <!-- Folha inferior (bottom sheet) do celular: ao tocar em qualquer menu com sub-itens (Produtos &
+       Estoque, Minha Conta, Admin, Sobre), abre aqui a lista vertical dos destinos daquele grupo,
+       fácil de tocar com o polegar — em vez de espremer uma sanfona na barra horizontal. Um único
+       elemento compartilhado por todos os grupos (o JS troca o título/conteúdo conforme o grupo
+       tocado); no desktop cada grupo vira sanfona própria na barra lateral (ver CSS). -->
+  <div id="navGroupSheet" class="prodest-sheet hidden">
+    <div class="prodest-sheet-backdrop" onclick="App.fecharNavGroupSheet()"></div>
     <div class="prodest-sheet-panel">
-      <div class="prodest-sheet-head"><b>Produtos &amp; Estoque</b><button class="prodest-sheet-close" onclick="App.fecharProdEstSheet()">✕</button></div>
-      <div id="prodEstSheetBody"></div>
+      <div class="prodest-sheet-head"><b id="navGroupSheetTitle"></b><button class="prodest-sheet-close" onclick="App.fecharNavGroupSheet()">✕</button></div>
+      <div id="navGroupSheetBody"></div>
     </div>
   </div>
 
@@ -176,6 +181,6 @@
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=190"></script>
+  <script type="module" src="js/app.js?v=191"></script>
 </body>
 </html>
