@@ -35,11 +35,12 @@ export function detalheVendaHtml(c) {
   return itens.map(it => {
     const original = Number(it.precoOriginal || 0);
     const temDesconto = original > it.precoUnitario;
+    // Todo item mostra "Entregue" (com data/hora, se tiver) ou "Entrega futura" — pronta entrega
+    // conta como entregue assim que baixou o estoque na finalização (mesma convenção do carrinho).
+    const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
     const tags = [
       it.motivo && it.motivo !== 'Venda' ? pill(it.motivo, 'pink') : '',
-      it.tipoEntrega === 'entrega_futura'
-        ? (it.entregue ? pill('Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : ''), 'green') : pill('Entrega futura', 'orange'))
-        : '',
+      pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange'),
       temDesconto ? pill('-' + Math.round((1 - it.precoUnitario / original) * 100) + '%', 'green') : ''
     ].join('');
     // Quantidade 1 sem desconto: "un." e "total" são o mesmo número — mostra só uma vez. Com

@@ -20,10 +20,12 @@ function carrinhoItemCardHtml(it, idx, id, editavel) {
   const temDesconto = original > it.precoUnitario;
   const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
   const temEstoqueAgora = editavel ? estoqueDisponivel(it.produtoId, id) >= it.quantidade : null;
+  // Fora de edição (pedido já finalizado): todo item mostra "Entregue" (com data/hora, se tiver) ou
+  // "Entrega futura" — pronta entrega conta como entregue assim que baixou o estoque na finalização.
+  const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
   const entregaPill = editavel
     ? pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')
-    : pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' : 'Futura') : 'Pronta',
-        it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'green' : 'orange') : 'green');
+    : pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange');
   return `<div class="vcard">
     <div class="vcard-top" style="align-items:flex-start">
       <div style="min-width:0">
@@ -521,8 +523,10 @@ function openCarrinhoView(carr) {
       <td>${money(it.precoUnitario)}</td>
       <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
       <td>${money(it.totalItem)}</td>
-      <td>${pill(it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Futura') : 'Pronta',
-        it.tipoEntrega === 'entrega_futura' ? (it.entregue ? 'green' : 'orange') : 'green')}</td>
+      <td>${(() => {
+        const entregue = it.tipoEntrega !== 'entrega_futura' || it.entregue;
+        return pill(entregue ? 'Entregue' + (it.entregueEm ? ' ' + formatDataHoraBR(it.entregueEm) : '') : 'Entrega futura', entregue ? 'green' : 'orange');
+      })()}</td>
     </tr>`;
     }).join('')}</tbody></table></div>
     <div class="only-mobile vcards" style="margin-top:12px">${itens.map((it, idx) => carrinhoItemCardHtml(it, idx, carr.id, false)).join('')}</div>
@@ -1099,6 +1103,9 @@ export async function finalizarCarrinho(id) {
       try {
         await saidaEstoque(item.produtoId, item.quantidade, item.motivo || 'Venda', id, item.totalItem);
         item.baixouEstoque = true;
+        // Marca a hora da entrega também pra pronta entrega — pra ela ser tratada igual à entrega
+        // futura marcada depois (mesmo rótulo "Entregue HH:MM" nas telas de venda/carrinho).
+        item.entregueEm = Date.now();
       } catch (e) {
         // A baixa dos itens ANTERIORES no loop já aconteceu de verdade no Firestore (saidaEstoque já
         // rodou a transação) — sem persistir esse progresso parcial aqui, uma nova tentativa de
