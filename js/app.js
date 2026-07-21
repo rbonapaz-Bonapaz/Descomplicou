@@ -51,7 +51,7 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
-  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento,
+  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento, editarFormaPagamento,
   aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI, encaminharInteresseParaCarrinho } from './carrinho.js';
 import { sendWhatsApp, enviarWhatsAppAuto, toggleWaAutomatico } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
@@ -195,7 +195,7 @@ const NAV_GROUPS = {
     { page: 'perfil', section: 'seguranca', label: 'Segurança', ico: '🔒' }
   ] },
   admin: { label: 'Admin', itens: [
-    { page: 'admin', section: 'consultoras', label: 'Consultoras', ico: '👥' },
+    { page: 'admin', section: 'consultoras', label: 'Consultores(as)', ico: '👥' },
     { page: 'admin', section: 'financeiro', label: 'Financeiro', ico: '💰' },
     { page: 'admin', section: 'catalogoMestre', label: 'Catálogo mestre', ico: '📚' },
     { page: 'admin', section: 'planos', label: 'Planos', ico: '🗂️' }
@@ -521,7 +521,7 @@ window.App = {
   openCarrinhoDoCliente, preencherPrecoItem, adicionarItemCarrinho, removerItemCarrinho,
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
-  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento,
+  registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento, editarFormaPagamento,
   aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI, encaminharInteresseParaCarrinho,
   // Vendas
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos,

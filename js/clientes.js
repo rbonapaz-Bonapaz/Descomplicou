@@ -339,7 +339,7 @@ export function openCliente360(id) {
                 <td data-label="Data">${formatDateBR(p.data)}</td>
                 <td data-label="Valor">${money(p.valor)}</td>
                 <td data-label="Forma">${esc(p.forma || '-')}</td>
-                <td><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${cr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td>
+                <td style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn small" onclick="App.editarFormaPagamento('${cr.id}',${idx})" title="Corrigir a forma de pagamento">✏️</button><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${cr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td>
               </tr>`).join('')}
             </tbody></table></div>` : '<p class="muted" style="margin-top:6px">Nenhum pagamento registrado ainda.</p>'}
             ${restante > 0.004 ? `<button class="btn small dark" style="margin-top:8px" onclick="App.closeModal();App.registrarPagamento('${cr.id}')">💰 Registrar pagamento</button>` : ''}

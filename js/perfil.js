@@ -400,7 +400,7 @@ function planoBox() {
     ${pi.vencido ? '<div class="alert-box" style="margin-top:10px">Seu plano está vencido. Fale com a administração para renovar.</div>' : ''}
     ${pi.atingiuLimite ? '<div class="alert-box" style="margin-top:10px">Limite de clientes do plano teste atingido.</div>' : ''}
     ${cfg.ipcaPercentual && cfg.ipcaData ? `<div class="alert-box" style="margin-top:10px;background:#FFF7E6;border-color:#F5C453;color:#8A6100">📢 Aviso de reajuste: os preços dos planos terão um ajuste de ${esc(String(cfg.ipcaPercentual))}% (IPCA) a partir de ${formatDateBR(cfg.ipcaData)}.</div>` : ''}
-    ${state.profile?.ultimoMesGanhoIndicacao ? `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">🎉 Você ganhou 30 dias de plano por indicar ${esc(state.profile.ultimoMesGanhoIndicacao.indicadoNome || 'uma nova consultora')}!</div>` : ''}
+    ${state.profile?.ultimoMesGanhoIndicacao ? `<div class="alert-box" style="margin-top:10px;background:#E6F7EE;border-color:#0E9F6E;color:#0E9F6E">🎉 Você ganhou 30 dias de plano por indicar ${esc(state.profile.ultimoMesGanhoIndicacao.indicadoNome || 'um(a) novo(a) consultor(a)')}!</div>` : ''}
     ${cfg.promocaoIndicacaoAtiva ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
       <small class="muted" style="text-transform:uppercase;font-weight:900;letter-spacing:.08em">Indique e ganhe</small>
       <p class="muted" style="margin:4px 0 8px">Compartilhe seu link — quando a pessoa indicada virar plano pago, você ganha 30 dias a mais de graça.</p>

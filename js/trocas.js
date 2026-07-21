@@ -21,8 +21,8 @@ function calcValor(itens) {
 function parceiraPickerHtml(parceiraAtual = '') {
   const opcoes = [{ id: '', nome: '— Nenhuma / não está na lista —' }, ...[...state.data.clientes].sort(porNome)];
   const picker = searchPickerHtml('trParceiraId', opcoes, c => c.nome, 'App.preencherNomeParceira()');
-  return `<div class="field full"><label>Parceira (busque uma cliente já cadastrada)</label>${picker}</div>
-    <div class="field full"><label>Ou digite o nome (se não for cliente cadastrada)</label><input id="trParceiraNome" placeholder="Ex: @outraconsultora" value="${esc(parceiraAtual)}"></div>`;
+  return `<div class="field full"><label>Parceiro(a) (busque um(a) cliente já cadastrado(a))</label>${picker}</div>
+    <div class="field full"><label>Ou digite o nome (se não estiver cadastrado(a))</label><input id="trParceiraNome" placeholder="Ex: @outraconsultora" value="${esc(parceiraAtual)}"></div>`;
 }
 
 export function preencherNomeParceira() {
@@ -52,7 +52,7 @@ export async function confirmarNovaTroca() {
 export function editarParceiraTroca(trocaId) {
   const t = state.data.trocas.find(x => x.id === trocaId);
   if (!t) return;
-  showModal(`<h3>Editar parceira da troca</h3>
+  showModal(`<h3>Editar parceiro(a) da troca</h3>
     <div class="grid">${parceiraPickerHtml(t.parceira)}</div><br>
     <button class="btn dark" onclick="App.salvarParceiraTroca('${trocaId}')">Salvar</button>
     <button class="btn ghost" onclick="App.closeModal()">Cancelar</button>`);
@@ -62,7 +62,7 @@ export async function salvarParceiraTroca(trocaId) {
   const cliente = cliById($('trParceiraId')?.value);
   const parceira = cliente ? cliente.nome : ($('trParceiraNome')?.value.trim() || '');
   await setDoc(ref('trocas', trocaId), { parceira, parceiraClienteId: cliente?.id || '', atualizadoEm: serverTimestamp() }, { merge: true });
-  await window.App.refresh('Parceira atualizada');
+  await window.App.refresh('Parceiro(a) atualizado(a)');
 }
 
 export async function excluirTroca(trocaId) {
@@ -212,7 +212,7 @@ export function openTroca(id) {
         <button class="btn" onclick="App.salvarTroca('${id}')">💾 Salvar</button>
         <button class="btn small" style="color:var(--error)" onclick="App.cancelarTroca('${id}')">✗ Cancelar</button>` : ''}
       ${t.status === 'finalizada' || t.status === 'parcial' ? `<button class="btn" onclick="App.reabrirTroca('${id}')" title="Estorna os lançamentos de estoque já processados e volta a troca para 'Em andamento'">↩️ Reabrir troca</button>` : ''}
-      <button class="btn small" onclick="App.editarParceiraTroca('${id}')">✏️ Editar parceira</button>
+      <button class="btn small" onclick="App.editarParceiraTroca('${id}')">✏️ Editar parceiro(a)</button>
       <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${id}')">🗑️ Excluir troca</button>
       <button class="btn ghost" onclick="App.closeModal()">Fechar</button>
     </div>
@@ -491,7 +491,7 @@ function trocaCardHtml(t) {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${pill(statusLabel, statusCor)}
         <button class="btn small" onclick="App.openTroca('${t.id}')">Abrir</button>
-        <button class="btn small" onclick="App.editarParceiraTroca('${t.id}')" title="Editar parceira">✏️</button>
+        <button class="btn small" onclick="App.editarParceiraTroca('${t.id}')" title="Editar parceiro(a)">✏️</button>
         <button class="btn small" style="color:var(--error)" onclick="App.excluirTroca('${t.id}')" title="Excluir">🗑️</button>
       </div>
     </div>
@@ -503,7 +503,7 @@ export function trocasTabHtml() {
   const trocas = [...(state.data.trocas || [])].sort((a, b) => (b.criadoEm?.seconds || 0) - (a.criadoEm?.seconds || 0));
   return `<div class="panel">
     <div class="panel-head">
-      <h3>Trocas com outras consultoras</h3>
+      <h3>Trocas com outros(as) consultores(as)</h3>
       <button class="btn dark small" onclick="App.abrirNovaTroca()">+ Nova troca</button>
     </div>
     <p class="muted">Baixa de um ou mais produtos seus e entrada de um ou mais produtos recebidos — sem gerar receita/lucro. Cada item pode ser entregue/recebido na hora ou depois.</p>

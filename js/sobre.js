@@ -14,7 +14,7 @@ const NOVIDADES = [
     '🔍 Busca global (🔎 Buscar em tudo) agora é um autocomplete de verdade: a lista de resultados aparece num dropdown flutuante e fecha automaticamente quando você escolhe um resultado — mais intuitiva e rápida.',
     '⚠️ Proteção contra perda de dados: se você tentar abrir uma nova janela (carrinho, troca, formulário) enquanto tem outra minimizada, o sistema avisa antes de descartar o que estava lá — você pode cancelar ou confirmar.',
     '💰 Preço mais simples: removemos o campo "Preço de venda" — agora só tem "Preço original" (de tabela da Farmasi) e "Preço atual" (o que você cobra). Produtos antigos com os dois preços tiveram a conversão automática.',
-    '📦 Pré-encomenda: novo painel "Comprado de" pra registrar quando você compra produtos de outras consultoras — defina o valor, a data e o status de pagamento (pendente/pago), tudo em uma planilha clara. Ótimo pra controlar valores a pagar.',
+    '📦 Pré-encomenda: novo painel "Comprado de" pra registrar quando você compra produtos de outros(as) consultores(as) — defina o valor, a data e o status de pagamento (pendente/pago), tudo em uma planilha clara. Ótimo pra controlar valores a pagar.',
     '🔄 Trocas: novo toggle "Pendente de devolução" — marca quando você recebe um produto pra análise, teste ou revisão e ainda vai devolver. Deixa claro qual troca é uma consulta temporária vs. uma troca definitiva.',
     '⚡ Estoque corrigido: as quantidades agora atualizam na hora quando você lança entrada/saída de estoque ou troca (antes ficava mostrando valor antigo até você recarregar a página).',
     '📝 Trocas mais limpo: quando você seleciona um produto existente pra sair da troca, os campos "Nome do produto novo" e "Código Farmasi" somem automaticamente — eles só aparecem se você criar um produto novo ali mesmo.',
@@ -100,7 +100,7 @@ export const NOVIDADES_ARQUIVADAS = [
     'Ícone oficial do WhatsApp (verde) em todos os botões que abriam o WhatsApp — antes era um emoji de balão.',
     'Produtos → Linhas: o nome da linha agora respeita exatamente o que você digitou (não força mais maiúsculas) e a lista aparece em ordem alfabética.',
     'Relatórios: passe o mouse sobre "Mais vendido", "Mais lucrativo" e "Maior faturamento" (produtos e clientes) pra ver a explicação exata de cada um.',
-    'Trocas com outras consultoras: clique na troca (▸) pra expandir e ver os produtos que saem e entram, igual aos carrinhos abertos.',
+    'Trocas com outros(as) consultores(as): clique na troca (▸) pra expandir e ver os produtos que saem e entram, igual aos carrinhos abertos.',
     'Painel Inicial: corrigido a data colada no nome da data comemorativa ("Dia dos Pais09/08").'
   ] },
   { versao: 'v98', itens: [
@@ -219,7 +219,7 @@ export const NOVIDADES_ARQUIVADAS = [
     'Pré-encomenda: imagem do produto adicionada antes do nome na lista.'
   ] },
   { versao: 'v76', itens: [
-    'Novo botão "📤 Exportar JSON" em Produtos: baixa toda a sua base de produtos num arquivo JSON compatível com a importação — dá pra mandar pra outra consultora ou pro admin publicar na base coletiva.',
+    'Novo botão "📤 Exportar JSON" em Produtos: baixa toda a sua base de produtos num arquivo JSON compatível com a importação — dá pra mandar pra outro(a) consultor(a) ou pro admin publicar na base coletiva.',
     'Esse JSON exportado já pode ser importado direto em Produtos ou em Admin → Catálogo mestre — os dois já pedem conferência e confirmação antes de salvar (nada entra na base sem você revisar e clicar em Salvar).'
   ] },
   { versao: 'v75', itens: [
@@ -323,7 +323,7 @@ export const NOVIDADES_ARQUIVADAS = [
     'Novo relatório de Trocas: total, pendentes, finalizadas, valor saído/recebido e diferença.'
   ] },
   { versao: 'v51', itens: [
-    'Novo botão "🔁 Trocas" no Estoque: registra a baixa de um produto e a entrada de outro recebido em troca com outra consultora, sem gerar receita/lucro no relatório.'
+    'Novo botão "🔁 Trocas" no Estoque: registra a baixa de um produto e a entrada de outro recebido em troca com outro(a) consultor(a), sem gerar receita/lucro no relatório.'
   ] },
   { versao: 'v50', itens: [
     'Menu "Sobre" com dados do sistema e novidades (manual ainda em preparação).',
@@ -389,7 +389,7 @@ const APRESENTACAO_MODULOS = [
     'Cartão de crédito parcelado, com cálculo automático do custo real da maquininha por operadora/bandeira/parcela, e opção de "Gerar QR Code do pagamento" via InfinitePay pra cobrança remota.',
     'Escolha quem assume o juro do parcelamento (você ou a cliente) — o valor repassado é sempre a diferença real que a operadora cobra, nunca um número fixo inventado.',
     'Gestão de pagamento parcial: registre sinais e pagamentos posteriores, com o status (pendente/parcial/pago) calculado sozinho a partir do que já foi recebido, e créditos do cliente aplicáveis em qualquer venda.',
-    'Trocas com outra consultora: registre o que sai do seu estoque e o que entra, com lucro/prejuízo calculado automaticamente, sem afetar o relatório de vendas.',
+    'Trocas com outro(a) consultor(a): registre o que sai do seu estoque e o que entra, com lucro/prejuízo calculado automaticamente, sem afetar o relatório de vendas.',
     'Todas as tabelas do sistema (Clientes, Produtos, Itens do Carrinho e mais) podem ser ordenadas clicando no cabeçalho de qualquer coluna.'
   ] },
   { key: 'aprConfig', titulo: '5. Configurações', itens: [
@@ -397,7 +397,7 @@ const APRESENTACAO_MODULOS = [
     'Personalize quais Cards de Inteligência e seções de Relatórios aparecem (e em que ordem), o número de dias pra considerar um contato "frio", e o gênero usado nos textos do sistema (Consultora/Consultor).',
     'Sincronização com o Google Agenda nos dois sentidos: compromissos criados no CRM aparecem no seu celular, e o que você mexe no celular volta pro CRM.',
     'Segurança: criação de senha para contas que entram com Google, exclusão de dados por categoria (estoque, clientes, vendas) e o direito de eliminação completa da conta (LGPD).',
-    'Meu Plano mostra o plano atual, vencimento e o link de indicação — indique outra consultora e ganhe dias grátis quando ela assinar um plano pago.'
+    'Meu Plano mostra o plano atual, vencimento e o link de indicação — indique outro(a) consultor(a) e ganhe dias grátis quando a pessoa assinar um plano pago.'
   ] }
 ];
 
@@ -515,9 +515,9 @@ const MANUAL_SECOES = [
     'Ao fazer o pedido no site, clique em "✅ Pedido" nos itens — eles vão pra lista "Aguardando chegada".',
     'Quando os produtos chegarem, confira a quantidade recebida e o custo pago e clique em "📦 Confirmar chegada" — o estoque e o custo médio são atualizados na hora, e a pronta entrega é reativada.',
     'Kits: use "🎁 Montar kit" pra agrupar produtos que vêm juntos — o valor pago é rateado como custo entre os componentes.',
-    'Comprado de outras consultoras: use o painel "Comprado de" pra registrar quando você compra produtos de colegas — nome de quem vendeu, valor, data e se já pagou. Tudo em uma planilha clara pra você não esquecer de pagar ninguém.'
+    'Comprado de outros(as) consultores(as): use o painel "Comprado de" pra registrar quando você compra produtos de colegas — nome de quem vendeu, valor, data e se já pagou. Tudo em uma planilha clara pra você não esquecer de pagar ninguém.'
   ] },
-  { key: 'manTrocas', titulo: '9. Trocas com outras consultoras', passos: [
+  { key: 'manTrocas', titulo: '9. Trocas com outros(as) consultores(as)', passos: [
     'Vá em Estoque → Trocas → "+ Nova troca" e informe a parceira (busque entre suas clientes ou digite o nome).',
     'Monte os dois lados: os produtos que saem do seu estoque e os que você recebe, cada um com valor unitário. Cada item pode ser entregue/recebido na hora ("pronta") ou depois ("entrega futura").',
     'O sistema calcula o lucro ou prejuízo da troca (em valor e %) e dá baixa/entrada no estoque — sem gerar receita nem lucro nos relatórios de venda.',

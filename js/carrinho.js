@@ -616,7 +616,7 @@ function pagamentoResumoHtml(carr) {
       ${carr.clienteId && creditoDoCliente(carr.clienteId) > 0.004 ? `<div class="card"><span>Créditos do cliente</span><b style="color:var(--success)">${money(creditoDoCliente(carr.clienteId))}</b></div>` : ''}
     </div>
     ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th></th></tr></thead><tbody>
-      ${pagamentos.map((p, idx) => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td><td><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${carr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td></tr>`).join('')}
+      ${pagamentos.map((p, idx) => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td><td style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn small" onclick="App.editarFormaPagamento('${carr.id}',${idx})" title="Corrigir a forma de pagamento">✏️</button><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${carr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td></tr>`).join('')}
     </tbody></table></div>` : ''}
     ${restante > 0.004 ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button class="btn dark small" onclick="App.registrarPagamento('${carr.id}')">💰 Registrar pagamento recebido</button>
@@ -781,6 +781,25 @@ export async function excluirPagamento(carrinhoId, idx) {
   }
 
   await window.App.refresh(`Pagamento de ${money(alvo.valor)} excluído`);
+  reabrirCarrinhoSemPular(carrinhoId);
+}
+
+// Corrige só a forma de um pagamento já lançado (ex: cadastro antigo que ficou "A combinar" mesmo
+// já tendo sido recebido em Pix/Cartão de verdade) — sem exigir justificativa nem excluir/relançar,
+// já que não mexe em valor/data, só no rótulo. Não recalcula custo de cartão: se a forma nova for
+// "Cartão" e o pagamento não tinha custoCartao calculado (porque não era Cartão antes), o custo da
+// maquininha continua 0 — pra ajustar isso de verdade, exclua e registre de novo como Cartão.
+export async function editarFormaPagamento(carrinhoId, idx) {
+  const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
+  const pagamentos = [...(carr?.pagamentos || [])];
+  const alvo = pagamentos[idx];
+  if (!alvo) return;
+  const nova = prompt(`Forma de pagamento atual: ${alvo.forma || '-'}\n\nDigite a forma correta (ex: Pix, Dinheiro, Cartão, Link de pagamento, A combinar):`, alvo.forma || '');
+  if (nova === null) return;
+  if (!nova.trim()) return toast('Informe a forma de pagamento.');
+  pagamentos[idx] = { ...alvo, forma: nova.trim() };
+  await setDoc(ref('carrinhos', carrinhoId), { pagamentos, atualizadoEm: serverTimestamp() }, { merge: true });
+  await window.App.refresh(`Forma de pagamento atualizada para "${nova.trim()}"`);
   reabrirCarrinhoSemPular(carrinhoId);
 }
 

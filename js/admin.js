@@ -23,8 +23,8 @@ export function renderAdmin() {
         <h3>Painel Administrativo</h3>
         <button class="btn dark small" onclick="App.carregarConsultoras()">🔄 Atualizar lista</button>
       </div>
-      <p class="muted">Gerencie consultoras, planos, acessos e administradoras.</p>
-      <div id="adminList"><p class="muted">Clique em "Atualizar lista" para carregar as consultoras.</p></div>
+      <p class="muted">Gerencie consultores(as), planos, acessos e administradoras.</p>
+      <div id="adminList"><p class="muted">Clique em "Atualizar lista" para carregar os(as) consultores(as).</p></div>
     </div>`;
   }
 
@@ -33,14 +33,14 @@ export function renderAdmin() {
       <div class="panel-head">
         <h3>Sugestões de descrição</h3>
       </div>
-      <p class="muted">Quando uma consultora sincroniza e o produto dela tem uma descrição mais completa que a do Catálogo mestre (que estava sem descrição), a sugestão aparece aqui — aprove para atualizar o mestre, ou rejeite.</p>
+      <p class="muted">Quando um(a) consultor(a) sincroniza e o produto dele(a) tem uma descrição mais completa que a do Catálogo mestre (que estava sem descrição), a sugestão aparece aqui — aprove para atualizar o mestre, ou rejeite.</p>
       <div id="sbLista" style="margin-top:12px"><p class="muted">Carregando sugestões...</p></div>
     </div>
     <div class="panel">
       <div class="panel-head">
         <h3>Linhas da base coletiva</h3>
       </div>
-      <p class="muted">Linhas de produto publicadas para todas as consultoras. Quem usa a base coletiva pode sincronizar em Produtos → Linhas — as linhas daqui são <b>acrescentadas</b> às que a consultora já tem (nada é apagado).</p>
+      <p class="muted">Linhas de produto publicadas para todos(as) os(as) consultores(as). Quem usa a base coletiva pode sincronizar em Produtos → Linhas — as linhas daqui são <b>acrescentadas</b> às que o(a) consultor(a) já tem (nada é apagado).</p>
       <div class="toolbar">
         <input id="novaLinhaColetiva" placeholder="Nome da linha (ex: Maquiagem)">
         <button class="btn dark" onclick="App.adicionarLinhaColetiva()">+ Adicionar linha</button>
@@ -52,7 +52,7 @@ export function renderAdmin() {
         <h3>Catálogo mestre (base coletiva)</h3>
         <span id="cmCount" class="pill blue">carregando...</span>
       </div>
-      <p class="muted">Produtos publicados aqui ficam disponíveis para toda consultora que ativar "Usar base coletiva" em Minha Conta. Ela sincroniza quando quiser; preço de venda, custo e estoque continuam individuais.</p>
+      <p class="muted">Produtos publicados aqui ficam disponíveis para todo(a) consultor(a) que ativar "Usar base coletiva" em Minha Conta. A pessoa sincroniza quando quiser; preço de venda, custo e estoque continuam individuais.</p>
       <label class="btn pink">Selecionar JSON<input type="file" multiple accept=".json" style="display:none" onchange="App.readCatalogoMestreFiles(this.files)"></label>
       <br><br>
       <textarea id="cmJson" placeholder="Ou cole o JSON aqui..."></textarea>
@@ -70,7 +70,7 @@ export function renderAdmin() {
   if (sec === 'planos') {
     html += `<div class="panel">
       <h3>Preços dos planos</h3>
-      <p class="muted">Valores exibidos para todas as consultoras em "Minha Conta". Ajuste manualmente quando fizer reajuste.</p>
+      <p class="muted">Valores exibidos para todos(as) os(as) consultores(as) em "Minha Conta". Ajuste manualmente quando fizer reajuste.</p>
       <div class="grid">
         <div class="field"><label>Mensal</label><input id="cfgMensal" value="${money(cfg.precoMensal || 0)}"></div>
         <div class="field"><label>Semestral</label><input id="cfgSemestral" value="${money(cfg.precoSemestral || 0)}"></div>
@@ -83,7 +83,7 @@ export function renderAdmin() {
 
     <div class="panel">
       <h3>Reajuste anual por IPCA</h3>
-      <p class="muted">Lembrete manual — o sistema NUNCA muda os preços sozinho. Preencha o % apurado no IBGE e a data em que o reajuste passa a valer; a consultora vê um aviso prévio em Minha Conta, e você vê o lembrete aqui até marcar como aplicado.</p>
+      <p class="muted">Lembrete manual — o sistema NUNCA muda os preços sozinho. Preencha o % apurado no IBGE e a data em que o reajuste passa a valer; o(a) consultor(a) vê um aviso prévio em Minha Conta, e você vê o lembrete aqui até marcar como aplicado.</p>
       <div class="grid">
         <div class="field"><label>IPCA acumulado (%)</label><input id="cfgIpcaPercentual" placeholder="Ex: 4,5" value="${cfg.ipcaPercentual ?? ''}"></div>
         <div class="field"><label>Reajuste válido a partir de</label><input type="date" id="cfgIpcaData" value="${cfg.ipcaData || ''}"></div>
@@ -95,7 +95,7 @@ export function renderAdmin() {
 
     <div class="panel">
       <h3>Promoção de indicação</h3>
-      <p class="muted">Quando ativa, cada consultora tem um link próprio de indicação em Minha Conta. Se a pessoa indicada virar plano pago (mensal/semestral/anual) pela primeira vez, quem indicou ganha 30 dias a mais de plano automaticamente.</p>
+      <p class="muted">Quando ativa, cada consultor(a) tem um link próprio de indicação em Minha Conta. Se a pessoa indicada virar plano pago (mensal/semestral/anual) pela primeira vez, quem indicou ganha 30 dias a mais de plano automaticamente.</p>
       ${toggleHtml('cfgPromoIndicacao', cfg.promocaoIndicacaoAtiva, 'App.togglePromocaoIndicacao(this.checked)', 'Promoção de indicação ativa')}
     </div>`;
   }
@@ -106,7 +106,7 @@ export function renderAdmin() {
         <h3>Financeiro</h3>
         <button class="btn dark small" onclick="App.carregarConsultoras()">🔄 Atualizar</button>
       </div>
-      <p class="muted">Receita recorrente estimada com base nos preços da aba "Planos" e nas consultoras cadastradas, e quem está prestes a vencer.</p>
+      <p class="muted">Receita recorrente estimada com base nos preços da aba "Planos" e nos(as) consultores(as) cadastrados(as), e quem está prestes a vencer.</p>
       <div id="adminFinanceiro"><p class="muted">Clique em "Atualizar" para carregar.</p></div>
     </div>`;
   }
@@ -137,7 +137,7 @@ function renderSugestoesBeneficios() {
   box.innerHTML = sugestoesBeneficiosCache.map(s => `
     <div class="panel" style="background:#F7FAFC;margin-bottom:10px">
       <b>${esc(s.nome || 'Produto')}</b>${s.codigoFarmasi ? ` <span class="muted">• Código ${esc(s.codigoFarmasi)}</span>` : ''}
-      <p class="muted" style="margin:6px 0 2px">Sugerido por ${esc(s.sugeridoPorNome || 'uma consultora')}:</p>
+      <p class="muted" style="margin:6px 0 2px">Sugerido por ${esc(s.sugeridoPorNome || 'um(a) consultor(a)')}:</p>
       <p style="margin:0 0 10px">${esc(s.beneficiosSugerido)}</p>
       <button class="btn small dark" onclick="App.aprovarSugestaoBeneficio('${s.id}')">✓ Aprovar e atualizar mestre</button>
       <button class="btn small ghost" style="color:var(--error)" onclick="App.rejeitarSugestaoBeneficio('${s.id}')">✗ Rejeitar</button>
@@ -215,7 +215,7 @@ export async function adicionarLinhaColetiva() {
 }
 
 export async function removerLinhaColetiva(nome) {
-  if (!confirm(`Remover a linha "${nome}" da base coletiva? As consultoras que já sincronizaram continuam com ela.`)) return;
+  if (!confirm(`Remover a linha "${nome}" da base coletiva? Quem já sincronizou continua com ela.`)) return;
   try {
     await salvarLinhasColetivas((linhasColetivasCache || []).filter(l => l !== nome));
     toast(`Linha "${nome}" removida da base coletiva`);
@@ -325,7 +325,7 @@ export async function salvarProdutoMestre(id) {
 
 export async function excluirProdutoMestre(id) {
   const p = cmCache.find(x => x.id === id);
-  if (!confirm(`Excluir "${p?.nome || id}" da base coletiva?\nIsso não afeta os produtos já sincronizados nas contas das consultoras — só remove daqui.`)) return;
+  if (!confirm(`Excluir "${p?.nome || id}" da base coletiva?\nIsso não afeta os produtos já sincronizados nas contas dos(as) consultores(as) — só remove daqui.`)) return;
   try {
     await deleteDoc(doc(db, 'catalogoMestre', id));
     toast('Produto removido da base coletiva');
@@ -442,7 +442,7 @@ export async function confirmarImportCatalogoMestre() {
 }
 
 export async function limparCatalogoMestre() {
-  if (!confirm('Remover TODOS os produtos da base coletiva?\nIsso não afeta os produtos já sincronizados nas contas das consultoras.')) return;
+  if (!confirm('Remover TODOS os produtos da base coletiva?\nIsso não afeta os produtos já sincronizados nas contas dos(as) consultores(as).')) return;
   try {
     const snap = await getDocs(collection(db, 'catalogoMestre'));
     for (let i = 0; i < snap.docs.length; i += 450) {
@@ -470,7 +470,7 @@ export async function salvarConfigPlanos() {
   } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
 }
 
-// Só agenda o lembrete — nunca muda preço sozinho. A consultora vê o aviso prévio em Minha Conta
+// Só agenda o lembrete — nunca muda preço sozinho. O(a) consultor(a) vê o aviso prévio em Minha Conta
 // (Notificação Prévia, transparência do reajuste); o admin some com o lembrete só ao confirmar
 // que já aplicou manualmente na tabela de preços acima.
 export async function salvarConfigIpca() {
@@ -479,7 +479,7 @@ export async function salvarConfigIpca() {
   if (!percentual || !dataReajuste) return toast('Preencha o percentual e a data do reajuste');
   try {
     await setDoc(doc(db, 'config', 'planos'), { ipcaPercentual: percentual, ipcaData: dataReajuste, atualizadoEm: serverTimestamp() }, { merge: true });
-    toast('Reajuste agendado — a consultora já vê o aviso em Minha Conta');
+    toast('Reajuste agendado — o(a) consultor(a) já vê o aviso em Minha Conta');
     window.App.refresh();
   } catch (e) { toast('Erro ao salvar: verifique se as regras do Firestore foram publicadas.'); }
 }
@@ -493,7 +493,7 @@ export async function togglePromocaoIndicacao(ativa) {
 }
 
 export async function marcarIpcaAplicado() {
-  if (!confirm('Confirma que já atualizou os preços na tabela acima com o reajuste do IPCA? Isso limpa o lembrete e o aviso da consultora.')) return;
+  if (!confirm('Confirma que já atualizou os preços na tabela acima com o reajuste do IPCA? Isso limpa o lembrete e o aviso do(a) consultor(a).')) return;
   try {
     await setDoc(doc(db, 'config', 'planos'), { ipcaPercentual: '', ipcaData: '', atualizadoEm: serverTimestamp() }, { merge: true });
     toast('Reajuste marcado como aplicado');
@@ -586,7 +586,7 @@ function renderFinanceiroLista() {
       <td>${pill(PLANOS_LABEL[u.plano] || u.plano, planColor(u.plano))}</td>
       <td>${formatDateBR(u.premiumAte)}</td>
       <td><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></td>
-    </tr>`).join('') : `<tr><td colspan="5"><p class="muted">Nenhuma consultora vencendo nos próximos 15 dias.</p></td></tr>`}</tbody></table></div>
+    </tr>`).join('') : `<tr><td colspan="5"><p class="muted">Nenhum(a) consultor(a) vencendo nos próximos 15 dias.</p></td></tr>`}</tbody></table></div>
     <div class="only-mobile vcards">${aVencer.length ? aVencer.map(u => `<div class="vcard">
       <div class="vcard-top">
         <div class="vcard-cli" style="margin:0;font-size:17px">${esc(u.nome || u.email || u.id)}</div>
@@ -597,7 +597,7 @@ function renderFinanceiroLista() {
         <div class="vcard-row"><span>Vence em</span><b>${formatDateBR(u.premiumAte)}</b></div>
       </div>
       <div class="vcard-actions"><button class="btn small" onclick="App.editarConsultora('${u.id}')">✏️ Gerenciar</button></div>
-    </div>`).join('') : '<p class="muted">Nenhuma consultora vencendo nos próximos 15 dias.</p>'}</div>`;
+    </div>`).join('') : '<p class="muted">Nenhum(a) consultor(a) vencendo nos próximos 15 dias.</p>'}</div>`;
 }
 
 function planColor(plano) {
@@ -656,7 +656,7 @@ export async function salvarConsultora(uid) {
   };
   if (uid !== state.user.uid && $('adRole')) d.role = $('adRole').value;
 
-  // Promoção de indicação: se essa consultora virou plano pago AGORA (não estava antes) e foi
+  // Promoção de indicação: se essa pessoa virou plano pago AGORA (não estava antes) e foi
   // indicada por alguém que ainda não recebeu a recompensa dessa indicação, estende o plano de
   // quem indicou em 30 dias. Só dispara uma vez por indicação (indicacaoRecompensada trava isso).
   const antigo = usersCache.find(u => u.id === uid);
@@ -675,7 +675,7 @@ export async function salvarConsultora(uid) {
         d.indicacaoRecompensada = true;
         toast(`🎉 ${refDados.nome || 'Quem indicou'} ganhou 30 dias de plano por essa indicação!`);
       }
-    } catch (e) { /* não bloqueia o salvamento da consultora por causa da recompensa */ }
+    } catch (e) { /* não bloqueia o salvamento por causa da recompensa */ }
   }
 
   await setDoc(doc(db, 'users', uid), d, { merge: true });

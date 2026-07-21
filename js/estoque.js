@@ -411,7 +411,7 @@ export function openEntradaManual() {
     </div>
     <p class="muted" style="margin:6px 0 0">Deixe o custo em <b>0</b> para itens recebidos como brinde da Farmasi — o preço médio é recalculado sozinho considerando todas as entradas.</p><br>
     <div class="panel" style="background:#F7FAFC;margin-top:4px">
-      <p class="muted" style="margin:0 0 8px"><b>Comprou de outra consultora, não direto da Farmasi?</b> Preencha abaixo pra guardar de quem foi e se já pagou.</p>
+      <p class="muted" style="margin:0 0 8px"><b>Comprou de outro(a) consultor(a), não direto da Farmasi?</b> Preencha abaixo pra guardar de quem foi e se já pagou.</p>
       <div class="grid">
         <div class="field full"><label>Comprado de (opcional)</label><input id="mFornecedor" placeholder="Nome de quem vendeu pra você"></div>
         <div class="field full">${toggleHtml('mJaPaguei', true, '', 'Já paguei')}</div>

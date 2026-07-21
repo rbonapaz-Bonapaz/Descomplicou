@@ -553,7 +553,7 @@ function pedidoAbertoDaPessoa(pessoa) {
 // reaproveita um pedido em aberto dela ou cria um novo, sem o usuário precisar saber a diferença.
 export function adicionarCompraFornecedor(pessoa = '') {
   const nomesConhecidos = [...new Set(state.data.despesas.filter(x => x.tipo === 'fornecedor' && x.pessoa).map(x => x.pessoa))];
-  showModal(`<h3>Comprar de outra consultora</h3>
+  showModal(`<h3>Comprar de outro(a) consultor(a)</h3>
     <div class="grid">
       <div class="field full"><label>Pessoa</label><input id="ncPessoa" value="${esc(pessoa)}" list="ncPessoaLista" placeholder="Nome de quem você comprou">
         <datalist id="ncPessoaLista">${nomesConhecidos.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
@@ -732,13 +732,13 @@ export function fornecedoresPanelHtml() {
 
   return `<div class="panel" style="margin-top:10px">
     <div class="panel-head">
-      <h3>🧾 Compras de outras consultoras</h3>
+      <h3>🧾 Compras de outros(as) consultores(as)</h3>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${totalPendente > 0.004 ? `<span class="muted">A pagar (total geral): <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
         <button class="btn small pink" onclick="App.adicionarCompraFornecedor()">+ Nova compra</button>
       </div>
     </div>
-    <p class="muted">Produtos comprados de outra consultora — lançados aqui (com busca no catálogo) ou pela Entrada de estoque com "Comprado de" preenchido. Comprar de novo da mesma pessoa antes de pagar soma no mesmo pedido.</p>
+    <p class="muted">Produtos comprados de outro(a) consultor(a) — lançados aqui (com busca no catálogo) ou pela Entrada de estoque com "Comprado de" preenchido. Comprar de novo da mesma pessoa antes de pagar soma no mesmo pedido.</p>
     ${grupos.map(g => `<div style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <div><b>${esc(g.nome)}</b> ${g.pendente > 0.004 ? `<span class="muted">— Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}</div>
