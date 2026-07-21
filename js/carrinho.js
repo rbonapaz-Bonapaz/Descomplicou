@@ -302,7 +302,7 @@ function thSortItensCarrinho(label, field, current, carrinhoId) {
 // reabre o mesmo carrinho (mesmo padrão de toggleCarrinhoOpt), sem recarregar o app inteiro.
 export function ordenarItensCarrinhoUI(carrinhoId, sortKey) {
   state.filters.carrinhoItensSort = sortKey;
-  openCarrinho(carrinhoId);
+  reabrirCarrinhoSemPular(carrinhoId);
 }
 
 export function openNovoCarrinho() {
@@ -319,6 +319,18 @@ export async function confirmarNovoCarrinho() {
   const clienteId = $('ncCli').value;
   closeModal();
   await criarCarrinho(clienteId);
+}
+
+// Reabre o mesmo carrinho preservando a posição de rolagem — showModal reescreve #modalCard
+// inteiro, recriando o container rolável (.modal-content-scroll) e zerando o scrollTop, o que
+// jogava a tela pro topo a cada ação dentro do carrinho aberto (trocar forma de pagamento,
+// adicionar/remover item, ordenar colunas, marcar/desmarcar opções etc). Usar sempre no lugar de
+// um openCarrinho(id) direto quando a intenção é só re-renderizar o mesmo carrinho já aberto.
+function reabrirCarrinhoSemPular(id) {
+  const scroll = document.querySelector('.modal-content-scroll')?.scrollTop || 0;
+  openCarrinho(id);
+  const cont = document.querySelector('.modal-content-scroll');
+  if (cont) cont.scrollTop = scroll;
 }
 
 export function openCarrinho(id) {
@@ -688,9 +700,6 @@ export async function excluirPagamento(carrinhoId, idx) {
   if (justificativa === null) return;
   if (!justificativa.trim()) return toast('Informe uma justificativa para excluir o pagamento.');
 
-  // Mesmo cuidado de scroll do toggle de entrega: reabrir o modal recria o container rolável.
-  const scrollAtual = document.querySelector('.modal-content-scroll')?.scrollTop || 0;
-
   pagamentos.splice(idx, 1);
   const valorPago = Math.round(pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0) * 100) / 100;
   const statusPagamento = statusPagamentoAuto(carr.totalPedido, valorPago);
@@ -715,9 +724,7 @@ export async function excluirPagamento(carrinhoId, idx) {
   }
 
   await window.App.refresh(`Pagamento de ${money(alvo.valor)} excluído`);
-  openCarrinho(carrinhoId);
-  const cont = document.querySelector('.modal-content-scroll');
-  if (cont) cont.scrollTop = scrollAtual;
+  reabrirCarrinhoSemPular(carrinhoId);
 }
 
 export async function confirmarPagamento(carrinhoId) {
@@ -832,7 +839,7 @@ export async function adicionarItemCarrinho(carrinhoId) {
   if (tipoEntrega === 'entrega_futura') await adicionarPreEncomenda(p.id, 'carrinho_sem_estoque', qtd - estoque);
 
   await window.App.refresh();
-  openCarrinho(carrinhoId);
+  reabrirCarrinhoSemPular(carrinhoId);
 }
 
 // A entrega de cada item é escolha da consultora: mesmo com estoque, um item pode ficar pra
@@ -844,21 +851,12 @@ export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
   const carr = state.data.carrinhos.find(c => c.id === carrinhoId);
   const it = carr?.itens?.[idx];
   if (!it) return;
-  // Reabrir o modal recria o container rolável (.modal-content-scroll), zerando o scrollTop e
-  // pulando a tela pro topo. Guarda a posição atual antes de re-renderizar e restaura depois, pra
-  // marcar/desmarcar a entrega sem sair do lugar (principalmente no mobile, com a lista longa).
-  const scrollAtual = document.querySelector('.modal-content-scroll')?.scrollTop || 0;
-  const restaurarScroll = () => {
-    const cont = document.querySelector('.modal-content-scroll');
-    if (cont) cont.scrollTop = scrollAtual;
-  };
   // Exclui as reservas do próprio carrinho da conta — senão o item, já reservado por ele mesmo
   // quando "pronta_entrega", contaria contra si na hora de tentar religar.
   const disp = estoqueDisponivel(it.produtoId, carrinhoId);
   if (entregarAgora && disp < it.quantidade) {
     toast(`Sem estoque disponível pra entregar "${it.produtoNome}" agora (disponível: ${disp} de ${it.quantidade}).`);
-    openCarrinho(carrinhoId);
-    restaurarScroll();
+    reabrirCarrinhoSemPular(carrinhoId);
     return;
   }
   it.tipoEntrega = entregarAgora ? 'pronta_entrega' : 'entrega_futura';
@@ -869,8 +867,7 @@ export async function toggleEntregaItem(carrinhoId, idx, entregarAgora) {
     atualizadoEm: serverTimestamp()
   }, { merge: true });
   await window.App.refresh();
-  openCarrinho(carrinhoId);
-  restaurarScroll();
+  reabrirCarrinhoSemPular(carrinhoId);
 }
 
 export async function removerItemCarrinho(carrinhoId, idx) {
@@ -895,7 +892,7 @@ export async function removerItemCarrinho(carrinhoId, idx) {
   }, { merge: true });
 
   await window.App.refresh();
-  openCarrinho(carrinhoId);
+  reabrirCarrinhoSemPular(carrinhoId);
 }
 
 // Valor em R$ do desconto sobre o pedido inteiro ({tipo:'percent'|'valor', valor}), limitado
@@ -934,13 +931,13 @@ export async function aplicarDescontoPedido(id) {
   const totais = calcTotais(carr.itens || [], descontoPedido);
   await setDoc(ref('carrinhos', id), { descontoPedido, ...totais, atualizadoEm: serverTimestamp() }, { merge: true });
   await window.App.refresh();
-  openCarrinho(id);
+  reabrirCarrinhoSemPular(id);
 }
 
 export async function toggleCarrinhoOpt(id, campo, valor) {
   await setDoc(ref('carrinhos', id), { [campo]: valor, atualizadoEm: serverTimestamp() }, { merge: true });
   await window.App.refresh();
-  openCarrinho(id);
+  reabrirCarrinhoSemPular(id);
 }
 
 export async function salvarCarrinhoOpt(id, reabrir = false) {
@@ -974,7 +971,7 @@ export async function salvarCarrinhoOpt(id, reabrir = false) {
   await setDoc(ref('carrinhos', id), updates, { merge: true });
   if (reabrir) {
     await window.App.refresh();
-    openCarrinho(id);
+    reabrirCarrinhoSemPular(id);
   }
 }
 
