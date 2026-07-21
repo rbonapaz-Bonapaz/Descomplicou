@@ -52,7 +52,7 @@ import { openNovoCarrinho, confirmarNovoCarrinho, openCarrinho, openCarrinhoForC
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento,
-  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI } from './carrinho.js';
+  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI, encaminharInteresseParaCarrinho } from './carrinho.js';
 import { sendWhatsApp, enviarWhatsAppAuto, toggleWaAutomatico } from './whatsapp.js';
 import { gerarPdfCliente, gerarPdfInterno } from './pdf-pedido.js';
 import { renderResultadosBusca, fecharResultadosBusca } from './buscaGlobal.js';
@@ -522,7 +522,7 @@ window.App = {
   toggleEntregaItem, toggleCarrinhoOpt, salvarCarrinhoOpt, finalizarCarrinho, cancelarCarrinho,
   marcarItemEntregue, enviarResumoWhatsApp, enviarLinkPagamento, marcarRetornoFeito, reabrirCarrinho, excluirCarrinho,
   registrarPagamento, confirmarPagamento, atualizarCalcPagamento, aplicarDescontoPedido, excluirPagamento,
-  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI,
+  aplicarCreditoPagamento, abrirCheckoutInfinitePay, copiarLinkInfinitePay, fecharModalCheckoutInfinitePay, copiarCodigoPix, copiarCodigoPixValor, ordenarItensCarrinhoUI, encaminharInteresseParaCarrinho,
   // Vendas
   renderVendas, marcarPedidoEntregue, toggleVendaDetalhe, migrarNumeracaoPedidos,
   // Estoque

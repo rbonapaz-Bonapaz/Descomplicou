@@ -311,29 +311,44 @@ export function openCliente360(id) {
     </div>` : ''}
 
     ${(() => {
-      // Pedidos finalizados dela com saldo a receber e/ou item de entrega futura ainda não
-      // entregue — ação direta aqui, sem precisar navegar até Vendas pra resolver (mesmo fluxo
-      // de "Registrar pagamento" e "Marcar entregue" usado no resto do sistema).
-      const pendencias = state.data.carrinhos
+      // Pedidos finalizados/parciais dela (não abertos, não cancelados) — mostra pagamentos já
+      // recebidos (com opção de excluir) e itens já entregues/pendentes, com ação direta pra
+      // registrar o que falta e marcar entrega, sem precisar navegar até Vendas.
+      const pedidos = state.data.carrinhos
         .filter(cr => cr.clienteId === id && cr.status !== 'aberto' && cr.status !== 'cancelado')
-        .map(cr => {
-          const restante = Math.max(0, Number(cr.totalPedido || 0) - Number(cr.valorPago || 0));
-          const itensPendentes = (cr.itens || []).map((it, idx) => ({ ...it, idx })).filter(it => it.tipoEntrega === 'entrega_futura' && !it.entregue);
-          return { cr, restante, itensPendentes };
-        })
-        .filter(p => p.restante > 0.004 || p.itensPendentes.length);
-      if (!pendencias.length) return '';
-      return `<div class="panel" style="margin-top:12px;background:#FFF7E6">
-        <h3>⏳ Pendências</h3>
-        <p class="muted">Pagamento ou entrega ainda não concluídos nesses pedidos.</p>
-        ${pendencias.map(({ cr, restante, itensPendentes }) => `<div style="margin-top:8px;padding:10px;background:white;border-radius:10px;border:1px solid var(--line)">
-          <b>Pedido nº ${numeroPedidoLabel(cr)}</b>
-          ${restante > 0.004 ? `<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Falta receber: <b style="color:var(--error)">${money(restante)}</b>
-            <button class="btn small dark" onclick="App.closeModal();App.registrarPagamento('${cr.id}')">💰 Registrar pagamento</button></div>` : ''}
-          ${itensPendentes.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">
-            ${itensPendentes.map(it => `<button class="btn small" onclick="App.closeModal();App.marcarItemEntregue('${cr.id}',${it.idx})" title="Marcar este item como entregue">📦 Entregar: ${esc(it.produtoNome)}</button>`).join('')}
-          </div>` : ''}
-        </div>`).join('')}
+        .sort((a, b) => (b.atualizadoEm?.toMillis?.() || 0) - (a.atualizadoEm?.toMillis?.() || 0))
+        .slice(0, 10);
+      if (!pedidos.length) return '';
+      return `<div class="panel" style="margin-top:12px">
+        <h3>🧾 Pedidos — pagamentos e entregas</h3>
+        ${pedidos.map(cr => {
+          const total = Number(cr.totalPedido || 0);
+          const pago = Number(cr.valorPago || 0);
+          const restante = Math.max(0, total - pago);
+          const pagamentos = cr.pagamentos || [];
+          const itens = cr.itens || [];
+          const pendentes = itens.map((it, idx) => ({ ...it, idx })).filter(it => it.tipoEntrega === 'entrega_futura' && !it.entregue);
+          const entregues = itens.map((it, idx) => ({ ...it, idx })).filter(it => it.tipoEntrega !== 'entrega_futura' || it.entregue);
+          return `<div style="margin-top:8px;padding:10px;background:#F7FAFC;border-radius:10px;border:1px solid var(--line)">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+              <b>Pedido nº ${numeroPedidoLabel(cr)}</b>
+              <span class="muted">Total ${money(total)} • Pago ${money(pago)}${restante > 0.004 ? ` • <b style="color:var(--error)">Falta ${money(restante)}</b>` : ''}</span>
+            </div>
+            ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:8px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>
+              ${pagamentos.map((p, idx) => `<tr>
+                <td data-label="Data">${formatDateBR(p.data)}</td>
+                <td data-label="Valor">${money(p.valor)}</td>
+                <td data-label="Forma">${esc(p.forma || '-')}</td>
+                <td><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${cr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td>
+              </tr>`).join('')}
+            </tbody></table></div>` : '<p class="muted" style="margin-top:6px">Nenhum pagamento registrado ainda.</p>'}
+            ${restante > 0.004 ? `<button class="btn small dark" style="margin-top:8px" onclick="App.closeModal();App.registrarPagamento('${cr.id}')">💰 Registrar pagamento</button>` : ''}
+            ${entregues.length ? `<p class="muted" style="margin-top:8px;margin-bottom:2px">✅ Entregues: ${entregues.map(it => esc(it.produtoNome)).join(', ')}</p>` : ''}
+            ${pendentes.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">
+              ${pendentes.map(it => `<button class="btn small" onclick="App.closeModal();App.marcarItemEntregue('${cr.id}',${it.idx})" title="Marcar este item como entregue">📦 Entregar: ${esc(it.produtoNome)}</button>`).join('')}
+            </div>` : ''}
+          </div>`;
+        }).join('')}
       </div>`;
     })()}
 
@@ -400,7 +415,10 @@ export function openCliente360(id) {
       <p class="muted">Ela demonstrou interesse mas ainda não comprou — bom gancho pra próxima abordagem.</p>
       <div class="list">${c.interesses.map(i => `<div class="list-item">
         <div><b>${esc(i.produtoNome)}</b><small>${i.origem ? esc(i.origem) + ' • ' : ''}${formatDateBR(i.adicionadoEm)}</small></div>
-        <button class="btn small" style="color:var(--error)" onclick="App.removerInteresseCliente('${id}','${esc(i.produtoId)}')" title="Remover da lista">✗</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn small dark" onclick="App.encaminharInteresseParaCarrinho('${id}','${esc(i.produtoId)}')" title="Adicionar este produto ao carrinho dela">🛒 Pro carrinho</button>
+          <button class="btn small" style="color:var(--error)" onclick="App.removerInteresseCliente('${id}','${esc(i.produtoId)}')" title="Remover da lista">✗</button>
+        </div>
       </div>`).join('')}</div>
     </div>` : ''}
 

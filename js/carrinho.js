@@ -248,9 +248,11 @@ export function openCarrinhoForCliente(clienteId) {
   }
 }
 
-async function criarCarrinho(clienteId) {
+// Doc novo de carrinho vazio — extraído de criarCarrinho pra ser reaproveitado por quem precisa só
+// do id (ex: encaminharInteresseParaCarrinho), sem abrir o modal em seguida.
+async function novoCarrinhoDoc(clienteId) {
   const c = cliById(clienteId);
-  if (!c) return toast('Cliente não encontrado');
+  if (!c) return null;
   const r = await addDoc(col('carrinhos'), {
     clienteId: c.id, clienteNome: c.nome,
     status: 'aberto', pagamento: '', statusPagamento: 'pendente',
@@ -259,8 +261,56 @@ async function criarCarrinho(clienteId) {
     possuiEntregaFutura: false, observacoes: '',
     criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
   });
+  return r.id;
+}
+
+async function criarCarrinho(clienteId) {
+  const id = await novoCarrinhoDoc(clienteId);
+  if (!id) return toast('Cliente não encontrado');
   await window.App.refresh('Carrinho criado');
-  openCarrinho(r.id);
+  openCarrinho(id);
+}
+
+// Manda um produto da lista de interesse PERMANENTE do cliente (Cliente 360) direto pro carrinho
+// dela — usa o carrinho já aberto se tiver, ou cria um novo. Entra como item de Venda normal (preço
+// atual do catálogo, estoque calculado igual a adicionarItemCarrinho); a consultora ajusta
+// preço/quantidade no carrinho que abre em seguida, se precisar.
+export async function encaminharInteresseParaCarrinho(clienteId, produtoId) {
+  const p = prodById(produtoId);
+  if (!p) return toast('Produto não encontrado no catálogo atual.');
+
+  let carr = state.data.carrinhos.find(c => c.clienteId === clienteId && c.status === 'aberto');
+  const carrinhoId = carr ? carr.id : await novoCarrinhoDoc(clienteId);
+  if (!carrinhoId) return toast('Cliente não encontrado');
+  const itensAtuais = carr?.itens || [];
+
+  const estoque = estoqueDisponivel(p.id, carrinhoId);
+  const qtd = 1;
+  const tipoEntrega = estoque < qtd ? 'entrega_futura' : 'pronta_entrega';
+  const custoMedio = Number(p.custoMedio || 0);
+  const preco = Number(p.precoAtual || 0);
+  const precoOriginal = Number(p.precoOriginal || 0) || preco;
+  const item = {
+    produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
+    quantidade: qtd, precoUnitario: preco, precoOriginal, totalItem: preco * qtd,
+    custoMedioUsado: custoMedio, custoTotal: custoMedio * qtd,
+    lucroTotal: (preco * qtd) - (custoMedio * qtd),
+    motivo: 'Venda', geraLucro: true,
+    tipoEntrega, baixouEstoque: false
+  };
+  const itens = [...itensAtuais, item];
+  const totais = calcTotais(itens, carr?.descontoPedido);
+
+  await setDoc(ref('carrinhos', carrinhoId), {
+    ...totais, itens,
+    possuiEntregaFutura: itens.some(i => i.tipoEntrega === 'entrega_futura'),
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
+  if (tipoEntrega === 'entrega_futura') await adicionarPreEncomenda(p.id, 'carrinho_sem_estoque', qtd - estoque);
+
+  closeModal();
+  await window.App.refresh(`${p.nome} adicionado ao carrinho`);
+  openCarrinho(carrinhoId);
 }
 
 // Ordena as linhas de itens do carrinho pela coluna clicada (state.filters.carrinhoItensSort),
