@@ -50,7 +50,7 @@ export const titles = {
   catalogo: ['Catálogo', 'Filtros, preços e QR Code', 'Catálogo'],
   clientes: ['Clientes', 'Relacionamento e contatos', 'Operação'],
   agenda: ['Agenda', 'Atendimentos e follow-ups', 'Operação'],
-  vendas: ['Vendas / Carrinhos', 'Carrinhos pendentes e pedidos finalizados', 'Operação'],
+  vendas: ['Vendas & Carrinhos', 'Carrinhos pendentes e pedidos finalizados', 'Operação'],
   estoque: ['Estoque', 'Controle inteligente de produtos disponíveis', 'Operação'],
   produtos: ['Produtos', 'Base única e preços', 'Operação'],
   importar: ['Importar JSON', 'Produtos Farmasi', 'Operação'],

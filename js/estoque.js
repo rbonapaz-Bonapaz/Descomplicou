@@ -23,7 +23,7 @@ function updateProntaEntregaAuto(tx, pr, p, novoEstoque) {
   }
 }
 
-export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'manual') {
+export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'manual', autoConverter = true) {
   let novoEstoque = 0, novoCustoMedio = 0, novaProntaEntrega;
   await runTransaction(db, async tx => {
     const pr = ref('produtos', produtoId);
@@ -58,7 +58,7 @@ export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'ma
       ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
     };
   }
-  await converterEntregaFuturaAutomatico(produtoId, novoEstoque);
+  if (autoConverter) await converterEntregaFuturaAutomatico(produtoId, novoEstoque);
 }
 
 // Quando chega estoque novo, converte sozinho os itens "entrega futura" pendentes desse produto
