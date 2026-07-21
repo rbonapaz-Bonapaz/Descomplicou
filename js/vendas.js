@@ -70,7 +70,9 @@ export function renderVendas() {
   if (q) carrinhos = carrinhos.filter(c => norm(nomeAtualDoCliente(c.clienteId, c.clienteNome) + ' ' + (c.clienteNome || '')).includes(q));
   const abertos = carrinhos.filter(c => c.status === 'aberto');
   const finalizados = carrinhos.filter(c => c.status === 'finalizado' || c.status === 'parcial' || c.status === 'entregue');
-  const futuras = carrinhos.filter(c => (c.status === 'parcial' || c.status === 'finalizado') && c.possuiEntregaFutura && c.itens?.some(i => i.tipoEntrega === 'entrega_futura' && !i.entregue));
+  // Usa a checagem viva dos itens (não a flag possuiEntregaFutura, que pode ficar desatualizada) —
+  // assim a lista aqui bate exatamente com a contagem do card "Entregas futuras" do dashboard.
+  const futuras = carrinhos.filter(c => (c.status === 'parcial' || c.status === 'finalizado') && c.itens?.some(i => i.tipoEntrega === 'entrega_futura' && !i.entregue));
   const cancelados = carrinhos.filter(c => c.status === 'cancelado');
 
   const f = state.filters.vendas;

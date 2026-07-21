@@ -863,15 +863,20 @@ export async function transformarEmCarrinho(eventoId, listaId) {
     const p = state.data.produtos.find(x => (w.codigoFarmasi && x.codigoFarmasi === w.codigoFarmasi) || norm(x.nome) === norm(w.nome));
     if (!p) continue;
     const preco = Number(w.precoComDesconto || p.precoAtual || 0);
+    // Preço "de" congelado no evento — guarda pra o carrinho mostrar o "de/por" e o -X%. Quando o
+    // preço com desconto do evento é menor que o original, marca promoEvento pra sinalizar a origem.
+    const precoOriginalEvento = Number(w.precoOriginal || preco);
+    const temPromoEvento = precoOriginalEvento > preco + 0.004;
     const estoque = Number(p.estoqueAtual || 0);
     const custoMedio = Number(p.custoMedio || 0);
     const tipoEntrega = estoque > 0 ? 'pronta_entrega' : 'entrega_futura';
     itens.push({
       produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '',
-      quantidade: 1, precoUnitario: preco, totalItem: preco,
+      quantidade: 1, precoUnitario: preco, precoOriginal: precoOriginalEvento, totalItem: preco,
       custoMedioUsado: custoMedio, custoTotal: custoMedio,
       lucroTotal: preco - custoMedio, motivo: 'Venda', geraLucro: true,
-      tipoEntrega, baixouEstoque: false
+      tipoEntrega, baixouEstoque: false,
+      ...(temPromoEvento ? { promoEvento: true } : {})
     });
   }
   if (!itens.length) return toast('Nenhum produto marcado na "Sacola" foi encontrado no seu catálogo atual.');

@@ -133,7 +133,7 @@ export function renderDashboard() {
       <div class="card clickable" onclick="App.goto('relatorios')"><span>Lucro 30d</span><b>${money(r.luc)}</b></div>
       <div class="card clickable" onclick="App.goto('estoque')"><span>Valor em estoque</span><b>${money(s.invest)}</b></div>
       <div class="card clickable" onclick="App.goto('estoque')"><span>Lucro potencial</span><b>${money(s.pot)} <span class="muted" style="font-size:11px;font-weight:700">(${s.invest ? (s.pot / s.invest * 100).toFixed(0) : 0}%)</span></b></div>
-      <div class="card clickable" onclick="App.goto('vendas')"><span>Entregas futuras</span><b>${entregasFuturas.length}</b></div>
+      <div class="card clickable" onclick="App.setFilter('vendas','futuras');App.goto('vendas')"><span>Entregas futuras</span><b>${entregasFuturas.length}</b></div>
     </div>`)}
 
     <div class="dash-grid">

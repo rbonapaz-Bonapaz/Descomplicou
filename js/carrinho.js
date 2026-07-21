@@ -19,6 +19,7 @@ function carrinhoItemCardHtml(it, idx, id, editavel) {
   const original = Number(it.precoOriginal || it.precoUnitario || 0);
   const temDesconto = original > it.precoUnitario;
   const percentDesc = temDesconto ? Math.round((1 - it.precoUnitario / original) * 100) : 0;
+  const promoEvento = it.promoEvento && temDesconto;
   const temEstoqueAgora = editavel ? estoqueDisponivel(it.produtoId, id) >= it.quantidade : null;
   // Fora de edição (pedido já finalizado): todo item mostra "Entregue" ou "Entrega futura" — pronta
   // entrega conta como entregue assim que baixou o estoque na finalização. Data/hora vai pequena
@@ -39,7 +40,7 @@ function carrinhoItemCardHtml(it, idx, id, editavel) {
     </div>
     <div class="vcard-rows">
       <div class="vcard-row"><span>Qtd</span><b>${it.quantidade}</b></div>
-      <div class="vcard-row"><span>Preço unit.</span><b>${temDesconto ? `<del class="muted" style="font-weight:400">${money(original)}</del> ` : ''}${money(it.precoUnitario)}${temDesconto ? ` ${pill('-' + percentDesc + '%', 'green')}` : ''}</b></div>
+      <div class="vcard-row"><span>Preço unit.</span><b>${temDesconto ? `<del class="muted" style="font-weight:400">${money(original)}</del> ` : ''}${money(it.precoUnitario)}${temDesconto ? ` ${pill('-' + percentDesc + '%', 'green')}` : ''}${promoEvento ? `<br><small class="muted" style="font-size:10px;font-weight:600">🎫 promoção evento</small>` : ''}</b></div>
       <div class="vcard-row"><span>Total</span><b>${money(it.totalItem)}</b></div>
       <div class="vcard-row"><span>Entrega</span><b>${entregaPill}</b></div>
       ${editavel ? `<div class="vcard-row"><span>Quando</span><b style="display:flex;align-items:center;gap:6px">
@@ -458,7 +459,7 @@ export function openCarrinho(id) {
         <td>${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
         <td>${it.quantidade}</td>
         <td>${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
-        <td>${money(it.precoUnitario)}</td>
+        <td>${money(it.precoUnitario)}${it.promoEvento && temDesconto ? `<br><small class="muted" style="font-size:10px;font-weight:600">🎫 promoção evento</small>` : ''}</td>
         <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
         <td>${money(it.totalItem)}</td>
         <td title="Status do produto no estoque">${pill(temEstoqueAgora ? 'Pronta' : 'Futura', temEstoqueAgora ? 'green' : 'orange')}</td>
@@ -572,7 +573,7 @@ function openCarrinhoView(carr) {
       <td>${pill(it.motivo || 'Venda', motivoColor(it.motivo || 'Venda'))}</td>
       <td>${it.quantidade}</td>
       <td>${temDesconto ? `<del>${money(original)}</del>` : '-'}</td>
-      <td>${money(it.precoUnitario)}</td>
+      <td>${money(it.precoUnitario)}${it.promoEvento && temDesconto ? `<br><small class="muted" style="font-size:10px;font-weight:600">🎫 promoção evento</small>` : ''}</td>
       <td>${temDesconto ? pill('-' + percentDesc + '%', 'green') : '-'}</td>
       <td>${money(it.totalItem)}</td>
       <td>${(() => {
