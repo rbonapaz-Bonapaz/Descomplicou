@@ -39,7 +39,7 @@ import { renderRelatorios, exportarProdutosVendidosCSV, exportarClientesCSV, ger
 import { renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   carregarLogoNegocio, removerLogoNegocio, atualizarPreviewPix,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
-  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
+  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios, salvarPreencherValorRecebido,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,
   adicionarDataComemorativa, removerDataComemorativa, editarDataComemorativa, cancelarEdicaoDataComemorativa,
   previewTema, sincronizarCorHex, restaurarTemaPadrao } from './perfil.js';
@@ -556,7 +556,7 @@ window.App = {
   renderPerfil, savePerfil, zerarMeusDados, toggleBaseColetiva, carregarFotoPerfil, removerFotoPerfil,
   carregarLogoNegocio, removerLogoNegocio, atualizarPreviewPix,
   conectarGoogleAgendaUI, desconectarGoogleAgendaUI, salvarGeminiKey,
-  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios,
+  apagarEstoque, apagarClientes, apagarVendas, excluirMinhaConta, copiarLinkIndicacao, salvarConfigRelatorios, salvarPreencherValorRecebido,
   relSecaoDragStart, relSecaoDrop, salvarSecaoRelatorioAtiva, exportarBackupCompleto, restaurarEstoqueDoBackup, restaurarBackupCompleto,
   adicionarDataComemorativa, removerDataComemorativa, editarDataComemorativa, cancelarEdicaoDataComemorativa,
   previewTema, sincronizarCorHex, restaurarTemaPadrao,

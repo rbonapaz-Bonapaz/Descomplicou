@@ -170,6 +170,12 @@ export function renderPerfil() {
       <button class="btn dark" onclick="App.savePerfil()">Salvar</button>
     </div>
 
+    <div class="panel">
+      <h3>Valor recebido no carrinho</h3>
+      ${toggleHtml('perPreencherValorRecebido', !!p.preencherValorRecebido, 'App.salvarPreencherValorRecebido(this.checked)', p.preencherValorRecebido ? 'Vem preenchido com o total do pedido' : 'Vem zerado (preencha na hora)')}
+      <p class="muted" style="font-size:12px;margin-top:8px">Desligado: o campo "Valor recebido agora" começa zerado ao finalizar a venda — evita registrar pagamento de quem ainda não pagou, só por esquecer de mexer no campo. Ligado: já vem preenchido com o total do pedido, mais rápido pra quem recebe à vista na maioria das vendas.</p>
+    </div>
+
     ${renderOperadorasPanel()}`;
   }
 
@@ -591,6 +597,12 @@ export async function salvarGeminiKey() {
   await setDoc(doc(db, 'users', state.user.uid), { geminiApiKey: key, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, geminiApiKey: key };
   window.App.refresh(key ? 'Chave do Gemini salva' : 'Chave removida');
+}
+
+export async function salvarPreencherValorRecebido(ativo) {
+  await setDoc(doc(db, 'users', state.user.uid), { preencherValorRecebido: ativo, atualizadoEm: serverTimestamp() }, { merge: true });
+  state.profile = { ...state.profile, preencherValorRecebido: ativo };
+  toast(ativo ? 'Valor recebido passa a vir preenchido com o total' : 'Valor recebido passa a vir zerado');
 }
 
 export async function salvarConfigRelatorios(key, ativo) {

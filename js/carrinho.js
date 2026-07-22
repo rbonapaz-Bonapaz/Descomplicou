@@ -506,8 +506,8 @@ export function openCarrinho(id) {
         <span class="muted" style="font-size:12px">${esc(carr.clienteNome)} tem ${money(creditoDisponivel)} guardados de pagamentos anteriores.</span>
       </div>` : ''}
       <div class="field"><label>Valor recebido agora</label>
-        <input id="cValorRecebido" value="${money(carr.valorPago > 0 ? carr.valorPago : Math.max(0, (carr.totalPedido || 0) - creditoAplicado))}">
-        <span class="muted" style="font-size:12px">Vem preenchido com o ${creditoAplicado > 0.004 ? 'que falta após os créditos' : 'total'} — deixe menor se for receber só parte agora (sinal). Vira pendente/parcial/pago sozinho ao finalizar.</span>
+        <input id="cValorRecebido" value="${money(carr.valorPago > 0 ? carr.valorPago : (state.profile?.preencherValorRecebido ? Math.max(0, (carr.totalPedido || 0) - creditoAplicado) : 0))}">
+        <span class="muted" style="font-size:12px">${state.profile?.preencherValorRecebido ? `Vem preenchido com o ${creditoAplicado > 0.004 ? 'que falta após os créditos' : 'total'} — deixe menor se for receber só parte agora (sinal).` : 'Vem zerado — preencha o valor recebido agora (deixe zerado se ainda não recebeu nada).'} Vira pendente/parcial/pago sozinho ao finalizar.</span>
       </div>
       <div class="field"><label>Retorno em quantos dias? (opcional)</label>
         <input id="cRetornoDias" type="number" min="0" placeholder="Ex: 7" value="${carr.retornoDias || ''}" onblur="App.salvarCarrinhoOpt('${id}',true)">
