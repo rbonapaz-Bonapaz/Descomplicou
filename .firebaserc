@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "crm-consultora-de-beleza"
-  }
+  },
+  "targets": {
+    "crm-consultora-de-beleza": {
+      "hosting": {
+        "principal": [
+          "descomplicandovendas"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
