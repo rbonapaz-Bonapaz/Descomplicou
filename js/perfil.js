@@ -602,6 +602,7 @@ export async function salvarGeminiKey() {
 export async function salvarPreencherValorRecebido(ativo) {
   await setDoc(doc(db, 'users', state.user.uid), { preencherValorRecebido: ativo, atualizadoEm: serverTimestamp() }, { merge: true });
   state.profile = { ...state.profile, preencherValorRecebido: ativo };
+  renderPerfil(); // sem isso o texto ao lado do interruptor ficava com a legenda antiga
   toast(ativo ? 'Valor recebido passa a vir preenchido com o total' : 'Valor recebido passa a vir zerado');
 }
 
