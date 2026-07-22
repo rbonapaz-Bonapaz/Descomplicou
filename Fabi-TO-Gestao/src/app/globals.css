@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 201 22% 20%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 201 22% 20%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 201 22% 20%;
+    
+    /* Slate Blue Original - #4F6D7A */
+    --primary: 198 22% 39%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 201 22% 95%;
+    --secondary-foreground: 201 22% 25%;
+    
+    --muted: 210 20% 96%;
+    --muted-foreground: 201 22% 45%;
+    
+    /* Gold Accent Original - #BA8E32 */
+    --accent: 41 57% 46%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 198 22% 39%;
+    
+    --radius: 0.75rem;
+
+    --sidebar-background: 198 22% 39%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 198 22% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 41 57% 46%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 198 22% 35%;
+    --sidebar-ring: 41 57% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+/* Letreiro Digital Mural da TV */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  animation: marquee 40s linear infinite;
+}
+
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  header, [data-sidebar="sidebar"], [data-sidebar="trigger"], button, .print\:hidden, nav {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+}
