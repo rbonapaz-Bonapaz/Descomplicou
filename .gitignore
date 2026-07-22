@@ -1,0 +1,6 @@
+# Sessões/config locais do Claude Code — nunca devem ir pro repositório.
+.claude/
+
+# Dependências instaladas (Cloud Functions, etc.) — reconstrói com npm install.
+node_modules/
+functions/node_modules/
