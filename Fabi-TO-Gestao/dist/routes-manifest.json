@@ -1,0 +1,231 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:file((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/]+\\.\\w+)/",
+      "destination": "/:file",
+      "internal": true,
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-nextjs-data"
+        }
+      ],
+      "statusCode": 308,
+      "regex": "^(?:/((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/]+\\.\\w+))/$"
+    },
+    {
+      "source": "/:notfile((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/\\.]+)",
+      "destination": "/:notfile/",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/\\.]+))$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/pacientes/[id]",
+      "regex": "^/pacientes/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/pacientes/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/agenda",
+      "regex": "^/agenda(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agenda(?:/)?$"
+    },
+    {
+      "page": "/catalogo",
+      "regex": "^/catalogo(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/catalogo(?:/)?$"
+    },
+    {
+      "page": "/configuracoes",
+      "regex": "^/configuracoes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/configuracoes(?:/)?$"
+    },
+    {
+      "page": "/convenios",
+      "regex": "^/convenios(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/convenios(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/despesas",
+      "regex": "^/despesas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/despesas(?:/)?$"
+    },
+    {
+      "page": "/favicon.ico",
+      "regex": "^/favicon\\.ico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/favicon\\.ico(?:/)?$"
+    },
+    {
+      "page": "/ferias",
+      "regex": "^/ferias(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ferias(?:/)?$"
+    },
+    {
+      "page": "/financeiro",
+      "regex": "^/financeiro(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/financeiro(?:/)?$"
+    },
+    {
+      "page": "/inteligencia",
+      "regex": "^/inteligencia(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/inteligencia(?:/)?$"
+    },
+    {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/pacientes",
+      "regex": "^/pacientes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/pacientes(?:/)?$"
+    },
+    {
+      "page": "/pacientes/prontuario",
+      "regex": "^/pacientes/prontuario(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/pacientes/prontuario(?:/)?$"
+    },
+    {
+      "page": "/pagamento/envelope",
+      "regex": "^/pagamento/envelope(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/pagamento/envelope(?:/)?$"
+    },
+    {
+      "page": "/pagamento/historico",
+      "regex": "^/pagamento/historico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/pagamento/historico(?:/)?$"
+    },
+    {
+      "page": "/pagamento/rendimentos",
+      "regex": "^/pagamento/rendimentos(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/pagamento/rendimentos(?:/)?$"
+    },
+    {
+      "page": "/perfil",
+      "regex": "^/perfil(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/perfil(?:/)?$"
+    },
+    {
+      "page": "/ponto",
+      "regex": "^/ponto(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ponto(?:/)?$"
+    },
+    {
+      "page": "/ponto/espelho",
+      "regex": "^/ponto/espelho(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ponto/espelho(?:/)?$"
+    },
+    {
+      "page": "/ponto-mobile",
+      "regex": "^/ponto\\-mobile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ponto\\-mobile(?:/)?$"
+    },
+    {
+      "page": "/recepcao",
+      "regex": "^/recepcao(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/recepcao(?:/)?$"
+    },
+    {
+      "page": "/recepcao/tv",
+      "regex": "^/recepcao/tv(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/recepcao/tv(?:/)?$"
+    },
+    {
+      "page": "/register",
+      "regex": "^/register(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/register(?:/)?$"
+    },
+    {
+      "page": "/relatorios",
+      "regex": "^/relatorios(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/relatorios(?:/)?$"
+    },
+    {
+      "page": "/rh/equipe",
+      "regex": "^/rh/equipe(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/rh/equipe(?:/)?$"
+    },
+    {
+      "page": "/rh/jornada",
+      "regex": "^/rh/jornada(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/rh/jornada(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}
