@@ -434,6 +434,16 @@ function setupListeners() {
     });
     _unsubscribes.push(unsub);
   }
+  // config/planos (preços dos planos, limites de teste/gratuito) só era lido uma vez em loadAll() —
+  // depois de salvar um preço novo em Admin → Planos, a tela voltava a mostrar o valor antigo, porque
+  // state.config nunca era atualizado de novo. Com o listener, fica em tempo real como o resto do app.
+  const unsubConfig = onSnapshot(doc(db, 'config', 'planos'), snap => {
+    if (snap.exists()) state.config = { ...state.config, ...snap.data() };
+    if (!_renderDebounce) {
+      _renderDebounce = setTimeout(() => { _renderDebounce = null; renderAll(); }, 80);
+    }
+  }, () => {}); // sem permissão (não-admin) só ignora — o valor carregado em loadAll() continua valendo
+  _unsubscribes.push(unsubConfig);
 }
 
 function teardownListeners() {
