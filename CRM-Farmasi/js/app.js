@@ -102,12 +102,16 @@ function checkBloqueioPlano() {
   return true;
 }
 
-async function tentarDesbloqueio() {
+// silencioso=true na tentativa automática (assim que a tela de biometria aparece) — alguns
+// navegadores (ex: Safari/iOS) exigem um toque explícito antes de abrir o seletor de biometria e
+// recusam a chamada automática; nesse caso não é "erro" da consultora, então não mostra toast — o
+// botão "Desbloquear" continua na tela pra ela tentar de novo, e aí sim (clique manual) avisa se falhar.
+async function tentarDesbloqueio(silencioso = false) {
   const ok = await desbloquearBiometria();
   if (ok) {
     $('bioLock').classList.add('hidden');
     $('app').classList.remove('hidden');
-  } else {
+  } else if (!silencioso) {
     toast('Não foi possível confirmar sua biometria');
   }
 }
@@ -141,6 +145,10 @@ onAuthStateChanged(auth, async u => {
   } else if (temBiometriaAtiva(u.uid)) {
     $('bioLock').classList.remove('hidden');
     $('app').classList.add('hidden');
+    // Dispara o pedido de biometria sozinho, sem esperar o toque no botão "Desbloquear" — ele
+    // continua na tela como alternativa manual (repetir se cancelar, ou navegadores que exigem um
+    // toque explícito antes de abrir o seletor de biometria).
+    tentarDesbloqueio(true);
   } else {
     $('app').classList.remove('hidden');
 
