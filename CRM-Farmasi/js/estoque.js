@@ -23,7 +23,7 @@ function updateProntaEntregaAuto(tx, pr, p, novoEstoque) {
   }
 }
 
-export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'manual', autoConverter = true) {
+export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'manual') {
   let novoEstoque = 0, novoCustoMedio = 0, novaProntaEntrega;
   await runTransaction(db, async tx => {
     const pr = ref('produtos', produtoId);
@@ -57,74 +57,6 @@ export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'ma
       ...state.data.produtos[idx], estoqueAtual: novoEstoque, custoMedio: novoCustoMedio, ultimaEntrada: today(),
       ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
     };
-  }
-  if (autoConverter) await converterEntregaFuturaAutomatico(produtoId, novoEstoque);
-}
-
-// Quando chega estoque novo, converte sozinho os itens "entrega futura" pendentes desse produto
-// (em carrinhos e trocas abertos, mais antigos primeiro) — até onde o estoque novo der conta,
-// descontando o que outros carrinhos/trocas já reservaram como pronta entrega. Carrinho ainda
-// "aberto" só troca o tipo (a baixa acontece normalmente ao finalizar); carrinho já finalizado ou
-// item de troca já entrega/dá baixa de verdade agora, na hora.
-async function converterEntregaFuturaAutomatico(produtoId, novoEstoque) {
-  let disponivel = novoEstoque - reservadoEmAberto(produtoId);
-  if (disponivel <= 0) return;
-
-  const candidatos = [];
-  state.data.carrinhos.forEach(c => {
-    if (!['aberto', 'parcial', 'finalizado'].includes(c.status)) return;
-    (c.itens || []).forEach((item, idx) => {
-      if (item.produtoId === produtoId && item.tipoEntrega === 'entrega_futura' && !item.entregue) {
-        candidatos.push({ tipo: 'carrinho', carr: c, item, idx, data: c.criadoEm });
-      }
-    });
-  });
-  state.data.trocas.forEach(t => {
-    if (t.status !== 'aberta' && t.status !== 'parcial') return;
-    (t.itensSaida || []).forEach((item, idx) => {
-      if (item.produtoId === produtoId && item.tipoEntrega === 'entrega_futura' && !item.processado) {
-        candidatos.push({ tipo: 'troca', troca: t, item, idx, data: t.criadoEm });
-      }
-    });
-  });
-  candidatos.sort((a, b) => (a.data?.toMillis?.() || 0) - (b.data?.toMillis?.() || 0));
-
-  for (const c of candidatos) {
-    if (disponivel < Number(c.item.quantidade || 0)) break;
-
-    if (c.tipo === 'carrinho') {
-      const { carr, item, idx } = c;
-      const novosItens = [...carr.itens];
-      if (carr.status === 'aberto') {
-        novosItens[idx] = { ...item, tipoEntrega: 'pronta_entrega' };
-        await setDoc(ref('carrinhos', carr.id), {
-          itens: novosItens, possuiEntregaFutura: novosItens.some(i => i.tipoEntrega === 'entrega_futura'),
-          atualizadoEm: serverTimestamp()
-        }, { merge: true });
-      } else {
-        try {
-          await saidaEstoque(produtoId, item.quantidade, item.motivo || 'Venda', carr.id, item.totalItem);
-        } catch (e) { continue; }
-        novosItens[idx] = { ...item, tipoEntrega: 'pronta_entrega', entregue: true, baixouEstoque: true, dataEntrega: today() };
-        const todosEntregues = novosItens.every(i => i.tipoEntrega !== 'entrega_futura' || i.entregue);
-        await setDoc(ref('carrinhos', carr.id), {
-          itens: novosItens, status: todosEntregues ? 'entregue' : carr.status, atualizadoEm: serverTimestamp()
-        }, { merge: true });
-      }
-    } else {
-      const { troca, item, idx } = c;
-      try {
-        await saidaEstoque(produtoId, item.quantidade, troca.parceira ? `Troca (${troca.parceira})` : 'Troca');
-      } catch (e) { continue; }
-      const novosSaida = [...(troca.itensSaida || [])];
-      novosSaida[idx] = { ...item, processado: true };
-      const tudoProcessado = [...novosSaida, ...(troca.itensEntrada || [])].every(i => i.tipoEntrega !== 'entrega_futura' || i.processado);
-      await setDoc(ref('trocas', troca.id), {
-        itensSaida: novosSaida, status: tudoProcessado ? 'finalizada' : 'parcial', atualizadoEm: serverTimestamp()
-      }, { merge: true });
-    }
-
-    disponivel -= Number(c.item.quantidade || 0);
   }
 }
 

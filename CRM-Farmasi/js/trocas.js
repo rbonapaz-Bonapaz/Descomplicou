@@ -245,7 +245,7 @@ export async function adicionarItemTroca(trocaId, lado) {
     const tipoEntregaSai = $('trEntregaSai').value;
     // A checagem de estoque só bloqueia entrega "pronta" — igual ao carrinho de vendas, "vou
     // entregar depois" é justamente a opção pra quando ainda não tem o produto em mãos. Quando
-    // chegar estoque novo, a baixa desse item pendente acontece sozinha (converterEntregaFuturaAutomatico).
+    // chegar estoque novo, a entrega desse item pendente é sempre manual (ver marcarItemTrocaProcessado).
     if (tipoEntregaSai === 'pronta_entrega') {
       // Desconta tudo que já está reservado em carrinhos abertos e trocas em andamento (incluindo
       // esta mesma troca) — mesma proteção do carrinho de vendas, pra não comprometer mais do que
@@ -330,7 +330,9 @@ export async function finalizarTroca(trocaId) {
   }
   for (const item of itensEntrada) {
     if (item.tipoEntrega === 'pronta_entrega' && !item.processado) {
-      await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario, motivo);
+      // autoConverter=false: dar entrada aqui só deve abastecer o estoque — não marcar sozinho
+      // entregas futuras pendentes de outros carrinhos/trocas como entregues (ação sempre manual).
+      await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario, motivo, 'manual');
       item.processado = true;
     }
   }
@@ -376,6 +378,8 @@ export async function reabrirTroca(trocaId) {
     const item = itensSaida[i];
     if (!item.processado) continue;
     try {
+      // autoConverter=false: estorno é ajuste de saldo, não "chegada" — não deve marcar sozinho
+      // entregas futuras pendentes de outros carrinhos/trocas como entregues.
       await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario || 0, 'Ajuste', 'reabertura');
       itensSaida[i] = { ...item, processado: false };
     } catch (e) { erros++; toast(`Erro ao estornar ${item.produtoNome}: ${e.message}`); }
@@ -407,7 +411,11 @@ export async function marcarItemTrocaProcessado(trocaId, lado, idx) {
 
   try {
     if (lado === 'saida') await saidaEstoque(item.produtoId, item.quantidade, motivoTroca(t));
-    else await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario, motivoTroca(t));
+    // autoConverter=false: dar entrada de um item de troca "aguardando" só deve abastecer o
+    // estoque — não marcar sozinho entregas futuras pendentes de outros carrinhos/trocas como
+    // entregues (ex: aguardando o produto da Analu não pode dar baixa numa dívida de entrega de
+    // outra venda). Quem está devendo entrega segue igual, esperando ação manual.
+    else await entradaEstoque(item.produtoId, item.quantidade, item.valorUnitario, motivoTroca(t), 'manual');
   } catch (e) {
     return toast(`Erro: ${e.message}`);
   }

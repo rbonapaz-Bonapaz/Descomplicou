@@ -280,7 +280,7 @@ export async function confirmarChegada(itemId) {
     await perguntarAtivarProntaEntrega(item.produtoId);
     // autoConverter=false: confirmar chegada só dá entrada no estoque — não marca sozinho os itens
     // de "entrega futura" pendentes como entregues; a consultora confere e lança essa entrega manualmente.
-    await entradaEstoque(item.produtoId, qtd, custo, item.origem === 'brinde' ? 'Brinde Farmasi' : 'Compra', 'pre_encomenda', false);
+    await entradaEstoque(item.produtoId, qtd, custo, item.origem === 'brinde' ? 'Brinde Farmasi' : 'Compra', 'pre_encomenda');
   } catch (e) { return toast('Erro ao dar entrada no estoque: ' + e.message); }
   await deleteDoc(ref('preEncomenda', itemId));
   window.App.refresh(`${item.produtoNome}: entrada de ${qtd} un. registrada no estoque`);
