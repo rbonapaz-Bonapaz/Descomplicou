@@ -159,7 +159,7 @@ export function openTroca(id) {
       '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Pra quando você já recebeu o produto (consignado) mas ainda não decidiu o que vai devolver — sem marcar isso, a troca fecharia como "Finalizada" mesmo sem nada lançado do seu lado.</span></span>')}</div>` : ''}
     ${podeAdicionar ? `<div class="panel" style="background:#F7FAFC;margin-top:10px">
       <div style="margin-bottom:10px">${toggleHtml('trMostrarSem', mostrarSem, `App.toggleTrocaOpt('${id}','mostrarSemEstoque',this.checked)`, 'Mostrar itens sem estoque',
-        '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Libera escolher produtos sem estoque disponível — use "Vou entregar depois" nesses: a baixa acontece sozinha quando chegar estoque.</span></span>')}</div>
+        '<span class="info-ico" tabindex="0">ⓘ<span class="info-tip">Libera escolher produtos sem estoque disponível — use "Vou entregar depois" nesses: quando chegar estoque, você confirma a baixa manualmente (botão "Dar baixa"), pra conferir direito quem deve receber.</span></span>')}</div>
       <div class="grid">
         <div class="field full"><label>Produto</label>${pickerSai}</div>
         <div class="field"><label>Quantidade</label><input id="trQtdSai" type="number" value="1"></div>

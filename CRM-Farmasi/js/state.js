@@ -312,8 +312,8 @@ export function openCarrinhosForClient(clienteId) {
 // Quantas unidades de um produto já estão comprometidas em carrinhos/trocas abertos como "pronta
 // entrega" ainda não baixada do estoque de verdade — sem contar isso, dois carrinhos/trocas abertos
 // ao mesmo tempo podiam "vender"/"trocar" a mesma última unidade em estoque duas vezes. Itens de
-// "entrega futura" ficam de fora de propósito: eles ainda não têm estoque reservado, é exatamente
-// o que a conversão automática de estoque (estoque.js) resolve quando chega estoque novo.
+// "entrega futura" ficam de fora de propósito: eles ainda não têm estoque reservado — a consultora
+// decide manualmente quem recebe quando chega estoque novo (marcarItemEntregue/marcarItemTrocaProcessado).
 // `excluirCarrinhoId`/`excluirTrocaId` deixam de fora o próprio carrinho/troca que está sendo
 // editado no momento (os itens que ele mesmo já tem não devem contar contra ele).
 export function reservadoEmAberto(produtoId, excluirCarrinhoId = '', excluirTrocaId = '') {
