@@ -1023,7 +1023,7 @@ function aguardandoAgrupadoHtml(aguardando) {
         </div>
         <span class="muted">${itensDoPedido.length} item${itensDoPedido.length === 1 ? '' : 's'} — <b style="color:var(--text)">${money(totalPedido)}</b></span>
       </div>
-      ${!expandido ? '' : `<div class="table table-scroll" style="margin-top:6px"><table><thead><tr>
+      ${!expandido ? '' : `<div class="table" style="margin-top:6px"><table><thead><tr>
         ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}
         ${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}
         ${thSort('Pedido', 'quantidade', state.filters.preEncomendaSort, 'preEncomendaSort')}
