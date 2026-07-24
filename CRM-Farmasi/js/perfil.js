@@ -344,9 +344,32 @@ export function renderPerfil() {
     </div>`;
   }
 
+  // Essa tela é redesenhada do zero sempre que QUALQUER dado muda em tempo real (venda, estoque,
+  // etc. — todas as coleções têm listener ao vivo), mesmo sem relação nenhuma com o que está sendo
+  // editado aqui. Sem isso, o campo em que a consultora estava digitando perdia o texto (voltava
+  // pro valor salvo) no meio da edição, mesmo sem ela ter feito nada — bastava algo mudar em
+  // qualquer outra tela ao mesmo tempo. Captura o campo focado + o que já foi digitado ANTES de
+  // trocar o HTML, e restaura os dois depois.
+  const perfilDiv = $('perfil');
+  const campoAtivo = document.activeElement;
+  const estavaEditando = perfilDiv && campoAtivo && perfilDiv.contains(campoAtivo) &&
+    (campoAtivo.tagName === 'INPUT' || campoAtivo.tagName === 'TEXTAREA');
+  const campoId = estavaEditando ? campoAtivo.id : null;
+  const valorDigitado = estavaEditando ? campoAtivo.value : null;
+  const cursorPos = estavaEditando && campoAtivo.selectionStart != null ? campoAtivo.selectionStart : null;
+
   $('perfil').innerHTML = html;
   if (sec === 'seguranca') renderBioSecurityBox();
   if (sec === 'pagamento') atualizarPreviewPix();
+
+  if (campoId) {
+    const el = document.getElementById(campoId);
+    if (el) {
+      el.value = valorDigitado;
+      el.focus();
+      if (cursorPos != null && el.setSelectionRange) { try { el.setSelectionRange(cursorPos, cursorPos); } catch (e) { /* alguns tipos de input não suportam seleção */ } }
+    }
+  }
 }
 
 // Prévia ao vivo da chave Pix normalizada (item: correção do erro "conta não encontrada") — mostra
