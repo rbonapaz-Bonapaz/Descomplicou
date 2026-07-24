@@ -1,0 +1,36 @@
+name: Deploy CRM Farmasi (Firebase Hosting)
+
+# Publica automaticamente no Firebase Hosting sempre que a pasta CRM-Farmasi/ mudar no branch
+# main — substitui o passo manual de rodar "firebase deploy" no Cloud Shell a cada correção.
+# Precisa do secret FIREBASE_SERVICE_ACCOUNT configurado no repositório (ver instruções no README
+# ou pedir orientação de novo, se precisar recriar).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CRM-Farmasi/**'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: CRM-Farmasi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy no Firebase Hosting
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/firebase-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-key.json
+          firebase deploy --only hosting:principal --project crm-consultora-de-beleza --non-interactive
