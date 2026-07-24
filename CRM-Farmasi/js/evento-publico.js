@@ -109,7 +109,12 @@ function render() {
   $('loading').classList.add('hidden');
   $('app').classList.remove('hidden');
   $('evTitulo').textContent = evento.nome || 'Catálogo do evento';
-  $('evSubtitulo').textContent = evento.data ? `Evento em ${formatDate(evento.data)}` : 'Promoções especiais';
+  // "Promoções especiais" só faz sentido quando existe desconto de verdade em algum produto —
+  // antes aparecia sempre que o evento não tinha data cadastrada, sem relação nenhuma com desconto.
+  const temAlgumDesconto = (evento.produtos || []).some(p => p.precoOriginal && p.precoComDesconto && p.precoOriginal !== p.precoComDesconto);
+  $('evSubtitulo').textContent = evento.data
+    ? `Evento em ${formatDate(evento.data)}`
+    : (temAlgumDesconto ? 'Promoções especiais' : 'Confira nosso catálogo');
   renderHeaderFooter();
   renderFiltros();
   renderGrid();
@@ -168,6 +173,11 @@ function renderGrid() {
   let itens = evento.produtos || [];
   if (linhaAtiva !== 'todas') itens = itens.filter(p => linhasDe(p).includes(linhaAtiva));
   if (q) itens = itens.filter(p => norm(p.nome + ' ' + p.codigoFarmasi).includes(q));
+  // Padrão fixo: agrupado por linha (alfabética) e, dentro de cada linha, por nome (alfabética) —
+  // sem isso a vitrine seguia a ordem crua salva no evento (~ordem de cadastro), misturando tudo.
+  itens = [...itens].sort((a, b) =>
+    (a.linha || 'Sem linha').localeCompare(b.linha || 'Sem linha', 'pt-BR') ||
+    (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
 
   // Cada evento decide o que aparece na vitrine (preço/benefícios/estoque) — configurado pela
   // consultora ao criar/editar o evento; padrão true pra eventos criados antes desse recurso.

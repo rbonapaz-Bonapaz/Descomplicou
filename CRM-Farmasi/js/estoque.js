@@ -3,6 +3,7 @@ import { state, col, ref, db, prodById, cliById, showModal, closeModal, toast,
 import { $, esc, money, parseMoney, today, norm, pill, sortWrapped, withFocusPreserved, sortBarHtml, searchPickerHtml, toggleHtml, toggleBareHtml, linhasDe, labelLinha, formatDateBR, porNome } from './utils.js';
 import { trocasTabHtml } from './trocas.js';
 import { preEncomendaTabHtml, btnAdicionarPreEncomenda } from './preencomenda.js';
+import { sincronizarProdutoNosEventos } from './eventos.js';
 
 const MOTIVOS_SAIDA = ['Brinde', 'Mostruário', 'Parceria', 'Consumo próprio', 'Troca', 'Perda', 'Ajuste'];
 // Motivos em que faz sentido perguntar "para quem"/"onde ficou" o produto — pra depois dar pra
@@ -57,6 +58,10 @@ export async function entradaEstoque(produtoId, qtd, custo, motivo, origem = 'ma
       ...state.data.produtos[idx], estoqueAtual: novoEstoque, custoMedio: novoCustoMedio, ultimaEntrada: today(),
       ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
     };
+    // Sem isso, o estoque/"pronta entrega" mostrado no link público do evento só atualizava quando
+    // alguém editava o produto na tela de Produtos — vendas, reposições, pré-encomenda e trocas
+    // nunca refletiam sozinhas no link (silencioso, ninguém percebia até reparar que estava velho).
+    sincronizarProdutoNosEventos(state.data.produtos[idx]).catch(() => {});
   }
 }
 
@@ -89,6 +94,7 @@ export async function saidaEstoque(produtoId, qtd, motivo = 'Venda', vendaId = '
       ...state.data.produtos[idx], estoqueAtual: novoEstoque, ultimaSaida: today(),
       ...(novaProntaEntrega !== undefined ? { produtoProntaEntrega: novaProntaEntrega } : {})
     };
+    sincronizarProdutoNosEventos(state.data.produtos[idx]).catch(() => {});
   }
 }
 
