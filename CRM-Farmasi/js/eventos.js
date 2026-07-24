@@ -219,7 +219,7 @@ function formHtmlEvento(ev) {
       ${linhas.length ? linhas.map(l => {
         const marcado = ev ? linhasNoEvento.has(l) : true;
         return `<tr>
-          <td data-label="Participa">${toggleBareHtml('', marcado, '', `class="evLinhaChk" value="${esc(l)}"`)}</td>
+          <td data-label="Participa">${toggleBareHtml('', marcado, 'App.aoMudarLinhaEvento(this.checked)', `class="evLinhaChk" value="${esc(l)}"`)}</td>
           <td data-label="Linha">${esc(labelLinha(l))}</td>
           <td data-label="Desconto %"><input class="evLinhaDesc" data-linha="${esc(l)}" value="${esc(descontosAtuais[l] ?? 0)}" style="width:80px"></td>
         </tr>`;
@@ -231,6 +231,14 @@ function formHtmlEvento(ev) {
 // marca tudo, desligar desmarca tudo. A consultora ainda pode ajustar linha por linha depois.
 export function aoMudarTodoCatalogo(ligado) {
   document.querySelectorAll('.evLinhaChk').forEach(c => { c.checked = ligado; });
+}
+
+// Desmarcar uma linha específica desliga "Mostrar todo o catálogo" sozinho — os dois juntos eram
+// contraditórios: com "todo o catálogo" ligado, o link mostra QUALQUER produto ativo mesmo com
+// linhas desmarcadas (só o desconto delas some, não o produto) — dando a impressão de que desmarcar
+// a linha "não fazia nada". Marcar uma linha não reativa o "todo o catálogo" (só o contrário desliga).
+export function aoMudarLinhaEvento(marcado) {
+  if (!marcado && $('evTodoCatalogo')?.checked) $('evTodoCatalogo').checked = false;
 }
 
 // Preenche o desconto de TODAS as linhas de uma vez com o valor digitado em "% em Todos itens" —

@@ -62,7 +62,7 @@ import { renderEventos, openNovoEvento, confirmarNovoEvento, copiarLinkEvento, e
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
-  marcarLeadsVistos, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
+  marcarLeadsVistos, aoMudarTodoCatalogo, aoMudarLinhaEvento, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
   abrirProdutosLista, moverItemLista, excluirItemLista } from './eventos.js';
 import { renderSobre, abrirManualWeb } from './sobre.js';
 
@@ -592,7 +592,7 @@ window.App = {
   toggleListasEvento, atualizarListasEvento, vincularCliente, confirmarVinculo, filtrarClientesVinculo,
   confirmarVinculoSelecionado, abrirNovoClienteDeLista, transformarEmCarrinho, marcarInteresseDaLista,
   enviarWhatsappEvento, confirmarEnvioWhatsapp, abrirEditarEvento, confirmarEditarEvento, gerarQrCodeEvento,
-  marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
+  marcarLeadsVistos, renderLeadsBanner, renderDatasComemorativas, aoMudarTodoCatalogo, aoMudarLinhaEvento, aplicarDescontoTodos, marcarLeadTratado, atualizarPrecosEvento,
   abrirProdutosLista, moverItemLista, excluirItemLista,
   // Sobre
   renderSobre, abrirManualWeb
