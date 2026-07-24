@@ -183,7 +183,15 @@ function linhasDisponiveis() {
 function formHtmlEvento(ev) {
   const linhas = linhasDisponiveis();
   const descontosAtuais = ev?.descontosPorLinha || {};
-  const linhasNoEvento = new Set((ev?.produtos || []).flatMap(p => linhasDe(p)));
+  // Linhas marcadas como "participa" precisam vir de uma escolha explícita salva (linhasParticipantes)
+  // — não dá pra inferir só pelos produtos que sobraram no evento: um produto com mais de uma linha
+  // (ex: "Mulher" + "Perfumaria") continuava carregando a tag "Mulher" mesmo depois da consultora
+  // desmarcar essa linha e salvar (ele ficou no evento por causa da outra linha ainda selecionada),
+  // reativando a caixinha sozinha na próxima vez que abria pra editar. Eventos antigos sem esse campo
+  // (criados antes dessa correção) caem no cálculo antigo, só como aproximação de primeira abertura.
+  const linhasNoEvento = ev?.linhasParticipantes
+    ? new Set(ev.linhasParticipantes)
+    : new Set((ev?.produtos || []).flatMap(p => linhasDe(p)));
   return `
     <div class="grid">
       <div class="field full"><label>Nome do evento</label><input id="evNome" value="${esc(ev?.nome || '')}" placeholder="Ex: Semana da Beleza"></div>
@@ -289,7 +297,7 @@ function coletarDadosFormEvento() {
     vigenciaInicio: $('evVigenciaInicio').value, vigenciaFim: $('evVigenciaFim').value,
     mensagemWhatsapp: $('evMensagemWhats').value.trim(),
     mostrarPrecos: !!$('evMostrarPrecos')?.checked, mostrarBeneficios: !!$('evMostrarBeneficios')?.checked, mostrarEstoque: !!$('evMostrarEstoque')?.checked,
-    descontosPorLinha: descontos, todoCatalogo, produtos, perfilPublico
+    descontosPorLinha: descontos, linhasParticipantes: linhasSelecionadas, todoCatalogo, produtos, perfilPublico
   };
 }
 
