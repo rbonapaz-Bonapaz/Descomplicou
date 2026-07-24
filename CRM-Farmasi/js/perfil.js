@@ -54,9 +54,9 @@ export function renderPerfil() {
           </select>
         </div>
         <div class="field"><label>Link loja/site para QR Code</label><input id="perLoja" value="${esc(p.linkLoja || '')}"></div>
-        <div class="field"><label>Título catálogo</label><input id="perTitulo" value="${esc(p.tituloCatalogo || 'Catálogo Inteligente')}"></div>
-        <div class="field"><label>Subtítulo</label><input id="perSub" value="${esc(p.subtituloCatalogo || 'GESTÃO DE PRODUTOS + PDF')}"></div>
-        <div class="field full"><label>Rodapé</label><input id="perRodape" value="${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}"></div>
+        <div class="field"><label>Título catálogo</label><input id="perTitulo" value="${esc(p.tituloCatalogo ?? 'Catálogo Inteligente')}"></div>
+        <div class="field"><label>Subtítulo</label><input id="perSub" value="${esc(p.subtituloCatalogo ?? 'GESTÃO DE PRODUTOS + PDF')}" placeholder="Deixe em branco pra não mostrar nenhum subtítulo"></div>
+        <div class="field full"><label>Rodapé</label><input id="perRodape" value="${esc(p.rodapeCatalogo ?? 'Fale comigo para fazer seu pedido')}"></div>
         <div class="field"><label>Dias sem contato para virar "cliente frio"</label><input id="perDiasFrio" type="number" min="1" value="${p.diasContatoFrio || 30}"></div>
         <div class="field"><label>Mostrar próximos dias na Agenda do Painel Inicial</label>
           <select id="perDiasAgenda">

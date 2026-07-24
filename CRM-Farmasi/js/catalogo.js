@@ -186,9 +186,9 @@ function pageHtml(items, title, density) {
   const p = state.profile || {};
   return `<section class="cat-page ${density}">
     <header class="cat-header">
-      <div class="cat-brand">${esc(p.tituloCatalogo || 'Catálogo Inteligente')}</div>
-      <div class="cat-sub">${esc(p.subtituloCatalogo || 'GESTÃO DE PRODUTOS + PDF')}</div>
-      <div class="cat-consult">${esc(p.nomeNegocio || 'CRM de Vendas')}<br>${esc(p.nome || '')}<br>${esc(p.whatsapp || '')}<br>${esc(p.instagram || '')}</div>
+      <div class="cat-brand">${esc(p.tituloCatalogo ?? 'Catálogo Inteligente')}</div>
+      <div class="cat-sub">${esc(p.subtituloCatalogo ?? 'GESTÃO DE PRODUTOS + PDF')}</div>
+      <div class="cat-consult">${esc(p.nomeNegocio || 'CRM de Vendas')}<br>${esc(p.nome || '')}${p.whatsapp ? `<br>📱 ${esc(p.whatsapp)}` : ''}${p.instagram ? `<br>📷 @${esc(String(p.instagram).replace(/^@/, ''))}` : ''}</div>
     </header>
     <main class="cat-content">
       <h2 class="cat-line-title">${esc(title)}</h2>
@@ -196,7 +196,7 @@ function pageHtml(items, title, density) {
     </main>
     <footer class="cat-footer">
       ${logoNegocioHtml(p, 'pdf-foot-logo cat-foot-logo')}
-      <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}<br>${esc(p.linkLoja || qrData())}</div>
+      <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo ?? 'Fale comigo para fazer seu pedido')}<br>${esc(p.linkLoja || qrData())}</div>
       <img class="cat-qr" src="${qrUrl()}">
     </footer>
   </section>`;

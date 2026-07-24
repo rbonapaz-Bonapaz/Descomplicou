@@ -94,7 +94,7 @@ function gerarPdf(carr, interno) {
     <header class="pdf-header">
       <div class="pdf-brand">${esc(p.nomeNegocio || 'CRM de Vendas')}</div>
       <div class="pdf-sub">${interno ? 'PEDIDO INTERNO' : 'PEDIDO'}</div>
-      <div class="pdf-consult">${esc(p.nome || '')}<br>${esc(p.whatsapp || '')}<br>${esc(p.instagram || '')}</div>
+      <div class="pdf-consult">${esc(p.nome || '')}${p.whatsapp ? `<br>📱 ${esc(p.whatsapp)}` : ''}${p.instagram ? `<br>📷 @${esc(String(p.instagram).replace(/^@/, ''))}` : ''}</div>
     </header>
     <main class="pdf-content" style="top:33mm;bottom:24mm;left:8mm;right:8mm">
       <div class="pedido-info-grid">
