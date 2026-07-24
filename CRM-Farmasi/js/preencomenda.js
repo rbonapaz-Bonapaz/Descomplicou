@@ -591,7 +591,7 @@ export function abrirCompraFornecedor(id) {
 
   showModal(`<h3>🧾 Compra — ${esc(c.pessoa)}</h3>
     ${pill(c.pago ? 'Pago' : 'A pagar', c.pago ? 'green' : 'red')}
-    <div class="table table-scroll" style="margin-top:10px">
+    <div class="table" style="margin-top:10px">
       ${itens.length ? `<table><thead><tr><th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Estoque</th><th></th></tr></thead><tbody>
         ${itens.map((it, idx) => `<tr>
           <td data-label="Produto">${esc(it.produtoNome)}</td>
@@ -746,7 +746,7 @@ export function fornecedoresPanelHtml() {
         <div><b>${esc(g.nome)}</b> ${g.pendente > 0.004 ? `<span class="muted">— Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}</div>
         <button class="btn small" onclick="App.adicionarCompraFornecedor('${esc(g.nome).replace(/'/g, "\\'")}')">+ Comprar mais</button>
       </div>
-      <div class="table table-scroll" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Itens</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
+      <div class="table" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Itens</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
         ${g.compras.map(c => {
     const itens = itensDaCompra(c);
     const resumoItens = itens.map(i => `${i.quantidade}× ${esc(i.produtoNome)}`).join(', ');
@@ -789,7 +789,7 @@ function despesasPanelHtml() {
       <input id="despObs" placeholder="Observação (opcional)">
       <button class="btn dark small" onclick="App.registrarDespesa()">+ Registrar</button>
     </div>
-    ${despesas.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+    ${despesas.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
       ${despesas.map(d => `<tr>
         <td data-label="Data">${formatDateBR(d.data)}</td>
         <td data-label="Categoria">${esc(d.categoria || '-')}</td>
@@ -818,7 +818,7 @@ function fretePanelHtml() {
       <input id="freteObs" placeholder="Observação (ex: pedido de julho)">
       <button class="btn dark small" onclick="App.registrarFreteFarmasi()">+ Registrar</button>
     </div>
-    ${fretes.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
+    ${fretes.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>
       ${fretes.map(f => `<tr>
         <td data-label="Data">${formatDateBR(f.data)}</td>
         <td data-label="Valor">${money(f.valor)}</td>
@@ -836,7 +836,7 @@ function fretePanelHtml() {
 // kit pareciam soltos na tabela, indistinguíveis de itens avulsos.
 const KIT_BORDA = '4px solid #EC4899';
 function kitHeaderRow(kitId, kitNome, qtdComponentes, colspan, mostrarBotaoPedido = false) {
-  return `<tr class="kit-group-header"><td colspan="${colspan}" style="background:#FDF2F7;font-weight:900;color:#A83E63;border-left:${KIT_BORDA};border-top:${KIT_BORDA.replace('4px', '2px')};border-top-color:#F5C6DE">
+  return `<tr class="kit-group-header"><td class="td-block" colspan="${colspan}" style="background:#FDF2F7;font-weight:900;color:#A83E63;border-left:${KIT_BORDA};border-top:${KIT_BORDA.replace('4px', '2px')};border-top-color:#F5C6DE">
     🎁 Kit: ${esc(kitNome)} (${qtdComponentes} produto${qtdComponentes === 1 ? '' : 's'})
     <button class="btn small" style="float:right;color:var(--error)" onclick="App.removerKitCompleto('${kitId}')">🗑️ Remover kit inteiro</button>
     ${mostrarBotaoPedido ? `<button class="btn small" style="float:right;margin-right:6px;color:var(--success)" onclick="App.marcarKitComoPedido('${kitId}')" title="Marcar o kit inteiro como já pedido — move pra 'Aguardando chegada'">✅ Pedido (kit inteiro)</button>` : ''}
@@ -908,7 +908,7 @@ export function preEncomendaTabHtml() {
     ${!itens.length ? '<p class="muted">Nenhum produto na pré-encomenda. Adicione pela tela de Produtos, Estoque (itens com estoque baixo), monte um kit aqui, ou automaticamente quando vender algo sem estoque no carrinho.</p>' : `
     <h4 style="margin:16px 0 8px">A comprar (${aComprar.length})</h4>
     ${!aComprar.length ? '<p class="muted">Nada pendente de compra.</p>' : `
-    <div class="table table-scroll"><table><thead><tr>
+    <div class="table"><table><thead><tr>
       ${thSort('Produto', 'nome', state.filters.preEncomendaSort, 'preEncomendaSort')}
       ${thSort('Código', 'codigo', state.filters.preEncomendaSort, 'preEncomendaSort')}
       <th>Estoque atual</th>

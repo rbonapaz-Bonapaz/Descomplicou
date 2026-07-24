@@ -273,9 +273,9 @@ function linhasTabHtml() {
     html += `<div class="panel">
       <div class="panel-head"><h3>Atribuir "${esc(linhaSelecionadaAtribuir)}" aos produtos</h3></div>
       <input id="qLinhaAssoc" placeholder="Buscar produto..." oninput="App.filtrarLinhaAssoc(this.value)" value="${esc(qLinhaAssoc)}">
-      <div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th></th><th>Produto</th><th>Código</th><th>Linhas atuais</th></tr></thead><tbody>
+      <div class="table" style="margin-top:10px"><table><thead><tr><th></th><th>Produto</th><th>Código</th><th>Linhas atuais</th></tr></thead><tbody>
         ${prods.map(p => `<tr>
-          <td>${toggleBareHtml('toggle_' + p.id, linhasDe(p).includes(linhaSelecionadaAtribuir), `App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)`)}</td>
+          <td data-label="Selecionar">${toggleBareHtml('toggle_' + p.id, linhasDe(p).includes(linhaSelecionadaAtribuir), `App.toggleProdutoNaLinha('${p.id}','${esc(linhaSelecionadaAtribuir)}',this.checked)`)}</td>
           <td data-label="Produto">${esc(p.nome)}</td>
           <td data-label="Código">${esc(p.codigoFarmasi || '-')}</td>
           <td data-label="Linhas">${esc([...linhasDe(p)].sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') || '-')}</td>
@@ -594,7 +594,7 @@ export function abrirHistoricoPrecos(id) {
   if (!p) return toast('Produto não encontrado');
   const historico = [...(p.historicoPrecos || [])].reverse();
   showModal(`<h3>📈 Histórico de preços — ${esc(p.nome)}</h3>
-    ${historico.length ? `<div class="table table-scroll"><table><thead><tr>
+    ${historico.length ? `<div class="table"><table><thead><tr>
       <th>Data</th><th>Preço atual</th>
     </tr></thead><tbody>${historico.map(h => `<tr>
       <td data-label="Data">${formatDateBR(h.data)}</td>
@@ -713,7 +713,7 @@ function renderBaseColetivaPreview() {
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">${pill(novos + ' novos', 'green')}${pill(atualiza + ' atualizações', 'blue')}</div>
     <p class="muted">Confira, edite ou remova itens antes de salvar. Seu preço de venda, custo médio e estoque não são alterados.</p>
-    <div class="table table-scroll"><table style="table-layout:fixed;min-width:720px"><thead><tr>
+    <div class="table"><table style="table-layout:fixed;min-width:720px"><thead><tr>
       <th style="width:22%">Nome</th><th style="width:12%">Código</th><th style="width:22%">Linha</th><th style="width:14%">Preço original</th><th style="width:14%">Preço atual</th><th style="width:12%">Situação</th><th style="width:4%"></th>
     </tr></thead><tbody>${arr.map((p, idx) => `<tr>
       <td data-label="Nome"><input style="width:100%" value="${esc(p.nome || '')}" onchange="App.editarItemBaseColetiva(${idx},'nome',this.value)"></td>

@@ -334,7 +334,7 @@ export function openCliente360(id) {
               <b>Pedido nº ${numeroPedidoLabel(cr)}</b>
               <span class="muted">Total ${money(total)} • Pago ${money(pago)}${restante > 0.004 ? ` • <b style="color:var(--error)">Falta ${money(restante)}</b>` : ''}</span>
             </div>
-            ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:8px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>
+            ${pagamentos.length ? `<div class="table" style="margin-top:8px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>
               ${pagamentos.map((p, idx) => `<tr>
                 <td data-label="Data">${formatDateBR(p.data)}</td>
                 <td data-label="Valor">${money(p.valor)}</td>

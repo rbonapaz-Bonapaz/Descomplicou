@@ -123,7 +123,7 @@ function itemRowHtml(trocaId, lado, item, idx) {
 function ladoTableHtml(trocaId, lado, itens) {
   if (!itens.length) return '<p class="muted">Nenhum item ainda.</p>';
   const cor = lado === 'saida' ? '#EAF0F5' : '#EAF7EC';
-  return `<div class="table table-scroll" style="background:${cor}"><table><thead><tr>
+  return `<div class="table" style="background:${cor}"><table><thead><tr>
     <th>Produto</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Entrega</th><th></th>
   </tr></thead><tbody>${itens.map((it, idx) => itemRowHtml(trocaId, lado, it, idx)).join('')}</tbody></table></div>`;
 }

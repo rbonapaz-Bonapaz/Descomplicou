@@ -383,7 +383,7 @@ function renderCatalogoMestrePreview(arr) {
       <div style="display:flex;gap:6px">${pill(novos + ' novos', 'green')}${pill(atualiza + ' atualizações', 'blue')}</div>
     </div>
     <p class="muted">Produtos existentes (mesmo código Farmasi) são atualizados, não duplicados. Edite qualquer campo abaixo antes de salvar, se precisar.</p>
-    <div class="table table-scroll"><table><thead><tr>
+    <div class="table"><table><thead><tr>
       <th>Produto</th><th>Código</th><th>Linha</th><th>Original</th><th>Atual</th><th>Situação</th>
     </tr></thead><tbody>${arr.map((p, idx) => {
       const ex = existenteMestre(p);

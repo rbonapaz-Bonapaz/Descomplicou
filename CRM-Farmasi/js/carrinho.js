@@ -616,7 +616,7 @@ function pagamentoResumoHtml(carr) {
       <div class="card"><span>Restante</span><b style="color:${restante > 0.004 ? 'var(--error)' : 'inherit'}">${money(restante)}</b></div>
       ${carr.clienteId && creditoDoCliente(carr.clienteId) > 0.004 ? `<div class="card"><span>Créditos do cliente</span><b style="color:var(--success)">${money(creditoDoCliente(carr.clienteId))}</b></div>` : ''}
     </div>
-    ${pagamentos.length ? `<div class="table table-scroll" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th></th></tr></thead><tbody>
+    ${pagamentos.length ? `<div class="table" style="margin-top:10px"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th>Observação</th><th></th></tr></thead><tbody>
       ${pagamentos.map((p, idx) => `<tr><td data-label="Data">${formatDateBR(p.data)}</td><td data-label="Valor">${money(p.valor)}</td><td data-label="Forma">${esc(p.forma || '-')}${p.cartaoTipo ? ` (${esc(p.cartaoTipo)}${p.parcelas > 1 ? ` ${p.parcelas}x` : ''})` : ''}</td><td data-label="Observação">${esc(p.observacoes || '-')}</td><td style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn small" onclick="App.editarFormaPagamento('${carr.id}',${idx})" title="Corrigir a forma de pagamento">✏️</button><button class="btn small" style="color:var(--error)" onclick="App.excluirPagamento('${carr.id}',${idx})" title="Excluir este pagamento (pede justificativa)">🗑️</button></td></tr>`).join('')}
     </tbody></table></div>` : ''}
     ${restante > 0.004 ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
