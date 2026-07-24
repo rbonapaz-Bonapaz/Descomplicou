@@ -2,7 +2,11 @@
 // a tela já visitada quando a internet cair por um instante. NÃO cacheia nada do Firebase/Firestore
 // (dados sempre precisam vir da rede, ao vivo) — só arquivos próprios do app (HTML/CSS/JS/ícones),
 // e só os do MESMO domínio. Tudo o mais passa direto, sem interceptar.
-const CACHE_NAME = 'descomplicou-v1';
+// Trocar esse nome (ex: v1 -> v2) força o app instalado a jogar fora TUDO que tinha em cache e
+// buscar os arquivos frescos de novo na próxima vez que abrir — use isso sempre que suspeitar que
+// um app instalado ficou preso numa versão antiga do CSS/JS (o ativo comum e correto do service
+// worker; nada de errado em precisar disso de vez em quando).
+const CACHE_NAME = 'descomplicou-v2';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
