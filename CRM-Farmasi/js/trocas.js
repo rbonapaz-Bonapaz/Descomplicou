@@ -187,8 +187,8 @@ export function openTroca(id) {
         <div class="field"><label>Valor unitário (opcional)</label><input id="trValorEntra" placeholder="0,00"></div>
         <div class="field"><label>Entrega</label>
           <select id="trEntregaEntra">
-            <option value="pronta_entrega">Já recebi agora</option>
-            <option value="entrega_futura">Vou receber depois</option>
+            <option value="entrega_futura" selected>Ainda não recebi (lançar depois)</option>
+            <option value="pronta_entrega">Já recebi agora (entra no estoque já)</option>
           </select>
         </div>
       </div>
