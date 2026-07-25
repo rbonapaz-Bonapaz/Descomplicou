@@ -33,4 +33,4 @@ jobs:
         run: |
           echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/firebase-key.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-key.json
-          firebase deploy --only hosting:principal --project crm-consultora-de-beleza --non-interactive
+          firebase deploy --only hosting:principal,hosting:farobella --project crm-consultora-de-beleza --non-interactive
