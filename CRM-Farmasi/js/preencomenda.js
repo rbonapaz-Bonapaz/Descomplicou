@@ -612,6 +612,12 @@ export function abrirCompraFornecedor(id) {
         <div class="field full"><label>Produto</label>${picker}</div>
         <div class="field"><label>Quantidade</label><input id="cfQtd" type="number" min="1" value="1"></div>
         <div class="field"><label>Valor unitário</label><input id="cfValor" placeholder="0,00"></div>
+        <div class="field"><label>Estoque</label>
+          <select id="cfEntrega">
+            <option value="entrega_futura" selected>Ainda não recebi (lançar depois)</option>
+            <option value="pronta_entrega">Já recebi agora (entra no estoque já)</option>
+          </select>
+        </div>
       </div>
       <button class="btn dark small" style="margin-top:8px" onclick="App.adicionarItemCompraFornecedor('${id}')">+ Adicionar item</button>
     </div>` : ''}
@@ -633,21 +639,24 @@ export async function adicionarItemCompraFornecedor(id) {
   if (!p) return toast('Selecione um produto');
   const qtd = Number($('cfQtd').value || 1);
   const valorUnitario = parseMoney($('cfValor').value || 0);
+  const jaRecebido = $('cfEntrega')?.value !== 'entrega_futura';
 
-  // Dá entrada de verdade no estoque — sem isso o produto ficava só registrado como dívida, sem
-  // aparecer nas telas de Estoque/Produtos (mesmo bug que a Entrada de estoque manual já resolve
-  // com "Comprado de": aqui é o equivalente, só que junto do controle de quem/quanto pagar).
-  try {
-    await perguntarAtivarProntaEntrega(p.id);
-    await entradaEstoque(p.id, qtd, valorUnitario, `Compra de ${c.pessoa}`, 'fornecedor');
-  } catch (e) {
-    return toast(`Erro ao dar entrada no estoque: ${e.message}`);
+  // Só dá entrada de verdade no estoque quando o item já foi recebido — item marcado "ainda não
+  // recebi" fica pendente (mesmo botão "⚠️ Dar entrada" de baixo já usado pra itens históricos)
+  // até a consultora confirmar que chegou, em vez de somar no estoque algo que ela ainda não tem.
+  if (jaRecebido) {
+    try {
+      await perguntarAtivarProntaEntrega(p.id);
+      await entradaEstoque(p.id, qtd, valorUnitario, `Compra de ${c.pessoa}`, 'fornecedor');
+    } catch (e) {
+      return toast(`Erro ao dar entrada no estoque: ${e.message}`);
+    }
   }
 
   // estoqueLancado:true marca que este item já deu entrada no estoque acima — distingue os itens
   // novos (que entram na hora) dos itens históricos, lançados antes de a entrada automática existir,
   // que ficam só como dívida sem estoque. Só os sem essa flag ganham o botão de reparo no editor.
-  const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd, estoqueLancado: true };
+  const item = { produtoId: p.id, produtoNome: p.nome, codigoFarmasi: p.codigoFarmasi || '', quantidade: qtd, valorUnitario, valorTotal: valorUnitario * qtd, estoqueLancado: jaRecebido };
   const itens = [...(c.itens || []), item];
   const valorTotal = itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
   await setDoc(ref('despesas', id), { itens, valorTotal, atualizadoEm: serverTimestamp() }, { merge: true });
@@ -689,8 +698,9 @@ export async function removerItemCompraFornecedor(id, idx) {
   // Estorna a entrada de estoque que foi feita quando o item foi adicionado — senão o produto
   // continuaria "sobrando" em estoque mesmo depois de removido da compra. Se já não tiver mais
   // estoque suficiente (produto foi vendido nesse meio-tempo), avisa e mantém no estoque mesmo
-  // assim, mas remove o item da lista da compra igual.
-  if (item.produtoId) {
+  // assim, mas remove o item da lista da compra igual. Item marcado "ainda não recebi" nunca
+  // chegou a somar no estoque, então não há o que estornar.
+  if (item.produtoId && item.estoqueLancado) {
     try {
       await saidaEstoque(item.produtoId, item.quantidade, 'Ajuste');
     } catch (e) {
@@ -737,6 +747,7 @@ export function fornecedoresPanelHtml() {
       <h3>🧾 Compras de outros(as) consultores(as)</h3>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         ${totalPendente > 0.004 ? `<span class="muted">A pagar (total geral): <b style="color:var(--error)">${money(totalPendente)}</b></span>` : ''}
+        <button class="btn small" onclick="App.gerarRelatorioFornecedores()">📄 Gerar relatório</button>
         <button class="btn small pink" onclick="App.adicionarCompraFornecedor()">+ Nova compra</button>
       </div>
     </div>
@@ -769,6 +780,53 @@ export function fornecedoresPanelHtml() {
       </tbody></table></div>
     </div>`).join('')}
   </div>`;
+}
+
+// Relatório imprimível (mesmo mecanismo de #printArea/@media print usado nos PDFs de pedido/
+// catálogo) — resumo de todas as compras de outros(as) consultores(as), agrupado por pessoa,
+// com status de pagamento e de estoque de cada item.
+export function gerarRelatorioFornecedores() {
+  const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor');
+  if (!compras.length) return toast('Nenhuma compra registrada ainda');
+
+  const porPessoa = new Map();
+  for (const c of compras) {
+    const chave = norm(c.pessoa || 'Sem nome');
+    if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: c.pessoa || 'Sem nome', compras: [] });
+    porPessoa.get(chave).compras.push(c);
+  }
+  const grupos = [...porPessoa.values()].map(g => ({
+    ...g,
+    pendente: g.compras.reduce((s, x) => s + (x.pago ? 0 : Number(x.valorTotal || 0)), 0),
+    total: g.compras.reduce((s, x) => s + Number(x.valorTotal || 0), 0),
+    compras: g.compras.sort((a, b) => String(b.data).localeCompare(String(a.data)))
+  })).sort((a, b) => b.pendente - a.pendente || porNome({ nome: a.nome }, { nome: b.nome }));
+
+  const totalGeral = grupos.reduce((s, g) => s + g.total, 0);
+  const totalPendente = grupos.reduce((s, g) => s + g.pendente, 0);
+
+  const linhaItem = i => `${i.quantidade}× ${esc(i.produtoNome)}${i.estoqueLancado === false ? ' <i>(ainda não recebido)</i>' : ''} — ${money(i.valorTotal)}`;
+
+  const html = `<div style="max-width:800px;margin:0 auto;padding:20px;font-family:Inter,Arial,sans-serif;color:#14213D">
+    <h1 style="font-family:Alegreya,Georgia,serif;color:var(--p);margin-bottom:2px">Compras de outros(as) consultores(as)</h1>
+    <p style="color:#666;margin-top:0">Gerado em ${formatDateBR(today())}</p>
+    <p><b>Total geral:</b> ${money(totalGeral)} &nbsp;•&nbsp; <b style="color:#C0392B">A pagar:</b> ${money(totalPendente)}</p>
+    ${grupos.map(g => `<div style="margin-top:18px;page-break-inside:avoid">
+      <h3 style="border-bottom:2px solid var(--p);padding-bottom:4px">${esc(g.nome)} — ${g.pendente > 0.004 ? `<span style="color:#C0392B">Deve ${money(g.pendente)}</span>` : '<span style="color:#2E7D32">Tudo pago</span>'}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="text-align:left;border-bottom:1px solid #ccc"><th style="padding:4px 0">Data</th><th>Itens</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody>${g.compras.map(c => `<tr style="border-bottom:1px solid #eee">
+          <td style="padding:6px 4px 6px 0;vertical-align:top">${formatDateBR(c.data)}</td>
+          <td style="padding:6px 4px;vertical-align:top">${itensDaCompra(c).map(linhaItem).join('<br>') || '<i>Nenhum item</i>'}</td>
+          <td style="padding:6px 4px;vertical-align:top">${money(c.valorTotal)}</td>
+          <td style="padding:6px 4px;vertical-align:top">${c.pago ? '<span style="color:#2E7D32">Pago</span>' : '<span style="color:#C0392B">A pagar</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`).join('')}
+  </div>`;
+
+  $('printArea').innerHTML = html;
+  setTimeout(() => window.print(), 350);
 }
 
 function despesasPanelHtml() {
