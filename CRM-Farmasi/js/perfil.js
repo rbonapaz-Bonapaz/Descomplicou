@@ -445,6 +445,14 @@ function planoBox() {
         <div class="card"><span>Semestral</span><b>${money(cfg.precoSemestral || 0)}</b>${descontoVsMensal(cfg.precoMensal, cfg.precoSemestral, 6)}</div>
         <div class="card"><span>Anual</span><b>${money(cfg.precoAnual || 0)}</b>${descontoVsMensal(cfg.precoMensal, cfg.precoAnual, 12)}</div>
       </div>
+    </div>
+    <div class="panel" style="margin-top:14px;background:#F7FAFC">
+      <small class="muted" style="text-transform:uppercase;font-weight:900;letter-spacing:.08em">Quer contratar ou fazer upgrade?</small>
+      <p class="muted" style="margin:6px 0 10px">Fale com a gente:</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn dark small" href="mailto:rbonapaz@gmail.com">✉️ rbonapaz@gmail.com</a>
+        <a class="btn small green-btn" href="https://wa.me/5555996265753" target="_blank" rel="noopener">💬 WhatsApp</a>
+      </div>
     </div>`;
 }
 
