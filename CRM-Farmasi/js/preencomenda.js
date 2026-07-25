@@ -755,7 +755,10 @@ export function fornecedoresPanelHtml() {
     ${grupos.map(g => `<div style="margin-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <div><b>${esc(g.nome)}</b> ${g.pendente > 0.004 ? `<span class="muted">— Deve: <b style="color:var(--error)">${money(g.pendente)}</b></span>` : '<span class="tag green">Tudo pago</span>'}</div>
-        <button class="btn small" onclick="App.adicionarCompraFornecedor('${esc(g.nome).replace(/'/g, "\\'")}')">+ Comprar mais</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn small" onclick="App.gerarRelatorioFornecedores('${esc(g.nome).replace(/'/g, "\\'")}')" title="Relatório só desta pessoa">📄 Relatório</button>
+          <button class="btn small" onclick="App.adicionarCompraFornecedor('${esc(g.nome).replace(/'/g, "\\'")}')">+ Comprar mais</button>
+        </div>
       </div>
       <div class="table" style="margin-top:6px"><table><thead><tr><th>Data</th><th>Itens</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>
         ${g.compras.map(c => {
@@ -785,8 +788,8 @@ export function fornecedoresPanelHtml() {
 // Relatório imprimível (mesmo mecanismo de #printArea/@media print usado nos PDFs de pedido/
 // catálogo) — resumo de todas as compras de outros(as) consultores(as), agrupado por pessoa,
 // com status de pagamento e de estoque de cada item.
-export function gerarRelatorioFornecedores() {
-  const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor');
+export function gerarRelatorioFornecedores(pessoa = '') {
+  const compras = state.data.despesas.filter(x => x.tipo === 'fornecedor' && (!pessoa || norm(x.pessoa || 'Sem nome') === norm(pessoa)));
   if (!compras.length) return toast('Nenhuma compra registrada ainda');
 
   const porPessoa = new Map();
@@ -808,7 +811,7 @@ export function gerarRelatorioFornecedores() {
   const linhaItem = i => `${i.quantidade}× ${esc(i.produtoNome)}${i.estoqueLancado === false ? ' <i>(ainda não recebido)</i>' : ''} — ${money(i.valorTotal)}`;
 
   const html = `<div style="max-width:800px;margin:0 auto;padding:20px;font-family:Inter,Arial,sans-serif;color:#14213D">
-    <h1 style="font-family:Alegreya,Georgia,serif;color:var(--p);margin-bottom:2px">Compras de outros(as) consultores(as)</h1>
+    <h1 style="font-family:Alegreya,Georgia,serif;color:var(--p);margin-bottom:2px">${pessoa ? `Compras de ${esc(pessoa)}` : 'Compras de outros(as) consultores(as)'}</h1>
     <p style="color:#666;margin-top:0">Gerado em ${formatDateBR(today())}</p>
     <p><b>Total geral:</b> ${money(totalGeral)} &nbsp;•&nbsp; <b style="color:#C0392B">A pagar:</b> ${money(totalPendente)}</p>
     ${grupos.map(g => `<div style="margin-top:18px;page-break-inside:avoid">
