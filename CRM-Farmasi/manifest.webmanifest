@@ -1,6 +1,6 @@
 {
-  "name": "Descomplicou — CRM de Vendas",
-  "short_name": "Descomplicou",
+  "name": "FaroBella — Gestão fácil, vendas Brilhantes",
+  "short_name": "FaroBella",
   "description": "CRM de vendas, estoque, relatórios e catálogo para consultoras e consultores Farmasi.",
   "start_url": "./index.html",
   "scope": "./",

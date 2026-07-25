@@ -42,7 +42,7 @@ export function renderPerfil() {
       </div>
       <div class="grid">
         <div class="field"><label>Nome</label><input id="perNome" value="${esc(p.nome || '')}"></div>
-        <div class="field"><label>Nome do negócio</label><input id="perNegocio" value="${esc(p.nomeNegocio || 'CRM de Vendas')}"></div>
+        <div class="field"><label>Nome do negócio</label><input id="perNegocio" value="${esc(p.nomeNegocio || 'FaroBella')}"></div>
         <div class="field"><label>WhatsApp</label><input id="perWhats" value="${esc(p.whatsapp || '')}"></div>
         <div class="field"><label>Instagram</label><input id="perInsta" value="${esc(p.instagram || '')}"></div>
         <div class="field"><label>Gênero</label>
@@ -210,7 +210,7 @@ export function renderPerfil() {
       <h3>📅 Sincronizar com Google Agenda</h3>
       <p class="muted">Cria um calendário dedicado na sua conta Google com o nome que você escolher, e espelha lá os agendamentos criados/editados no CRM. A conexão dura cerca de 1h por vez — se parar de sincronizar, é só clicar em "Reconectar".</p>
       <div class="grid">
-        <div class="field full"><label>Nome da agenda no Google</label><input id="perNomeAgendaGoogle" value="${esc(p.nomeAgendaGoogle || `Agenda - ${p.nomeNegocio || 'CRM de Vendas'}`)}"></div>
+        <div class="field full"><label>Nome da agenda no Google</label><input id="perNomeAgendaGoogle" value="${esc(p.nomeAgendaGoogle || `Agenda - ${p.nomeNegocio || 'FaroBella'}`)}"></div>
       </div><br>
       ${p.googleCalendarId
       ? `<span class="pill green">✓ Conectada</span>
@@ -518,7 +518,7 @@ export async function savePerfil() {
   const parseNum = v => Number(String(v ?? 0).replace(',', '.')) || 0;
   const d = {
     nome: $('perNome')?.value ?? p.nome ?? '',
-    nomeNegocio: $('perNegocio')?.value ?? p.nomeNegocio ?? 'CRM de Vendas',
+    nomeNegocio: $('perNegocio')?.value ?? p.nomeNegocio ?? 'FaroBella',
     whatsapp: $('perWhats')?.value ?? p.whatsapp ?? '',
     instagram: $('perInsta')?.value ?? p.instagram ?? '',
     genero: $('perGenero')?.value ?? p.genero ?? '',
@@ -599,7 +599,7 @@ export async function removerLogoNegocio() {
 }
 
 export async function conectarGoogleAgendaUI() {
-  const nome = $('perNomeAgendaGoogle')?.value.trim() || `Agenda - ${state.profile?.nomeNegocio || 'CRM de Vendas'}`;
+  const nome = $('perNomeAgendaGoogle')?.value.trim() || `Agenda - ${state.profile?.nomeNegocio || 'FaroBella'}`;
   try {
     await conectarGoogleAgenda(nome);
     await importarDoGoogleAgenda();

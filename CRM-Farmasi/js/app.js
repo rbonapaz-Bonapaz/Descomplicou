@@ -381,7 +381,7 @@ async function ensureProfile() {
     state.profile = {
       nome: state.user.displayName || '', email: state.user.email || '',
       role: ADMINS.includes((state.user.email || '').toLowerCase()) ? 'admin' : 'user',
-      plano: 'teste', nomeNegocio: 'CRM de Vendas', whatsapp: '', instagram: '',
+      plano: 'teste', nomeNegocio: 'FaroBella', whatsapp: '', instagram: '',
       linkLoja: '', tituloCatalogo: 'Catálogo Inteligente',
       subtituloCatalogo: 'GESTÃO DE PRODUTOS + PDF',
       rodapeCatalogo: 'Fale comigo para fazer seu pedido', mensagemPadrao: '',
@@ -397,7 +397,7 @@ async function ensureProfile() {
 // Deriva as iniciais do logo a partir do nome do negócio (ex: "Rodrigo PRO" -> "RP").
 function initials(nome) {
   const palavras = String(nome || '').trim().split(/\s+/).filter(Boolean);
-  if (!palavras.length) return 'CV';
+  if (!palavras.length) return 'FB';
   if (palavras.length === 1) return palavras[0].slice(0, 2).toUpperCase();
   return (palavras[0][0] + palavras[1][0]).toUpperCase();
 }
@@ -406,9 +406,9 @@ function setupUI() {
   $('uname').textContent = state.profile?.nome || state.user.displayName || porGenero(state.profile?.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' });
   $('uemail').textContent = state.user.email || '';
   $('photo').src = state.profile.fotoPerfil || state.user.photoURL || '';
-  $('brandName').textContent = state.profile.nomeNegocio || 'CRM de Vendas';
+  $('brandName').textContent = state.profile.nomeNegocio || 'FaroBella';
   $('sideLogo').textContent = initials(state.profile.nomeNegocio);
-  document.title = state.profile.nomeNegocio || 'Descomplicou';
+  document.title = state.profile.nomeNegocio || 'FaroBella';
   aplicarTemaPersonalizado(state.profile);
   document.querySelectorAll('.admin-only').forEach(e =>
     e.classList.toggle('hidden', state.profile.role !== 'admin')

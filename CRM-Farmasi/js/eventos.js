@@ -548,7 +548,7 @@ export function gerarQrCodeEvento(id) {
     <header class="cat-header">
       <div class="cat-brand">${esc(ev.nome)}</div>
       <div class="cat-sub">${ev.data ? 'EVENTO EM ' + formatDate(ev.data) : 'CATÁLOGO ESPECIAL'}</div>
-      <div class="cat-consult">${esc(p.nomeNegocio || 'CRM de Vendas')}<br>${esc(p.nome || '')}<br>${esc(p.whatsapp || '')}<br>${esc(p.instagram || '')}</div>
+      <div class="cat-consult">${esc(p.nomeNegocio || 'FaroBella')}<br>${esc(p.nome || '')}<br>${esc(p.whatsapp || '')}<br>${esc(p.instagram || '')}</div>
     </header>
     <main class="cat-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8mm;top:40mm">
       <h2 class="cat-line-title" style="margin:0">Aponte a câmera e monte sua lista de desejos!</h2>
@@ -557,7 +557,7 @@ export function gerarQrCodeEvento(id) {
     </main>
     <footer class="cat-footer">
       ${logoNegocioHtml(p, 'pdf-foot-logo cat-foot-logo')}
-      <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
+      <div class="cat-foot-text"><b>${esc(p.nomeNegocio || 'FaroBella')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
       <img class="cat-qr" src="${qrUrlLoja(p)}">
     </footer>
   </section>`;

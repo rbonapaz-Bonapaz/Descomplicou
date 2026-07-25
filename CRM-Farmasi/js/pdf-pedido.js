@@ -92,7 +92,7 @@ function gerarPdf(carr, interno) {
 
   let html = `<section class="pdf-page pedido-pdf">
     <header class="pdf-header">
-      <div class="pdf-brand">${esc(p.nomeNegocio || 'CRM de Vendas')}</div>
+      <div class="pdf-brand">${esc(p.nomeNegocio || 'FaroBella')}</div>
       <div class="pdf-sub">${interno ? 'PEDIDO INTERNO' : 'PEDIDO'}</div>
       <div class="pdf-consult">${esc(p.nome || '')}${p.whatsapp ? `<br>📱 ${esc(p.whatsapp)}` : ''}${p.instagram ? `<br>📷 @${esc(String(p.instagram).replace(/^@/, ''))}` : ''}</div>
     </header>
@@ -158,7 +158,7 @@ function gerarPdf(carr, interno) {
   html += `</main>
     <footer class="pdf-footer">
       ${logoNegocioHtml(p)}
-      <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
+      <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'FaroBella')}</b><br>${esc(p.rodapeCatalogo || 'Fale comigo para fazer seu pedido')}</div>
       <img class="pdf-qr" src="${qrUrl()}">
     </footer>
   </section>`;

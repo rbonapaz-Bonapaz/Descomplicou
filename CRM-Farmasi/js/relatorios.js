@@ -495,7 +495,7 @@ export function gerarPdfRelatorio() {
 
   const html = `<section class="pdf-page pedido-pdf">
     <header class="pdf-header">
-      <div class="pdf-brand">${esc(p.nomeNegocio || 'CRM de Vendas')}</div>
+      <div class="pdf-brand">${esc(p.nomeNegocio || 'FaroBella')}</div>
       <div class="pdf-sub">RELATÓRIO DE VENDAS</div>
       <div class="pdf-consult">${esc(p.nome || '')}<br>${esc(periodoTexto)}<br>Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
     </header>
@@ -517,7 +517,7 @@ export function gerarPdfRelatorio() {
     </main>
     <footer class="pdf-footer">
       ${logoNegocioHtml(p)}
-      <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'CRM de Vendas')}</b><br>${esc(p.rodapeCatalogo || '')}</div>
+      <div class="pdf-foot-text"><b>${esc(p.nomeNegocio || 'FaroBella')}</b><br>${esc(p.rodapeCatalogo || '')}</div>
       <img class="pdf-qr" src="${qrUrlRel(p)}">
     </footer>
   </section>`;

@@ -39,7 +39,7 @@ export async function ativarBiometria() {
     const cred = await navigator.credentials.create({
       publicKey: {
         challenge: desafioAleatorio(),
-        rp: { name: 'CRM de Vendas' },
+        rp: { name: 'FaroBella' },
         user: {
           id: new TextEncoder().encode(uid),
           name: state.user.email || uid,

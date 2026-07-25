@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Descomplicou</title>
+  <title>FaroBella</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#F72562">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Descomplicou">
+  <meta name="apple-mobile-web-app-title" content="FaroBella">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,9 +24,9 @@
 
   <section id="login" class="login hidden">
     <div class="login-card">
-      <div class="logo">CV</div>
-      <h1>CRM de Vendas</h1>
-      <p>CRM inteligente com vendas, estoque, relatórios e catálogo.</p>
+      <img class="logo" src="icons/icon-192.png" alt="FaroBella" style="width:64px;height:64px;border-radius:22px;margin:0 auto 16px;object-fit:cover">
+      <h1>FaroBella</h1>
+      <p>Gestão fácil, vendas Brilhantes.</p>
 
       <div class="login-tabs">
         <button class="login-tab active" data-tab="google" onclick="App.switchLoginTab('google')">Google</button>
@@ -189,7 +189,7 @@
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=214"></script>
+  <script type="module" src="js/app.js?v=215"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

@@ -3,13 +3,23 @@ import { $, esc, formatDateBR, collapsibleHtml } from './utils.js';
 
 // Versão exibida em Sobre → Dados do sistema. Mantida manualmente em sincronia com o
 // "?v=" de index.html/evento.html a cada alteração relevante (mesmo padrão de cache-busting).
-export const APP_VERSION = 'v1.0.0';
+export const APP_VERSION = 'v1.0.2';
 
 // Changelog visível pro usuário final — reiniciado no lançamento oficial (item 20-B). Todo o
 // histórico de desenvolvimento/testes anterior (v50 a v102) foi arquivado em NOVIDADES_ARQUIVADAS
 // logo abaixo (fora da visão do usuário, mantido só como referência histórica no código-fonte).
 // Daqui pra frente, só entram aqui atualizações/melhorias/correções REAIS pós-v1.0.0.
 const NOVIDADES = [
+  { versao: 'v1.0.2', itens: [
+    '💄 Nova marca: o sistema agora se chama FaroBella — "Gestão fácil, vendas Brilhantes".',
+    '📦 Corrigido: confirmar chegada na pré-encomenda, dar entrada em troca ou repor estoque não marca mais ninguém como entregue sozinho — com várias pessoas aguardando o mesmo produto, a entrega agora é sempre uma ação manual, pra você conferir direito quem deve receber.',
+    '📱 Instale o sistema como aplicativo no celular (Android e iPhone) — ícone na tela inicial, abre em tela cheia, sem barra do navegador.',
+    '📊 Tabelas com rolagem lateral no celular (relatórios, conferência de pedidos, trocas, catálogo mestre e outras) agora empilham em cards — tudo visível rolando só pra baixo, sem precisar arrastar de lado.',
+    '🎫 Catálogo de eventos: produtos agora aparecem organizados por linha e nome (ordem alfabética); "Promoções especiais" só aparece quando existe desconto de verdade; estoque/"pronta entrega" do link atualiza sozinho quando o produto vende, repõe ou chega de pré-encomenda; desmarcar uma linha participante desliga "Mostrar todo o catálogo" automaticamente, corrigindo produtos que continuavam aparecendo mesmo com a linha desativada.',
+    '💰 Novo controle em Minha Conta → Pagamento: escolha se o valor recebido no carrinho já vem preenchido com o total (mais rápido) ou vem zerado por padrão (mais seguro, evita registrar pagamento de quem ainda não pagou).',
+    '🔒 Corrigido: edições em Minha Conta não se perdem mais se uma atualização em tempo real chegar enquanto você está digitando.',
+    '📄 PDFs (catálogo e pedido) agora mostram ícones no WhatsApp/Instagram e o "@" no Instagram; título/subtítulo/rodapé do catálogo podem ficar realmente em branco quando apagados (antes voltavam sozinhos pro texto padrão).'
+  ] },
   { versao: 'v1.0.1', itens: [
     '🔍 Busca global (🔎 Buscar em tudo) agora é um autocomplete de verdade: a lista de resultados aparece num dropdown flutuante e fecha automaticamente quando você escolhe um resultado — mais intuitiva e rápida.',
     '⚠️ Proteção contra perda de dados: se você tentar abrir uma nova janela (carrinho, troca, formulário) enquanto tem outra minimizada, o sistema avisa antes de descartar o que estava lá — você pode cancelar ou confirmar.',
@@ -404,7 +414,7 @@ const APRESENTACAO_MODULOS = [
 function apresentacaoHtml() {
   const cfg = state.profile || {};
   return `<div class="panel">
-    <h3>✨ O que é o ${esc(cfg.nomeNegocio || 'Descomplicou')}</h3>
+    <h3>✨ O que é o ${esc(cfg.nomeNegocio || 'FaroBella')}</h3>
     <p class="muted" style="font-size:14px;line-height:1.7">Um CRM completo pensado pra consultoras de vendas diretas (Farmasi e similares): centraliza clientes, produtos, estoque, vendas, agenda e financeiro num só lugar, com automações que tiram trabalho manual do seu dia — reserva de estoque automática, cálculo de lucro real já descontando taxa de cartão, QR Code de pagamento (Pix e cartão) gerado na hora, catálogo com link público pra eventos, e relatórios que mostram exatamente onde focar pra vender mais.</p>
   </div>
   ${APRESENTACAO_MODULOS.map(m => collapsibleHtml(m.key, `<h3>${esc(m.titulo)}</h3>`, `
@@ -546,7 +556,7 @@ const MANUAL_SECOES = [
 // depende do resto do app, então funciona mesmo se a aba for salva/enviada solta.
 export function abrirManualWeb() {
   const cfg = state.profile || {};
-  const nome = cfg.nomeNegocio || 'Descomplicou';
+  const nome = cfg.nomeNegocio || 'FaroBella';
   const hoje = formatDateBR(new Date().toISOString().slice(0, 10));
   const secoesApresentacao = APRESENTACAO_MODULOS.map(m => `
     <section class="bloco">
