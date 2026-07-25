@@ -273,11 +273,14 @@ function coletarDadosFormEvento() {
     return linhasProd.some(l => linhasSelecionadas.includes(l));
   }).map(p => {
     const linhasProd = linhasDe(p);
-    const descontoMax = Math.max(0, ...linhasProd.filter(l => linhasSelecionadas.includes(l)).map(l => descontos[l] || 0));
+    // Só as linhas participantes do evento contam pro card no link — um produto que também
+    // pertence a uma linha desmarcada não pode continuar aparecendo com/pelo filtro dela.
+    const linhasProdNoEvento = todoCatalogo ? linhasProd : linhasProd.filter(l => linhasSelecionadas.includes(l));
+    const descontoMax = Math.max(0, ...linhasProdNoEvento.map(l => descontos[l] || 0));
     const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     return {
-      id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: linhasProd.join(', ') || 'Sem linha',
+      id: p.id, codigoFarmasi: p.codigoFarmasi || '', nome: p.nome, linha: linhasProdNoEvento.join(', ') || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
       precoOriginal, precoComDesconto,
       // Quantidade em pronta entrega no momento da publicação — snapshot, não atualiza sozinho
@@ -354,10 +357,13 @@ export async function sincronizarProdutoNosEventos(p) {
   const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
   for (const ev of eventosAfetados) {
     const descontos = ev.descontosPorLinha || {};
-    const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
+    // Restringe às linhas participantes do evento (todoCatalogo libera todas) — senão um produto
+    // de linha desmarcada volta a "vazar" no snapshot assim que o preço/estoque dele muda.
+    const linhasProdNoEvento = ev.todoCatalogo || !ev.linhasParticipantes ? linhasProd : linhasProd.filter(l => ev.linhasParticipantes.includes(l));
+    const descontoMax = Math.max(0, ...linhasProdNoEvento.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     const produtosAtualizados = ev.produtos.map(x => mesmoProduto(x) ? {
-      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
+      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProdNoEvento.join(', ') || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
       precoOriginal, precoComDesconto, prontaEntrega: Number(p.estoqueAtual || 0)
     } : x);
@@ -389,12 +395,13 @@ export async function atualizarPrecosEvento(id) {
     const p = achar(x);
     if (!p) { semCadastro++; return x; }
     const linhasProd = linhasDe(p);
+    const linhasProdNoEvento = ev.todoCatalogo || !ev.linhasParticipantes ? linhasProd : linhasProd.filter(l => ev.linhasParticipantes.includes(l));
     const precoOriginal = Number(p.precoAtual || p.precoOriginal || 0);
-    const descontoMax = Math.max(0, ...linhasProd.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
+    const descontoMax = Math.max(0, ...linhasProdNoEvento.filter(l => descontos[l] != null).map(l => descontos[l] || 0));
     const precoComDesconto = descontoMax > 0 ? Math.round(precoOriginal * (1 - descontoMax / 100) * 100) / 100 : precoOriginal;
     atualizados++;
     return {
-      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProd.join(', ') || 'Sem linha',
+      ...x, id: p.id, nome: p.nome, codigoFarmasi: p.codigoFarmasi || '', linha: linhasProdNoEvento.join(', ') || 'Sem linha',
       imagem: p.imagem || '', beneficios: p.beneficios || '',
       precoOriginal, precoComDesconto, prontaEntrega: Number(p.estoqueAtual || 0)
     };
