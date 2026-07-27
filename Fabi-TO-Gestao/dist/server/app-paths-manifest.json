@@ -1,4 +1,0 @@
-{
-  "/(authenticated)/catalogo/page": "app/(authenticated)/catalogo/page.js",
-  "/(authenticated)/dashboard/page": "app/(authenticated)/dashboard/page.js"
-}
