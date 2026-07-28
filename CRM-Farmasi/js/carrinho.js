@@ -62,7 +62,11 @@ export function calcParcelas(total, parcelas, jurosPor, operadoraId, bandeiraGru
   const taxaN = operadoraId ? taxaOperadora(operadoraId, bandeiraGrupo, false, n) : null;
   const taxa1x = operadoraId ? taxaOperadora(operadoraId, bandeiraGrupo, false, 1) : null;
   const diferenca = (taxaN != null && taxa1x != null) ? Math.max(0, taxaN - taxa1x) / 100 : 0;
-  const totalComJuros = (jurosPor === 'cliente' && n > 1) ? total * (1 + diferenca) : total;
+  // Markup, não acréscimo simples: repassar "+diferença%" pro cliente ainda deixaria a diferença
+  // saindo do seu lucro (o valor que sobra depois da maquininha descontar a taxa seria menor que o
+  // pedido). A mesma regra usada pra não ter prejuízo é total / (1 - taxa) — assim, depois da
+  // maquininha descontar a taxa do valor cobrado, o que sobra bate exatamente com o total do pedido.
+  const totalComJuros = (jurosPor === 'cliente' && n > 1 && diferenca > 0) ? total / (1 - diferenca) : total;
   return { n, totalComJuros, valorParcela: totalComJuros / n };
 }
 
@@ -181,7 +185,9 @@ function parcelamentoHtml(id, carr) {
       ${operadoraBandeiraHtml(id, carr)}
     </div>
     <p class="muted" style="margin:8px 0 0">${carr.parcelas > 1 ? `${carr.parcelas}x de ${money(valorParcela)}` : 'À vista'}${jurosPor === 'cliente' && carr.parcelas > 1 ? ` — total com juros: ${money(totalComJuros)}` : ''}</p>
-    ${custoCartao.total > 0 ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>` : ''}
+    ${custoCartao.total > 0 ? (jurosPor === 'cliente'
+      ? `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b>${money(custoCartao.total)}</b> — repassado no valor cobrado da cliente, não desconta do seu lucro</p>`
+      : `<p class="muted" style="margin:4px 0 0">Custo estimado da maquininha: <b style="color:var(--error)">${money(custoCartao.total)}</b> — sai do seu lucro</p>`) : ''}
     ${prazoRecebimentoHtml(carr)}
     ${infinitePayCheckoutHtml(id, carr)}
   </div>`;
@@ -478,7 +484,7 @@ export function openCarrinho(id) {
       ${(carr.descontoPedidoValor || 0) > 0.004 ? `<div class="card"><span>Desconto do pedido</span><b style="color:var(--success)">− ${money(carr.descontoPedidoValor)}</b></div>` : ''}
       <div class="card"><span>Total a cobrar</span><b>${money(carr.totalPedido || 0)}</b></div>
       <div class="card"><span>Desconto por item</span><b>${money(itens.reduce((s, i) => s + (Number(i.precoOriginal || i.precoUnitario || 0) - i.precoUnitario) * i.quantidade, 0))}</b></div>
-      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total)}</b></div>
+      <div class="card"><span>Lucro real (após taxas)</span><b>${money((carr.lucroTotal || 0) - ((carr.jurosPor || JUROS_POR_PADRAO) === 'cliente' ? 0 : calcCustoCartao(carr.totalPedido || 0, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total))}</b></div>
     </div>
 
     <div class="grid" style="margin-top:12px">
@@ -547,7 +553,7 @@ function formasPagamentoDisponiveisHtml() {
 function openCarrinhoView(carr) {
   const itens = carr.itens || [];
   const venda = state.data.vendas.find(v => v.carrinhoId === carr.id);
-  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
+  const lucroReal = venda ? venda.lucroReal : carr.lucroTotal - ((carr.jurosPor || JUROS_POR_PADRAO) === 'cliente' ? 0 : calcCustoCartao(carr.totalPedido, carr.pagamento, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total);
   const pago = Number(carr.valorPago || 0);
   const restante = Math.max(0, Number(carr.totalPedido || 0) - pago);
   showModal(`<h3>Pedido — ${esc(carr.clienteNome)}</h3>
@@ -1258,7 +1264,9 @@ export async function finalizarCarrinho(id) {
     finalizadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
   }, { merge: true });
 
-  const custoCartao = calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
+  // Cliente assumindo os juros (jurosPorFinal) repassa o custo da maquininha no valor cobrado —
+  // não sai do lucro da consultora, mesmo cálculo já usado no card "Lucro real" do carrinho aberto.
+  const custoCartao = jurosPorFinal === 'cliente' ? 0 : calcCustoCartao(carr.totalPedido, pagamentoFinal, carr.parcelas, carr.cartaoTipo, carr.cartaoOperadoraId, carr.cartaoBandeiraGrupo).total;
   const lucroReal = carr.lucroTotal - custoCartao;
 
   await addDoc(col('vendas'), {
