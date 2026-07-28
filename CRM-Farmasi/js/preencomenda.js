@@ -811,7 +811,7 @@ export function gerarRelatorioFornecedores(pessoa = '') {
   const linhaItem = i => `${i.quantidade}× ${esc(i.produtoNome)}${i.estoqueLancado === false ? ' <i>(ainda não recebido)</i>' : ''} — ${money(i.valorTotal)}`;
 
   const html = `<div style="max-width:800px;margin:0 auto;padding:20px;font-family:Inter,Arial,sans-serif;color:#14213D">
-    <h1 style="font-family:Alegreya,Georgia,serif;color:var(--p);margin-bottom:2px">${pessoa ? `Compras de ${esc(pessoa)}` : 'Compras de outros(as) consultores(as)'}</h1>
+    <h1 style="font-family:'Cormorant Garamond',Georgia,serif;color:var(--p);margin-bottom:2px">${pessoa ? `Compras de ${esc(pessoa)}` : 'Compras de outros(as) consultores(as)'}</h1>
     <p style="color:#666;margin-top:0">Gerado em ${formatDateBR(today())}</p>
     <p><b>Total geral:</b> ${money(totalGeral)} &nbsp;•&nbsp; <b style="color:#C0392B">A pagar:</b> ${money(totalPendente)}</p>
     ${grupos.map(g => `<div style="margin-top:18px;page-break-inside:avoid">

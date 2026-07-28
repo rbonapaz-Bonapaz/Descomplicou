@@ -6,7 +6,7 @@
 // buscar os arquivos frescos de novo na próxima vez que abrir — use isso sempre que suspeitar que
 // um app instalado ficou preso numa versão antiga do CSS/JS (o ativo comum e correto do service
 // worker; nada de errado em precisar disso de vez em quando).
-const CACHE_NAME = 'descomplicou-v3';
+const CACHE_NAME = 'descomplicou-v4';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

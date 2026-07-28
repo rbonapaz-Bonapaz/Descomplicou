@@ -83,8 +83,8 @@ export function renderPerfil() {
         </div>
         <div class="field"><label>Cor de destaque (botões, links)</label>
           <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="perCorPrimaria" value="${esc(p.corPrimaria || '#F72562')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
-            <input id="perCorPrimariaHex" value="${esc(p.corPrimaria || '')}" placeholder="#F72562 (padrão)" oninput="App.sincronizarCorHex('perCorPrimaria',this.value)">
+            <input type="color" id="perCorPrimaria" value="${esc(p.corPrimaria || '#0F5A4A')}" style="width:48px;height:40px;padding:2px;cursor:pointer" oninput="App.previewTema()">
+            <input id="perCorPrimariaHex" value="${esc(p.corPrimaria || '')}" placeholder="#0F5A4A (padrão)" oninput="App.sincronizarCorHex('perCorPrimaria',this.value)">
           </div>
         </div>
         <div class="field"><label>Cor do texto</label>
