@@ -398,10 +398,10 @@ function setupUI() {
   $('uname').textContent = state.profile?.nome || state.user.displayName || porGenero(state.profile?.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' });
   $('uemail').textContent = state.user.email || '';
   $('photo').src = state.profile.fotoPerfil || state.user.photoURL || '';
-  // A barra lateral mostra a marca da PLATAFORMA (logo + FaroBella + slogan), fixa pra todo mundo —
+  // Barra lateral e título da aba mostram a marca da PLATAFORMA (FaroBella), fixa pra todo mundo —
   // é a identidade do produto, não da consultora. O nome do negócio dela continua aparecendo onde
-  // de fato importa pra clientela: catálogo, PDFs de pedido, link de evento e o título da aba.
-  document.title = state.profile.nomeNegocio || 'FaroBella';
+  // de fato importa pra clientela: catálogo, PDFs de pedido, link de evento.
+  document.title = 'FaroBella';
   aplicarTemaPersonalizado(state.profile);
   document.querySelectorAll('.admin-only').forEach(e =>
     e.classList.toggle('hidden', state.profile.role !== 'admin')
