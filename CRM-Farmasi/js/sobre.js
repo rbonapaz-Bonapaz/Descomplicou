@@ -574,15 +574,15 @@ export function abrirManualWeb() {
     <style>
       *{box-sizing:border-box}
       body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#14213D;max-width:820px;margin:0 auto;padding:32px 20px;line-height:1.6}
-      h1{font-size:28px;margin:0 0 4px;color:#F72562}
+      h1{font-size:28px;margin:0 0 4px;color:#0F5A4A}
       .sub{color:#7D8AA5;margin:0 0 24px;font-size:14px}
       h2{font-size:18px;margin:26px 0 8px;color:#14213D;border-bottom:2px solid #F1F4F8;padding-bottom:6px}
-      .grupo-titulo{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#F72562;font-weight:800;margin:34px 0 4px}
+      .grupo-titulo{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#0F5A4A;font-weight:800;margin:34px 0 4px}
       ul,ol{margin:0 0 8px;padding-left:22px}
       li{margin-bottom:6px;font-size:14px}
       .bloco{break-inside:avoid}
       .barra{position:sticky;top:0;background:#fff;padding:12px 0;border-bottom:1px solid #E6EDF4;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap}
-      .barra button{border:0;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;background:#F72562;color:#fff}
+      .barra button{border:0;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;background:#0F5A4A;color:#fff}
       .rodape{margin-top:36px;padding-top:16px;border-top:1px solid #E6EDF4;color:#7D8AA5;font-size:12px}
       @media print{.barra{display:none}body{padding:0}}
     </style></head><body>

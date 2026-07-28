@@ -254,7 +254,7 @@ export function aplicarTemaPersonalizado(perfil) {
 
   // Cor do texto — terceiro slot de personalização. Fica de fora da mesma checagem acima porque é
   // independente das outras duas (dá pra mudar só o texto sem mudar fundo/destaque). O tipo de
-  // fonte (Alegreya/Inter) NÃO é personalizável — só a cor.
+  // fonte (Cormorant Garamond/Manrope) NÃO é personalizável — só a cor.
   const texto = perfil?.corTexto;
   if (texto && /^#[0-9a-fA-F]{6}$/.test(texto)) root.setProperty('--text', texto);
   else root.removeProperty('--text');
@@ -603,7 +603,7 @@ export function lineChartSvg(pontos, opts = {}) {
 
 // Paleta compartilhada dos gráficos de barra/rosca — mesma cor de marca (--p) para o item #1,
 // tons complementares pros seguintes, sem depender de nenhuma lib externa de gráficos.
-const CHART_CORES = ['#F72562', '#4C6FFF', '#0E9F6E', '#F5A623', '#8E44AD', '#17A2B8', '#E67E22', '#6C757D'];
+const CHART_CORES = ['#0F5A4A', '#C9A15A', '#4C6FFF', '#F5A623', '#8E44AD', '#17A2B8', '#E67E22', '#6C757D'];
 
 // Gráfico de barras horizontal simples (SVG puro) — recebe [{label, valor}], já ordenado como
 // deve aparecer. valueFmt formata o número exibido ao lado de cada barra (padrão: inteiro).
