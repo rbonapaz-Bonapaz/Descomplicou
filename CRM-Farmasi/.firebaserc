@@ -5,9 +5,6 @@
   "targets": {
     "crm-consultora-de-beleza": {
       "hosting": {
-        "principal": [
-          "descomplicandovendas"
-        ],
         "farobella": [
           "farobella"
         ]
