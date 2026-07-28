@@ -1,14 +1,13 @@
-name: Deploy CRM Farmasi (Firebase Hosting)
+name: Deploy CRM Farmasi (Firebase Hosting) [DESATIVADO]
 
-# Publica automaticamente no Firebase Hosting sempre que a pasta CRM-Farmasi/ mudar no branch
-# main — substitui o passo manual de rodar "firebase deploy" no Cloud Shell a cada correção.
-# Precisa do secret FIREBASE_SERVICE_ACCOUNT configurado no repositório (ver instruções no README
-# ou pedir orientação de novo, se precisar recriar).
+# DESATIVADO em 2026-07-28: o deploy do FaroBella (farobella.web.app) migrou pro monorepo Nexa
+# (github.com/rbonapaz-Bonapaz/Nexa, apps/farobella/), que tem seu próprio workflow
+# (.github/workflows/deploy-farobella.yml) já testado e publicando com sucesso. Manter o gatilho
+# automático aqui faria os dois repositórios disputarem o mesmo site — dois "firebase deploy"
+# concorrentes pro mesmo Hosting target. O trigger por push foi removido; só sobrou
+# workflow_dispatch (manual) como rede de segurança, caso precise publicar daqui de novo por
+# algum motivo excepcional.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'CRM-Farmasi/**'
   workflow_dispatch: {}
 
 jobs:
