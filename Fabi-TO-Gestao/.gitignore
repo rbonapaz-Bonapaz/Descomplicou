@@ -1,1 +1,38 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Firebase
 .firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+hosting.*.cache
+.runtimeconfig.json
+
+# Segredos — NUNCA versionar. Use .env.example como referência.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*-service-account*.json
+serviceAccountKey.json
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.pem
+
+# Editor
+.vscode/
+.idea/

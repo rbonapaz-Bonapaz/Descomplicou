@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   Users, 
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, onSnapshot } from 'firebase/firestore';
+import { col, SUB } from '@/lib/tenancy';
 import { useFirestore, useCollection } from '@/firebase';
 import { Patient, User } from '@/app/lib/types';
 import { Badge } from '@/components/ui/badge';
@@ -24,14 +26,18 @@ import { ptBR } from 'date-fns/locale';
 import { AniversariantesDoDia } from '@/components/AniversariantesDoDia';
 
 export default function DashboardPage() {
-  const { user, firebaseUser, isGuest, isGestor, loading: authLoading } = useAuth();
+  const { user, firebaseUser, loading: authLoading, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const [firebaseStatus, setFirebaseStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [demoPatients, setDemoPatients] = useState<Patient[]>([]);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
 
-  const patientsQuery = useMemo(() => firestore && firebaseUser && !isGuest ? query(collection(firestore, 'pacientes')) : null, [firestore, firebaseUser, isGuest]);
-  const staffQuery = useMemo(() => firestore && firebaseUser && !isGuest ? query(collection(firestore, 'usuarios')) : null, [firestore, firebaseUser, isGuest]);
+  const patientsQuery = useMemo(() => firestore && firebaseUser && !isGuest ? query(col<Patient>(firestore, clinicaId!, SUB.pacientes)) : null, [firestore, firebaseUser, isGuest]);
+  const staffQuery = useMemo(() => firestore && firebaseUser && !isGuest ? query(col<User>(firestore, clinicaId!, SUB.usuarios)) : null, [firestore, firebaseUser, isGuest]);
   
   const { data: firestorePatients } = useCollection<Patient>(patientsQuery);
   const { data: firestoreStaff } = useCollection<User>(staffQuery);
@@ -118,7 +124,7 @@ export default function DashboardPage() {
   }, [patients]);
 
   const stats = [
-    { id: 'atendimentos', title: isGestor ? 'Atendimentos (Clínica)' : 'Meus Atendimentos', value: isGestor ? '24' : '12', icon: Clock, description: 'Sessões para hoje', color: 'text-primary' },
+    { id: 'atendimentos', title: ehAdmin ? 'Atendimentos (Clínica)' : 'Meus Atendimentos', value: ehAdmin ? '24' : '12', icon: Clock, description: 'Sessões para hoje', color: 'text-primary' },
     { id: 'novos', title: 'Novos Pacientes', value: patients.length.toString(), icon: Users, description: 'Total na base', color: 'text-emerald-600' },
     { id: 'niver', title: 'Aniversariantes', value: patientBdaysTodayCount.toString(), icon: Heart, description: 'Toque para detalhes', color: 'text-rose-500', clickable: true },
     { id: 'agenda', title: 'Agenda Livre', value: '80%', icon: Calendar, description: 'Capacidade semanal', color: 'text-accent' }
@@ -151,7 +157,7 @@ export default function DashboardPage() {
               <Badge variant="outline" className="animate-pulse text-[8px] md:text-[9px] font-black uppercase py-0.5">Conectando...</Badge>
             )}
           </div>
-          <p className="text-sm md:text-base text-muted-foreground">{isGestor ? 'Visão administrativa da clínica para hoje.' : 'Sua pauta de atendimentos para hoje.'}</p>
+          <p className="text-sm md:text-base text-muted-foreground">{ehAdmin ? 'Visão administrativa da clínica para hoje.' : 'Sua pauta de atendimentos para hoje.'}</p>
         </div>
       </div>
 
@@ -184,7 +190,7 @@ export default function DashboardPage() {
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
         <Card className="border-none ring-1 ring-border shadow-sm lg:col-span-7 h-fit rounded-3xl">
           <CardHeader className="px-6 py-6 border-b bg-muted/5">
-            <CardTitle className="font-headline text-xl md:text-2xl text-primary">{isGestor ? 'Movimentação da Clínica' : 'Meus Próximos Atendimentos'}</CardTitle>
+            <CardTitle className="font-headline text-xl md:text-2xl text-primary">{ehAdmin ? 'Movimentação da Clínica' : 'Meus Próximos Atendimentos'}</CardTitle>
             <CardDescription className="text-xs md:text-sm font-medium">Sessões confirmadas que exigem atenção agora.</CardDescription>
           </CardHeader>
           <CardContent className="px-6 py-6">

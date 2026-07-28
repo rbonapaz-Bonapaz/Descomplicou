@@ -1,188 +1,118 @@
+'use client';
 
-"use client"
-
-import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Sparkles, Loader2, ArrowLeft, ShieldCheck, UserCog, Clock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { UserProfile } from '@/app/lib/types';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
+import { Sparkles, Building2, UserPlus, Mail } from 'lucide-react';
 
+/**
+ * SOLICITAÇÃO DE ACESSO
+ *
+ * Esta tela não cria conta — e isso é proposital.
+ *
+ * A versão anterior deixava qualquer visitante se cadastrar E escolher o próprio
+ * perfil, inclusive "gestor". Numa clínica isso significa alguém de fora criando
+ * uma conta com poder sobre a equipe e sobre dados de paciente.
+ *
+ * No modelo por clínica, acesso só nasce de duas formas:
+ *   1. o dono do sistema provisiona a clínica (`provisionarClinica`);
+ *   2. o administrador da clínica convida a pessoa (`convidarMembro`).
+ *
+ * Nos dois casos quem define os papéis é uma Cloud Function, que grava o custom
+ * claim junto — nunca o navegador.
+ */
 export default function RegisterPage() {
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [perfil, setPerfil] = useState<UserProfile>('visitante');
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter();
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth || !db) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro de Configuração',
-        description: 'O sistema não conseguiu conectar ao Firebase.',
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      await setDoc(doc(db, 'usuarios', user.uid), {
-        uid: user.uid,
-        nome,
-        email,
-        cpf,
-        telefone,
-        perfil: perfil,
-        data_cadastro: new Date().toISOString()
-      });
-
-      toast({
-        title: 'Conta criada!',
-        description: perfil === 'visitante' 
-          ? 'Seu cadastro foi enviado para aprovação do(a) Gestor (a).' 
-          : `Bem-vinda ao sistema como ${perfil === 'gestor' ? 'Gestor (a)' : 'Secretário(a)'}.`,
-      });
-      
-      router.push('/dashboard/');
-    } catch (error: any) {
-      let msg = 'Verifique sua conexão e tente novamente.';
-      if (error.code === 'auth/email-already-in-use') msg = 'Este e-mail já está em uso.';
-      if (error.code === 'auth/weak-password') msg = 'A senha deve ter pelo menos 6 caracteres.';
-      
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao cadastrar',
-        description: msg,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 text-slate-900">
-      <div className="w-full max-w-md space-y-8 animate-in fade-in duration-500">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary text-primary-foreground mb-4 shadow-xl">
-            <Sparkles className="h-8 w-8" />
+    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-[#F1F4F5] p-4">
+      <div className="w-full max-w-md space-y-8 py-8 duration-700 animate-in fade-in">
+        <div className="space-y-2 text-center">
+          <div className="mb-4 inline-flex items-center justify-center rounded-2xl bg-primary p-3 text-primary-foreground shadow-xl">
+            <Sparkles className="h-6 w-6 md:h-8 md:w-8" />
           </div>
-          <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Clínica Fabiula Oliveira</h1>
-          <p className="text-muted-foreground font-medium text-sm uppercase tracking-widest">Crie sua conta clínica</p>
+          <h1 className="font-headline text-3xl font-bold tracking-tight text-primary">Prontta</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">
+            GESTÃO CLÍNICA DESCOMPLICADA
+          </p>
         </div>
 
-        <Card className="border-border shadow-2xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-muted/30 pb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <Link href="/login/" className="text-muted-foreground hover:text-primary transition-colors">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-              <CardTitle className="text-2xl font-headline text-primary">Novo Cadastro</CardTitle>
-            </div>
-            <CardDescription>Escolha seu perfil e preencha os dados abaixo.</CardDescription>
+        <Card className="overflow-hidden rounded-[2.5rem] border-none bg-white shadow-2xl">
+          <CardHeader className="border-b border-dashed bg-muted/30 pb-8 pt-10 text-center">
+            <CardTitle className="font-headline text-2xl text-primary">Solicitar acesso</CardTitle>
+            <CardDescription className="text-xs font-medium">
+              O acesso ao Prontta é sempre criado pela sua clínica.
+            </CardDescription>
           </CardHeader>
-          <form onSubmit={handleRegister}>
-            <CardContent className="space-y-6 pt-8">
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Perfil de Acesso</Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPerfil('visitante')}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all",
-                      perfil === 'visitante' 
-                        ? "border-primary bg-primary/5 text-primary shadow-inner" 
-                        : "border-muted bg-white text-muted-foreground hover:border-muted-foreground/30"
-                    )}
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span className="text-[9px] font-black uppercase">Colaborador (a)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPerfil('secretaria')}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all",
-                      perfil === 'secretaria' 
-                        ? "border-primary bg-primary/5 text-primary shadow-inner" 
-                        : "border-muted bg-white text-muted-foreground hover:border-muted-foreground/30"
-                    )}
-                  >
-                    <UserCog className="h-5 w-5" />
-                    <span className="text-[9px] font-black uppercase">Secretário(a)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPerfil('gestor')}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all",
-                      perfil === 'gestor' 
-                        ? "border-accent bg-accent/5 text-accent shadow-inner" 
-                        : "border-muted bg-white text-muted-foreground hover:border-muted-foreground/30"
-                    )}
-                  >
-                    <ShieldCheck className="h-5 w-5" />
-                    <span className="text-[9px] font-black uppercase">Gestor (a)</span>
-                  </button>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nome" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Nome Completo</Label>
-                <Input id="nome" placeholder="Seu nome" className="h-12 rounded-xl border-muted" value={nome} onChange={(e) => setNome(e.target.value)} required />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cpf" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">CPF</Label>
-                  <Input id="cpf" placeholder="000.000.000-00" className="h-12 rounded-xl border-muted" value={cpf} onChange={(e) => setCpf(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="telefone" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Telefone</Label>
-                  <Input id="telefone" placeholder="(00) 00000-0000" className="h-12 rounded-xl border-muted" value={telefone} onChange={(e) => setTelefone(e.target.value)} required />
-                </div>
-              </div>
+          <CardContent className="space-y-6 px-8 pt-10">
+            <Opcao
+              icone={<UserPlus className="h-5 w-5" />}
+              titulo="Você trabalha numa clínica que já usa o Prontta"
+              texto="Peça ao administrador da sua clínica para cadastrar seu e-mail em Ajustes → Equipe. Você receberá um link para criar sua senha."
+            />
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">E-mail Profissional</Label>
-                <Input id="email" type="email" placeholder="exemplo@clinica.com" className="h-12 rounded-xl border-muted" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Senha de Acesso</Label>
-                <Input id="password" type="password" placeholder="Mínimo 6 caracteres" className="h-12 rounded-xl border-muted" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4 pb-10">
-              <Button type="submit" className="w-full bg-primary h-14 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] transition-transform" disabled={loading}>
-                {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-                Finalizar Cadastro
+            <Opcao
+              icone={<Building2 className="h-5 w-5" />}
+              titulo="Você quer contratar o Prontta para a sua clínica"
+              texto="Fale com a gente para abrir sua clínica no sistema. O período de teste começa assim que seu acesso é criado."
+            />
+
+            <a href="mailto:contato@prontta.com.br" className="block">
+              <Button className="h-13 w-full rounded-2xl bg-primary py-4 text-[11px] font-black uppercase tracking-[0.2em] shadow-xl">
+                <Mail className="mr-2 h-4 w-4" /> Falar com o suporte
               </Button>
-              <div className="text-center text-sm pt-2">
-                <span className="text-muted-foreground font-medium">Já possui acesso? </span>
-                <Link href="/login/" className="text-primary font-bold hover:underline">
-                  Entrar aqui
-                </Link>
-              </div>
-            </CardFooter>
-          </form>
+            </a>
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-4 px-8 pb-10">
+            <p className="text-center text-[10px] font-medium uppercase text-muted-foreground">
+              Já tem acesso?{' '}
+              <Link href="/login/" className="font-black text-primary hover:underline">
+                Entrar
+              </Link>
+            </p>
+            <p className="text-center text-[10px] leading-relaxed text-muted-foreground/70">
+              <Link href="/termos/" className="font-bold underline">
+                Termos de Uso
+              </Link>{' '}
+              ·{' '}
+              <Link href="/privacidade/" className="font-bold underline">
+                Política de Privacidade
+              </Link>
+            </p>
+          </CardFooter>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+function Opcao({
+  icone,
+  titulo,
+  texto,
+}: {
+  icone: React.ReactNode;
+  titulo: string;
+  texto: string;
+}) {
+  return (
+    <div className="flex gap-4 rounded-2xl bg-slate-50 p-5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        {icone}
+      </div>
+      <div className="min-w-0 space-y-1">
+        <p className="text-xs font-black uppercase leading-tight tracking-wide text-primary">
+          {titulo}
+        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">{texto}</p>
       </div>
     </div>
   );

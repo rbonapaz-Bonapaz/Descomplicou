@@ -4,7 +4,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useCollection } from '@/firebase';
-import { doc, updateDoc, arrayUnion, collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { addDoc, updateDoc, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { col, ref, prontuarioCol, SUB } from '@/lib/tenancy';
+import { registrarAcessoProntuario } from '@/services/auditService';
 import { Patient, EvolutionEntry, Appointment } from '@/app/lib/types';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -51,7 +53,11 @@ export default function PatientDetailsClient() {
   const id = searchParams.get('id');
   
   const db = useFirestore();
-  const { user, firebaseUser, isGuest, isSecretaria, loading: authLoading } = useAuth();
+  const { user, firebaseUser, loading: authLoading, identidade, pode } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const semAcessoProntuario = !pode('prontuario.ler');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const { toast } = useToast();
   
   const [guestPatient, setGuestPatient] = useState<Patient | null>(null);
@@ -61,13 +67,13 @@ export default function PatientDetailsClient() {
   const [hasInitializedTab, setHasInitializedTab] = useState(false);
 
   // Real-time synchronization hooks
-  const patientRef = useMemo(() => (db && firebaseUser && !isGuest && id ? doc(db, 'pacientes', id) : null), [db, id, isGuest, firebaseUser]);
+  const patientRef = useMemo(() => (db && firebaseUser && !isGuest && id ? ref<Patient>(db, clinicaId!, SUB.pacientes, id) : null), [db, id, isGuest, firebaseUser]);
   const { data: firestorePatient, loading: firestoreLoading } = useDoc<Patient>(patientRef);
   
   const appointmentsQuery = useMemo(() => {
     if (!db || !id || !firebaseUser || isGuest) return null;
     return query(
-      collection(db, 'agendamentos'),
+      col<Appointment>(db, clinicaId!, SUB.agendamentos),
       where('paciente_id', '==', id),
       orderBy('data_hora', 'desc')
     );
@@ -76,7 +82,7 @@ export default function PatientDetailsClient() {
   const radarQuery = useMemo(() => {
     if (!db || !user || !firebaseUser || isGuest) return null;
     return query(
-      collection(db, 'agendamentos'),
+      col<Appointment>(db, clinicaId!, SUB.agendamentos),
       where('profissional_id', '==', user.uid),
       orderBy('data_hora', 'asc')
     );
@@ -84,7 +90,17 @@ export default function PatientDetailsClient() {
 
   const { data: firestoreAppointments } = useCollection<Appointment>(appointmentsQuery);
   const { data: radarApts } = useCollection<Appointment>(radarQuery);
-  
+
+  // O prontuário vive em subcoleção própria (`pacientes/{id}/prontuario`), que as
+  // regras só liberam para o papel `profissional`. Quem não pode ler simplesmente
+  // recebe lista vazia do servidor — não é a tela que esconde.
+  const prontuarioQuery = useMemo(() => {
+    if (!db || !clinicaId || !id) return null;
+    return query(prontuarioCol<EvolutionEntry>(db, clinicaId, id), orderBy('data', 'desc'));
+  }, [db, clinicaId, id]);
+
+  const { data: prontuario } = useCollection<EvolutionEntry>(prontuarioQuery);
+
   useEffect(() => {
     if (authLoading) return;
     if (isGuest && id) {
@@ -123,14 +139,14 @@ export default function PatientDetailsClient() {
     if (appointments && !hasInitializedTab) {
       if (currentApt) {
         setActiveTab("cockpit");
-      } else if (isSecretaria) {
+      } else if (semAcessoProntuario) {
         setActiveTab("sessoes");
       } else {
         setActiveTab("timeline");
       }
       setHasInitializedTab(true);
     }
-  }, [currentApt, isSecretaria, appointments, hasInitializedTab]);
+  }, [currentApt, semAcessoProntuario, appointments, hasInitializedTab]);
 
   useEffect(() => {
     if (!currentApt?.inicio_atendimento) {
@@ -171,6 +187,18 @@ export default function PatientDetailsClient() {
   const patient = isGuest ? guestPatient : firestorePatient;
   const loading = !isGuest && (firestoreLoading || authLoading);
 
+  // Registra o acesso ao prontuário (LGPD art. 37). Só uma vez por paciente aberto,
+  // não a cada re-render, senão a trilha vira ruído e não serve de prova.
+  const acessoRegistrado = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (!db || !clinicaId || !user || !id || !patient) return;
+    if (!pode('prontuario.ler')) return;
+    if (acessoRegistrado.current === id) return;
+    acessoRegistrado.current = id;
+    registrarAcessoProntuario(db, clinicaId, { uid: user.uid, nome: user.nome }, id, patient.nome);
+  }, [db, clinicaId, user, id, patient, pode]);
+
+
   const waitlist = useMemo(() => {
     const apts = isGuest ? (JSON.parse(localStorage.getItem('demo_appointments') || '[]') as Appointment[]).filter(a => a.profissional_id === user?.uid) : radarApts;
     return (apts || []).filter(a => {
@@ -192,37 +220,36 @@ export default function PatientDetailsClient() {
     const descricao = tipo === 'evolucao' ? newEvolution : newPrescription;
     if (!descricao.trim()) return;
     
+    if (!db || !clinicaId || !user) return;
+
     setIsSaving(true);
-    const entry: EvolutionEntry = {
-      id: Math.random().toString(36).substr(2, 9),
+    // A entrada NÃO carrega recado de recepção. Nota administrativa vive no
+    // agendamento (que a recepção lê); o prontuário guarda só conteúdo clínico.
+    // Misturar os dois foi o que obrigava a abrir o prontuário para a recepção.
+    const entry: Omit<EvolutionEntry, 'id'> = {
       data: new Date().toISOString(),
-      profissional_id: user?.uid || 'anon',
-      profissional_nome: user?.nome || 'Profissional',
-      descricao: descricao,
-      observacao_secretaria: tipo === 'evolucao' ? newSecNote : undefined,
-      tipo: tipo,
+      profissional_id: user.uid,
+      profissional_nome: user.nome || 'Profissional',
+      ...(user.conselho_sigla && user.conselho_numero
+        ? { profissional_conselho: `${user.conselho_sigla} ${user.conselho_numero}` }
+        : {}),
+      descricao,
+      tipo,
       assinatura_digital: true,
-      necessita_retorno: tipo === 'evolucao' ? needsReturn : undefined
+      assinada_em: new Date().toISOString(),
+      ...(currentApt ? { agendamento_id: currentApt.id } : {}),
+      ...(tipo === 'evolucao' ? { necessita_retorno: needsReturn } : {}),
+      criada_em: new Date().toISOString(),
     };
 
     try {
-      if (isGuest) {
-        const updatedPatient = guestPatient ? { ...guestPatient, historico_clinico: [entry, ...(guestPatient.historico_clinico || [])] } : null;
-        if (updatedPatient) setGuestPatient(updatedPatient);
-        
-        if (currentApt) {
-           const savedApts = JSON.parse(localStorage.getItem('demo_appointments') || '[]');
-           const updatedApts = savedApts.map((a: any) => a.id === currentApt.id ? { ...a, observacao_secretaria: newSecNote } : a);
-           localStorage.setItem('demo_appointments', JSON.stringify(updatedApts));
-        }
-      } else if (patientRef) {
-        await updateDoc(patientRef, { historico_clinico: arrayUnion(entry) });
-        
-        if (currentApt && newSecNote.trim()) {
-           await updateDoc(doc(db!, 'agendamentos', currentApt.id), {
-             observacao_secretaria: newSecNote
-           });
-        }
+      // Subcoleção própria, protegida por regra que só aceita profissional de saúde.
+      await addDoc(prontuarioCol(db, clinicaId, id), entry);
+
+      if (currentApt && newSecNote.trim()) {
+        await updateDoc(ref(db, clinicaId, SUB.agendamentos, currentApt.id), {
+          observacao_secretaria: newSecNote,
+        });
       }
       setNewEvolution('');
       setNewSecNote('');
@@ -244,7 +271,7 @@ export default function PatientDetailsClient() {
         localStorage.setItem('demo_appointments', JSON.stringify(updated));
         setGuestAppointments(updated.filter((a: any) => a.paciente_id === id));
       } else if (db) {
-        await updateDoc(doc(db, 'agendamentos', currentApt.id), { atraso_sinalizado_minutos: novoAtraso });
+        await updateDoc(ref<Appointment>(db, clinicaId!, SUB.agendamentos, currentApt.id), { atraso_sinalizado_minutos: novoAtraso });
       }
       toast({ title: `Atraso sinalizado: +${novoAtraso} min`, description: "A recepção e o painel TV foram notificados." });
     } catch (e) {
@@ -261,7 +288,7 @@ export default function PatientDetailsClient() {
         localStorage.setItem('demo_appointments', JSON.stringify(updated));
         setGuestAppointments(updated.filter((a: any) => a.paciente_id === id));
       } else if (db) {
-        await updateDoc(doc(db, 'agendamentos', currentApt.id), { atraso_sinalizado_minutos: 0 });
+        await updateDoc(ref<Appointment>(db, clinicaId!, SUB.agendamentos, currentApt.id), { atraso_sinalizado_minutos: 0 });
       }
       toast({ title: "Atraso Removido", description: "O cronograma foi normalizado na recepção." });
     } catch (e) {
@@ -302,11 +329,10 @@ export default function PatientDetailsClient() {
         </CardHeader>
         <CardContent className="p-4">
           <p className="text-xs leading-relaxed text-slate-700 whitespace-pre-wrap font-medium">{entry.descricao}</p>
-          {entry.observacao_secretaria && (
-            <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-100/50">
-              <p className="text-[9px] font-black uppercase text-amber-700 mb-1">Recado Secretaria</p>
-              <p className="text-[10px] text-amber-900 italic font-medium">"{entry.observacao_secretaria}"</p>
-            </div>
+          {entry.retifica_entrada_id && (
+            <p className="mt-2 text-[9px] font-black uppercase text-amber-700">
+              Retificação de registro anterior
+            </p>
           )}
         </CardContent>
       </Card>
@@ -518,40 +544,40 @@ export default function PatientDetailsClient() {
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4 px-1 mt-0">
-          {(patient?.historico_clinico || []).length > 0 ? (
-            (patient?.historico_clinico || []).slice().sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(renderTimelineEntry)
+          {(prontuario || []).length > 0 ? (
+            (prontuario || []).slice().sort((a,b) => new Date(b.data).getTime() - new Date(a.data).getTime()).map(renderTimelineEntry)
           ) : (
             <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black tracking-widest opacity-20">Nenhum registro clínico</div>
           )}
         </TabsContent>
 
         <TabsContent value="anamnese" className="space-y-4 px-1 mt-0">
-           {(patient?.historico_clinico || []).filter(e => e.tipo === 'anamnese').length > 0 ? (
-             (patient?.historico_clinico || []).filter(e => e.tipo === 'anamnese').map(renderTimelineEntry)
+           {(prontuario || []).filter(e => e.tipo === 'anamnese').length > 0 ? (
+             (prontuario || []).filter(e => e.tipo === 'anamnese').map(renderTimelineEntry)
            ) : (
             <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black tracking-widest opacity-20">Nenhuma anamnese arquivada</div>
            )}
         </TabsContent>
 
         <TabsContent value="evolucao" className="space-y-4 px-1 mt-0">
-           {(patient?.historico_clinico || []).filter(e => e.tipo === 'evolucao').length > 0 ? (
-             (patient?.historico_clinico || []).filter(e => e.tipo === 'evolucao').map(renderTimelineEntry)
+           {(prontuario || []).filter(e => e.tipo === 'evolucao').length > 0 ? (
+             (prontuario || []).filter(e => e.tipo === 'evolucao').map(renderTimelineEntry)
            ) : (
             <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black tracking-widest opacity-20">Nenhuma evolução registrada</div>
            )}
         </TabsContent>
 
         <TabsContent value="prescricao" className="space-y-4 px-1 mt-0">
-           {(patient?.historico_clinico || []).filter(e => e.tipo === 'prescricao').length > 0 ? (
-             (patient?.historico_clinico || []).filter(e => e.tipo === 'prescricao').map(renderTimelineEntry)
+           {(prontuario || []).filter(e => e.tipo === 'prescricao').length > 0 ? (
+             (prontuario || []).filter(e => e.tipo === 'prescricao').map(renderTimelineEntry)
            ) : (
             <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black tracking-widest opacity-20">Nenhuma receita prescrita</div>
            )}
         </TabsContent>
 
         <TabsContent value="documentos" className="space-y-4 px-1 mt-0">
-           {(patient?.historico_clinico || []).filter(e => e.tipo === 'exame' || e.tipo === 'avaliacao').length > 0 ? (
-             (patient?.historico_clinico || []).filter(e => e.tipo === 'exame' || e.tipo === 'avaliacao').map(renderTimelineEntry)
+           {(prontuario || []).filter(e => e.tipo === 'exame' || e.tipo === 'avaliacao').length > 0 ? (
+             (prontuario || []).filter(e => e.tipo === 'exame' || e.tipo === 'avaliacao').map(renderTimelineEntry)
            ) : (
             <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black tracking-widest opacity-20">Nenhum documento anexado</div>
            )}

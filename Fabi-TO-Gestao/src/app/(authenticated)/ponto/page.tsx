@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   MapPin, 
   ChevronLeft, 
@@ -19,6 +20,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { col, SUB } from '@/lib/tenancy';
 import { useToast } from '@/hooks/use-toast';
 import { ClockInRecord } from '@/app/lib/types';
 import { cn } from '@/lib/utils';
@@ -26,7 +28,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function PontoDigitalPage() {
-  const { user, isGuest } = useAuth();
+  const { user, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
@@ -82,12 +87,10 @@ export default function PontoDigitalPage() {
       window.addEventListener('storage', loadGuestData);
       return () => window.removeEventListener('storage', loadGuestData);
     } else if (firestore) {
-      const q = query(collection(firestore, 'batidas_ponto'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'));
+      const q = query(col<ClockInRecord>(firestore, clinicaId!, SUB.batidasPonto), where('userId', '==', user.uid), orderBy('timestamp', 'desc'));
       return onSnapshot(q, (snap) => {
-        setPunchRecords(snap.docs.map(d => ({ 
-          id: d.id, 
-          ...d.data(), 
-          timestamp: d.data().timestamp instanceof Timestamp ? d.data().timestamp.toDate().toISOString() : d.data().timestamp 
+        setPunchRecords(snap.docs.map(d => ({ ...d.data(), id: d.id,
+          timestamp: (d.data().timestamp as any) instanceof Timestamp ? (d.data().timestamp as any).toDate().toISOString() : d.data().timestamp 
         } as ClockInRecord)));
       });
     }
@@ -130,7 +133,7 @@ export default function PontoDigitalPage() {
         window.dispatchEvent(new Event('storage'));
       } else if (firestore) {
         const { id: _, ...payload } = newRecord;
-        await addDoc(collection(firestore, 'batidas_ponto'), payload);
+        await addDoc(col<ClockInRecord>(firestore, clinicaId!, SUB.batidasPonto), payload);
       }
       setJustPunched(true);
       setTimeout(() => setJustPunched(false), 3000);

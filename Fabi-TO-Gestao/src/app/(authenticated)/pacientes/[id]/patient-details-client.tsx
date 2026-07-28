@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useCollection } from '@/firebase';
 import { doc, updateDoc, arrayUnion, collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { Patient, EvolutionEntry, Appointment } from '@/app/lib/types';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -44,19 +45,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export default function PatientDetailsClient({ id }: { id: string }) {
   const router = useRouter();
   const db = useFirestore();
-  const { user, isGuest, isSecretaria } = useAuth();
+  const { user, identidade, pode } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const semAcessoProntuario = !pode('prontuario.ler');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const { toast } = useToast();
   
   const [guestPatient, setGuestPatient] = useState<Patient | null>(null);
   const [guestAppointments, setGuestAppointments] = useState<Appointment[]>([]);
 
-  const patientRef = useMemo(() => (db && !isGuest ? doc(db, 'pacientes', id) : null), [db, id, isGuest]);
+  const patientRef = useMemo(() => (db && !isGuest ? ref<Patient>(db, clinicaId!, SUB.pacientes, id) : null), [db, id, isGuest]);
   const { data: firestorePatient, loading: firestoreLoading } = useDoc<Patient>(patientRef);
   
   const appointmentsQuery = useMemo(() => {
     if (!db || !id || isGuest) return null;
     return query(
-      collection(db, 'agendamentos'),
+      col<Appointment>(db, clinicaId!, SUB.agendamentos),
       where('paciente_id', '==', id),
       orderBy('data_hora', 'desc')
     );
@@ -82,7 +87,6 @@ export default function PatientDetailsClient({ id }: { id: string }) {
               profissional_id: 'demo',
               profissional_nome: 'Dra. Fabiana (TO)',
               descricao: 'Paciente apresentou boa evolução na coordenação motora fina hoje. Trabalhamos com texturas diversas e houve menor resistência sensorial do que na sessão anterior.',
-              observacao_secretaria: 'Paciente precisa agendar avaliação fonoaudiológica para o mês que vem.',
               tipo: 'evolucao'
             }
           ]
@@ -124,7 +128,6 @@ export default function PatientDetailsClient({ id }: { id: string }) {
       profissional_id: user?.uid || 'anon',
       profissional_nome: user?.nome || 'Profissional',
       descricao: descricao,
-      observacao_secretaria: obsSec,
       tipo: tipo
     };
 
@@ -149,7 +152,7 @@ export default function PatientDetailsClient({ id }: { id: string }) {
         if (db && obsSec.trim()) {
           const today = new Date();
           const qToday = query(
-            collection(db, 'agendamentos'),
+            col<Appointment>(db, clinicaId!, SUB.agendamentos),
             where('paciente_id', '==', id),
             where('status', 'in', ['atendimento', 'realizado']),
             limit(5)
@@ -158,7 +161,7 @@ export default function PatientDetailsClient({ id }: { id: string }) {
           const todayApt = snap.docs.find(doc => isSameDay(new Date(doc.data().data_hora), today));
           
           if (todayApt) {
-            await updateDoc(doc(db, 'agendamentos', todayApt.id), {
+            await updateDoc(ref<Appointment>(db, clinicaId!, SUB.agendamentos, todayApt.id), {
                 observacao_secretaria: obsSec
             });
           }
@@ -211,12 +214,6 @@ export default function PatientDetailsClient({ id }: { id: string }) {
             </Label>
             <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{entry.descricao}</p>
           </div>
-          {entry.observacao_secretaria && (
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100/50">
-              <Label className="text-[9px] uppercase font-black text-amber-700 block mb-1">Nota para Secretaria</Label>
-              <p className="text-xs text-amber-900 italic font-medium">"{entry.observacao_secretaria}"</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -242,7 +239,7 @@ export default function PatientDetailsClient({ id }: { id: string }) {
             </div>
           </div>
         </div>
-        {!isSecretaria && (
+        {!semAcessoProntuario && (
           <div className="flex gap-2">
             <Button variant="default" size="sm" onClick={() => window.print()} className="bg-primary shadow-md font-bold">
               <Download className="h-4 w-4 mr-2" /> Gerar PDF
@@ -312,18 +309,18 @@ export default function PatientDetailsClient({ id }: { id: string }) {
         </div>
 
         <div className="lg:col-span-8 space-y-6 print:col-span-12">
-          <Tabs defaultValue={isSecretaria ? "sessoes" : "timeline"} className="w-full print:block">
+          <Tabs defaultValue={semAcessoProntuario ? "sessoes" : "timeline"} className="w-full print:block">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-muted/50 border rounded-2xl print:hidden">
-              <TabsTrigger value="timeline" disabled={isSecretaria} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
-                {isSecretaria && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
+              <TabsTrigger value="timeline" disabled={semAcessoProntuario} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
+                {semAcessoProntuario && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
                 <History className="h-3.5 w-3.5 mr-2" /> Timeline
               </TabsTrigger>
-              <TabsTrigger value="evolucao" disabled={isSecretaria} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
-                {isSecretaria && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
+              <TabsTrigger value="evolucao" disabled={semAcessoProntuario} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
+                {semAcessoProntuario && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
                 <FileText className="h-3.5 w-3.5 mr-2" /> Evolução
               </TabsTrigger>
-              <TabsTrigger value="prescricao" disabled={isSecretaria} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
-                {isSecretaria && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
+              <TabsTrigger value="prescricao" disabled={semAcessoProntuario} className="py-2.5 text-[10px] uppercase font-black tracking-widest">
+                {semAcessoProntuario && <Lock className="h-3 w-3 mr-1.5 opacity-50" />}
                 <FileSignature className="h-3.5 w-3.5 mr-2" /> Prescrição
               </TabsTrigger>
               <TabsTrigger value="sessoes" className="py-2.5 text-[10px] uppercase font-black tracking-widest">
@@ -332,7 +329,7 @@ export default function PatientDetailsClient({ id }: { id: string }) {
             </TabsList>
 
             <TabsContent value="timeline" className="py-4 print:block">
-              {isSecretaria ? (
+              {semAcessoProntuario ? (
                 <div className="flex flex-col items-center justify-center py-24 bg-muted/20 rounded-3xl border border-dashed border-muted-foreground/20">
                   <Lock className="h-12 w-12 text-muted-foreground opacity-20 mb-4" />
                   <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">Acesso Restrito ao Profissional</p>

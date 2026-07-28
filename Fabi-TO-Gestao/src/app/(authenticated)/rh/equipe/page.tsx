@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { collection, query, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { User, Break, VinculoTipo } from '@/app/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -71,7 +72,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 export default function EquipeRHPage() {
-  const { isGestor, loading: authLoading, isGuest } = useAuth();
+  const { loading: authLoading, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -79,28 +84,28 @@ export default function EquipeRHPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (authLoading || !isGestor) return;
+    if (authLoading || !ehAdmin) return;
     if (isGuest) {
       setUsers([
-        { uid: '1', nome: 'Dra. Fabiula Oliveira', email: 'fabi@demo.com', perfil: 'gestor', vinculo: 'proprietario', pro_labore: 10000, role_gestor: true, role_profissional: true, possui_agenda: true, area_atuacao: 'Terapia Ocupacional', cor_agenda: '#4F6D7A', can_delete_data: true },
-        { uid: '2', nome: 'Rodrigo Turra Bonapaz', email: 'rodrigo@demo.com', perfil: 'gestor', vinculo: 'proprietario', pro_labore: 10000, role_gestor: true, role_profissional: false, possui_agenda: false, area_atuacao: 'Gestão Clínica', cor_agenda: '#f43f5e', can_delete_data: true },
-        { uid: '3', nome: 'Beatriz Secretaria', email: 'beatriz@demo.com', perfil: 'secretaria', vinculo: 'clt', salario_base: 2500, role_gestor: false, role_profissional: false, role_secretaria: true, medicos_gerenciados: ['1'], can_delete_data: false },
+        { uid: '1', nome: 'Dra. Fabiula Oliveira', email: '1@demo.local', papeis: [],  perfil: 'gestor', vinculo: 'proprietario', pro_labore: 10000, role_gestor: true, role_profissional: true, possui_agenda: true, area_atuacao: 'Terapia Ocupacional', cor_agenda: '#4F6D7A', can_delete_data: true },
+        { uid: '2', nome: 'Rodrigo Turra Bonapaz', email: '2@demo.local', papeis: [],  perfil: 'gestor', vinculo: 'proprietario', pro_labore: 10000, role_gestor: true, role_profissional: false, possui_agenda: false, area_atuacao: 'Gestão Clínica', cor_agenda: '#f43f5e', can_delete_data: true },
+        { uid: '3', nome: 'Beatriz Secretaria', email: '3@demo.local', papeis: [],  perfil: 'secretaria', vinculo: 'clt', salario_base: 2500, role_gestor: false, role_profissional: false, role_secretaria: true, medicos_gerenciados: ['1'], can_delete_data: false },
       ]);
       setLoading(false);
       return;
     }
     if (!db) return;
-    const q = query(collection(db, 'usuarios'));
+    const q = query(col<User>(db, clinicaId!, SUB.usuarios));
     return onSnapshot(q, (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ ...doc.data() } as User)));
       setLoading(false);
     });
-  }, [isGuest, authLoading, isGestor]);
+  }, [isGuest, authLoading, ehAdmin]);
 
   const handleUpdateUser = async (userId: string, data: Partial<User>) => {
     try {
       if (db && !isGuest) {
-        await updateDoc(doc(db, 'usuarios', userId), data);
+        await updateDoc(ref<User>(db, clinicaId!, SUB.usuarios, userId), data);
       } else {
         setUsers(prev => prev.map(u => u.uid === userId ? { ...u, ...data } : u));
       }

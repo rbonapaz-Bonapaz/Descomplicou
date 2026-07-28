@@ -1,5 +1,5 @@
 {
-  "name": "nextn",
+  "name": "prontta",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,9 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:rules": "firebase emulators:exec --only firestore --project prontta-rules-test \"vitest run\"",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage:rules"
   },
   "dependencies": {
     "@genkit-ai/firebase": "^1.0.0",
@@ -56,12 +58,15 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/node": "^20",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "firebase-tools": "^15.24.0",
     "genkit-cli": "^1.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

@@ -5,6 +5,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useSearchParams } from 'next/navigation';
 import { doc, setDoc, onSnapshot, collection, query, deleteDoc, orderBy, limit, addDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { useFirestore } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { ClinicSettings, Break } from '@/app/lib/types';
-import { logAction } from '@/services/auditService';
+import { registrarAuditoria } from '@/services/auditService';
 import { format } from 'date-fns';
 
 const DAYS_OF_WEEK = [
@@ -55,7 +56,11 @@ const DAYS_OF_WEEK = [
 function SettingsContent() {
   const searchParams = useSearchParams();
   const firestore = useFirestore();
-  const { user, isGestor, isGuest } = useAuth();
+  const { user, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'clinica');
@@ -88,17 +93,17 @@ function SettingsContent() {
   useEffect(() => {
     if (!firestore) return;
     
-    const unsub = onSnapshot(doc(firestore, 'configuracoes', 'clinica'), (snap) => {
+    const unsub = onSnapshot(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica'), (snap) => {
       if (snap.exists()) setSettings(snap.data() as ClinicSettings);
     });
 
-    const unsubMural = onSnapshot(collection(firestore, 'comunicados'), (snap) => {
-      setComunicados(snap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
+    const unsubMural = onSnapshot(col(firestore, clinicaId!, SUB.comunicados), (snap) => {
+      setComunicados(snap.docs.map(d => ({ ...d.data(), id: d.id } as any)));
     });
 
-    const qLogs = query(collection(firestore, 'logs_auditoria'), orderBy('timestamp', 'desc'), limit(50));
+    const qLogs = query(col(firestore, clinicaId!, SUB.auditoria), orderBy('timestamp', 'desc'), limit(50));
     const unsubLogs = onSnapshot(qLogs, (snap) => {
-      setAuditLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setAuditLogs(snap.docs.map(d => ({ ...d.data(), id: d.id })));
     });
 
     return () => { 
@@ -112,15 +117,15 @@ function SettingsContent() {
     setLoading(true);
     try {
       if (firestore) {
-        await setDoc(doc(firestore, 'configuracoes', 'clinica'), settings);
+        await setDoc(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica'), settings);
       }
       toast({ title: 'Configurações Salvas' });
-      logAction(firestore, {
-        userId: user?.uid || 'anon',
-        userName: user?.nome || 'Admin',
-        action: 'Atualização de Configurações Globais',
-        module: 'Ajustes',
-        details: 'Parâmetros operacionais da clínica atualizados.'
+      registrarAuditoria(firestore, clinicaId, {
+        uid: user?.uid || 'anon',
+        nome: user?.nome || 'Admin',
+        acao: 'Atualização de Configurações Globais',
+        modulo: 'Ajustes',
+        detalhe: 'Parâmetros operacionais da clínica atualizados.'
       });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Erro ao salvar' });
@@ -133,7 +138,7 @@ function SettingsContent() {
     if (!newComunicado.trim()) return;
     try {
       if (firestore) {
-        await addDoc(collection(firestore, 'comunicados'), { texto: newComunicado });
+        await addDoc(col(firestore, clinicaId!, SUB.comunicados), { texto: newComunicado });
       }
       setNewComunicado('');
       toast({ title: 'Mensagem adicionada ao mural' });
@@ -143,7 +148,7 @@ function SettingsContent() {
   const handleDeleteComunicado = async (id: string) => {
     try {
       if (firestore) {
-        await deleteDoc(doc(firestore, 'comunicados', id));
+        await deleteDoc(ref(firestore, clinicaId!, SUB.comunicados, id));
       }
     } catch (e) { toast({ variant: 'destructive', title: 'Erro' }); }
   };
@@ -206,13 +211,13 @@ function SettingsContent() {
              await batch.commit();
           }
 
-          logAction(firestore, {
-            userId: user?.uid || 'anon',
-            userName: user?.nome || 'Admin',
-            action: `Limpeza Granular: ${pendingDeleteAction?.label}`,
-            module: 'Segurança',
-            details: `Exclusão em massa solicitada para o módulo ${pendingDeleteAction?.label}.`,
-            severity: 'critical'
+          registrarAuditoria(firestore, clinicaId, {
+            uid: user?.uid || 'anon',
+            nome: user?.nome || 'Admin',
+            acao: `Limpeza Granular: ${pendingDeleteAction?.label}`,
+            modulo: 'Segurança',
+            detalhe: `Exclusão em massa solicitada para o módulo ${pendingDeleteAction?.label}.`,
+            severidade: 'critico'
           });
 
           toast({ title: `Dados de ${pendingDeleteAction?.label} limpos com sucesso` });
@@ -260,7 +265,7 @@ function SettingsContent() {
     });
   };
 
-  if (!isGestor) return (
+  if (!ehAdmin) return (
     <div className="h-[500px] flex flex-col items-center justify-center text-center space-y-4">
       <Lock className="h-12 w-12 text-slate-300" />
       <h2 className="text-xl font-headline font-bold text-primary">Acesso Restrito</h2>

@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { useFirestore } from '@/firebase';
 import { ClockInRecord, User, TimeClosure } from '@/app/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +26,11 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function JornadaRHPage() {
-  const { isGestor, loading: authLoading, isGuest, firebaseUser } = useAuth();
+  const { loading: authLoading, firebaseUser, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -36,24 +41,24 @@ export default function JornadaRHPage() {
   const [justificationText, setJustificationText] = useState('');
 
   useEffect(() => {
-    if (authLoading || !isGestor || isGuest || !firebaseUser || !firestore) {
+    if (authLoading || !ehAdmin || isGuest || !firebaseUser || !firestore) {
       setLoading(false);
       return;
     }
     
-    const q = query(collection(firestore, 'batidas_ponto'), orderBy('timestamp', 'desc'));
+    const q = query(col<ClockInRecord>(firestore, clinicaId!, SUB.batidasPonto), orderBy('timestamp', 'desc'));
     const unsubscribe = onSnapshot(q, (snap) => {
-      setRecords(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClockInRecord)));
+      setRecords(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ClockInRecord)));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [firestore, isGuest, authLoading, isGestor, firebaseUser]);
+  }, [firestore, isGuest, authLoading, ehAdmin, firebaseUser]);
 
   const handleReview = async (status: 'aprovado' | 'reprovado') => {
     if (!justifyingRecord || !firestore) return;
     const updateData = { status, observacao_gestor: justificationText };
     try {
-      await updateDoc(doc(firestore, 'batidas_ponto', justifyingRecord.id), updateData);
+      await updateDoc(ref(firestore, clinicaId!, SUB.batidasPonto, justifyingRecord.id), updateData);
       toast({ title: status === 'aprovado' ? 'Aprovado' : 'Reprovado' });
       setJustifyingRecord(null);
       setJustificationText('');

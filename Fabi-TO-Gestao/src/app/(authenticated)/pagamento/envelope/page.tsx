@@ -27,7 +27,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function EnvelopeDigitalPage() {
-  const { user } = useAuth();
+  const { user, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
   const [mes, setMes] = useState('05');
   const [ano, setAno] = useState('2024');
 

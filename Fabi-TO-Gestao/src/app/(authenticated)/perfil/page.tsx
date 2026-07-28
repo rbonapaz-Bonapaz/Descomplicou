@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
+import { ref, SUB } from '@/lib/tenancy';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,10 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function PerfilPage() {
-  const { user, isGuest } = useAuth();
+  const { user, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -94,7 +98,7 @@ export default function PerfilPage() {
     setIsSaving(true);
     try {
       if (firestore && !isGuest) {
-        await updateDoc(doc(firestore, 'usuarios', user.uid), formData);
+        await updateDoc(ref(firestore, clinicaId!, SUB.usuarios, user.uid), formData);
       } else {
         const saved = JSON.parse(localStorage.getItem('guest_session') || '{}');
         localStorage.setItem('guest_session', JSON.stringify({ ...saved, ...formData }));
@@ -145,7 +149,7 @@ export default function PerfilPage() {
       setFormData(prev => ({ ...prev, biometria_ativa: true }));
 
       if (firestore && !isGuest && user?.uid) {
-        await updateDoc(doc(firestore, 'usuarios', user.uid), { biometria_ativa: true });
+        await updateDoc(ref(firestore, clinicaId!, SUB.usuarios, user.uid), { biometria_ativa: true });
       }
       
       toast({ title: "Biometria Ativada!", description: "Acesso rápido habilitado para este dispositivo." });
@@ -160,7 +164,7 @@ export default function PerfilPage() {
     try {
       const update = { grade_horaria: gradeData, grade_individual_ativa: individualActive };
       if (firestore && !isGuest) {
-        await updateDoc(doc(firestore, 'usuarios', user.uid), update);
+        await updateDoc(ref(firestore, clinicaId!, SUB.usuarios, user.uid), update);
       } else {
         const saved = JSON.parse(localStorage.getItem('guest_session') || '{}');
         localStorage.setItem('guest_session', JSON.stringify({ ...saved, ...update }));

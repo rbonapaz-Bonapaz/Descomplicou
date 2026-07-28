@@ -11,6 +11,12 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // No servidor (e antes do Firebase inicializar) `auth` é null — chamar
+    // onAuthStateChanged aqui quebrava a renderização.
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);

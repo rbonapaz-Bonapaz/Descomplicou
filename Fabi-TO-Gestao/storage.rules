@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// =============================================================================
+// REGRAS DO STORAGE — Prontta
+//
+// Anexo de prontuário (laudo, exame, foto de evolução) é dado de saúde. Vale a
+// mesma invariante do Firestore: só o papel `profissional` da clínica dona do
+// arquivo acessa. Sem isto, um link de download vaza o exame do paciente.
+//
+// O padrão do Firebase libera todo usuário autenticado — o que, num sistema
+// multi-clínica, significa a Clínica A lendo os arquivos da Clínica B.
+// =============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    function claims() {
+      return request.auth.token;
+    }
+
+    function daClinica(clinicaId) {
+      return logado() && claims().get('clinicaId', '') == clinicaId;
+    }
+
+    function papel(nome) {
+      return logado()
+        && claims().get('papeis', []) is list
+        && nome in claims().get('papeis', []);
+    }
+
+    /** Limite por arquivo, para não virar hospedagem gratuita. */
+    function tamanhoOk() {
+      return request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Anexos clínicos: mesmo cerco do prontuário.
+    match /clinicas/{clinicaId}/pacientes/{pacienteId}/anexos/{arquivo} {
+      allow read: if daClinica(clinicaId) && papel('profissional');
+      allow write: if daClinica(clinicaId) && papel('profissional') && tamanhoOk()
+        && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    // Foto do paciente: cadastro, não conteúdo clínico. Recepção usa para conferir
+    // quem chegou no balcão.
+    match /clinicas/{clinicaId}/pacientes/{pacienteId}/foto {
+      allow read: if daClinica(clinicaId);
+      allow write: if daClinica(clinicaId) && tamanhoOk()
+        && (papel('recepcao') || papel('profissional') || papel('admin_clinica'))
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Logotipo e identidade visual da clínica.
+    match /clinicas/{clinicaId}/marca/{arquivo} {
+      allow read: if daClinica(clinicaId);
+      allow write: if daClinica(clinicaId) && papel('admin_clinica') && tamanhoOk()
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Foto de perfil: cada um cuida da própria.
+    match /clinicas/{clinicaId}/usuarios/{uid}/foto {
+      allow read: if daClinica(clinicaId);
+      allow write: if daClinica(clinicaId) && request.auth.uid == uid && tamanhoOk()
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Nada mais é acessível.
+    match /{caminho=**} {
+      allow read, write: if false;
+    }
+  }
+}

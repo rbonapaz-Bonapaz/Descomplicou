@@ -18,7 +18,9 @@ import {
   CreditCard,
   ChevronDown,
   UserCircle,
-  Monitor
+  Monitor,
+  Stethoscope,
+  Building2
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -46,7 +48,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
 export function AppSidebar() {
-  const { logout, isGestor, user } = useAuth();
+  const { logout, user, clinica, pode, temPapel, identidade } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -72,13 +74,30 @@ export function AppSidebar() {
 
   const normalizedPath = pathname?.endsWith('/') ? pathname : `${pathname}/`;
 
-  const canSeeRecepcao = isGestor || user?.role_secretaria || user?.access_recepcao;
-  const canSeeAgenda = isGestor || user?.role_secretaria || user?.role_profissional || user?.access_agenda;
-  const canSeePacientes = isGestor || user?.role_secretaria || user?.role_profissional || user?.access_pacientes;
-  const canSeeFinanceiro = isGestor || user?.access_financeiro;
-  const canSeeInteligencia = isGestor || user?.access_inteligencia;
-  const canSeeRH = isGestor || user?.access_rh;
-  const canSeeConfig = isGestor || user?.access_configuracoes;
+  // O menu segue a MESMA matriz que o `firestore.rules` aplica no servidor
+  // (`src/lib/permissions.ts`). Assim o usuário nunca vê um atalho que resultaria
+  // em erro de permissão ao clicar. Um módulo desligado pela clínica também some.
+  const modulos = clinica?.modulos;
+  const canSeeRecepcao = pode('recepcao.usar') && modulos?.recepcao !== false;
+  const canSeeAgenda = pode('agenda.ler.propria') || pode('agenda.ler.todas');
+  const canSeePacientes = pode('paciente.ler');
+  const canSeeProntuario = pode('prontuario.ler');
+  const canSeeFinanceiro = pode('financeiro.ler') && modulos?.financeiro !== false;
+  const canSeeInteligencia = pode('relatorios.ler') && modulos?.inteligencia !== false;
+  const canSeeEquipe = pode('equipe.ler') && modulos?.rh !== false;
+  const canSeeAprovacoes = pode('ponto.aprovar') && modulos?.ponto !== false;
+  const canSeeConfig = pode('configuracoes.ler');
+  const canSeePonto = modulos?.ponto !== false;
+  const canSeeFerias = modulos?.ferias !== false;
+  const rotuloPapel = temPapel('admin_clinica')
+    ? 'Administração'
+    : temPapel('profissional')
+      ? 'Profissional'
+      : temPapel('recepcao')
+        ? 'Recepção'
+        : temPapel('financeiro')
+          ? 'Financeiro'
+          : 'Equipe';
 
   return (
     <Sidebar collapsible="icon">
@@ -86,7 +105,7 @@ export function AppSidebar() {
         <div className="sr-only">
           <SheetHeader>
             <SheetTitle>Menu de Navegação</SheetTitle>
-            <SheetDescription>Sistema clínico Dra. Fabiula</SheetDescription>
+            <SheetDescription>{clinica?.nome || 'Prontta'}</SheetDescription>
           </SheetHeader>
         </div>
       )}
@@ -96,7 +115,9 @@ export function AppSidebar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-primary shadow-lg shrink-0">
             <Sparkles className="h-6 w-6" />
           </div>
-          <span className="font-headline text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden whitespace-nowrap">Clínica Fabiula</span>
+          <span className="font-headline text-lg font-bold tracking-tight text-white group-data-[collapsible=icon]:hidden whitespace-nowrap">
+            {clinica?.nome || 'Prontta'}
+          </span>
         </div>
       </SidebarHeader>
 
@@ -157,6 +178,19 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+
+              {/* Prontuário é atalho exclusivo de quem atende — some para recepção
+                  e para administrador que não é profissional de saúde. */}
+              {canSeeProntuario && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={normalizedPath === '/pacientes/prontuario/'} tooltip="Prontuário" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
+                    <Link href="/pacientes/prontuario/">
+                      {renderIcon(Stethoscope)}
+                      <span className="font-bold">Prontuário</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -174,32 +208,36 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <Collapsible className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="text-white/80 hover:bg-white/10 h-11">
-                      {renderIcon(Clock)}
-                      <span className="font-bold">Meu Ponto</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="pl-9 space-y-1 py-1">
-                      <Link href="/ponto/" onClick={handleLinkClick} className="flex h-9 items-center text-xs font-bold text-white/60 hover:text-white transition-colors">Registrar</Link>
-                      <Link href="/ponto/espelho/" onClick={handleLinkClick} className="flex h-9 items-center text-xs font-bold text-white/60 hover:text-white transition-colors">Espelho</Link>
-                    </div>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {canSeePonto && (
+                <Collapsible className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="text-white/80 hover:bg-white/10 h-11">
+                        {renderIcon(Clock)}
+                        <span className="font-bold">Meu Ponto</span>
+                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="pl-9 space-y-1 py-1">
+                        <Link href="/ponto/" onClick={handleLinkClick} className="flex h-9 items-center text-xs font-bold text-white/60 hover:text-white transition-colors">Registrar</Link>
+                        <Link href="/ponto/espelho/" onClick={handleLinkClick} className="flex h-9 items-center text-xs font-bold text-white/60 hover:text-white transition-colors">Espelho</Link>
+                      </div>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )}
 
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={normalizedPath === '/ferias/'} tooltip="Férias" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
-                  <Link href="/ferias/">
-                    {renderIcon(Sun)}
-                    <span className="font-bold">Minhas Férias</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {canSeeFerias && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={normalizedPath === '/ferias/'} tooltip="Férias" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
+                    <Link href="/ferias/">
+                      {renderIcon(Sun)}
+                      <span className="font-bold">Minhas Férias</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               <Collapsible className="group/collapsible">
                 <SidebarMenuItem>
@@ -222,7 +260,27 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {(isGestor || canSeeFinanceiro || canSeeRH || canSeeInteligencia || canSeeConfig) && (
+        {/* Área do DONO DO SISTEMA. Não é a administração da clínica: quem entra
+            aqui gerencia clínicas e planos, e não enxerga paciente de ninguém. */}
+        {identidade.superadmin && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2 px-4">Plataforma</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={normalizedPath.startsWith('/plataforma/')} tooltip="Clínicas" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
+                    <Link href="/plataforma/">
+                      {renderIcon(Building2)}
+                      <span className="font-bold">Clínicas e Planos</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {(canSeeFinanceiro || canSeeEquipe || canSeeAprovacoes || canSeeInteligencia || canSeeConfig) && (
           <SidebarGroup className="mt-4 mb-10">
             <SidebarGroupLabel className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2 px-4">Administração</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -248,26 +306,26 @@ export function AppSidebar() {
                   </Collapsible>
                 )}
 
-                {canSeeRH && (
-                  <>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={normalizedPath === '/rh/jornada/'} tooltip="Jornada" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
-                        <Link href="/rh/jornada/">
-                          {renderIcon(ShieldCheck)}
-                          <span className="font-bold">Aprovações</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                {canSeeAprovacoes && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={normalizedPath === '/rh/jornada/'} tooltip="Jornada" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
+                      <Link href="/rh/jornada/">
+                        {renderIcon(ShieldCheck)}
+                        <span className="font-bold">Aprovações</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
 
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={normalizedPath === '/rh/equipe/'} tooltip="RH" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
-                        <Link href="/rh/equipe/">
-                          {renderIcon(UserCog)}
-                          <span className="font-bold">Equipe</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </>
+                {canSeeEquipe && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={normalizedPath === '/rh/equipe/'} tooltip="RH" className="text-white/80 hover:bg-white/10 h-11 data-[active=true]:bg-accent data-[active=true]:text-white" onClick={handleLinkClick}>
+                      <Link href="/rh/equipe/">
+                        {renderIcon(UserCog)}
+                        <span className="font-bold">Equipe</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 )}
 
                 {canSeeInteligencia && (
@@ -308,7 +366,7 @@ export function AppSidebar() {
            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
               <p className="text-[11px] font-black text-white uppercase truncate leading-none mb-1">{user?.nome || 'Profissional'}</p>
               <Badge variant="outline" className="bg-accent/20 text-accent border-none text-[7px] font-black uppercase py-0 px-1.5 h-4">
-                {user?.perfil === 'gestor' ? 'Administração' : user?.perfil?.toUpperCase() || 'Colaborador'}
+                {identidade.superadmin ? 'Dono do sistema' : rotuloPapel}
               </Badge>
            </div>
         </div>

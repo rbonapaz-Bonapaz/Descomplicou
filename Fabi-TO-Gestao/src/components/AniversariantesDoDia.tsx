@@ -3,6 +3,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { collection, query } from 'firebase/firestore';
+import { col, SUB } from '@/lib/tenancy';
 import { useFirestore, useCollection } from '@/firebase';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Cake, Medal, Star, Phone, Calendar, ChevronRight, User } from 'lucide-react';
@@ -48,7 +49,10 @@ export function AniversariantesDoDia({
   onOpenChange 
 }: AniversariantesDoDiaProps) {
   const firestore = useFirestore();
-  const { isGuest } = useAuth();
+  const { identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -64,11 +68,11 @@ export function AniversariantesDoDia({
 
   // Queries baseadas no modo
   const staffQuery = useMemo(() => 
-    mode === 'equipe' && firestore ? query(collection(firestore, 'usuarios')) : null, 
+    mode === 'equipe' && firestore ? query(col<UserType>(firestore, clinicaId!, SUB.usuarios)) : null, 
   [firestore, mode]);
   
   const patientsQuery = useMemo(() => 
-    mode === 'pacientes' && firestore ? query(collection(firestore, 'pacientes')) : null, 
+    mode === 'pacientes' && firestore ? query(col<PatientType>(firestore, clinicaId!, SUB.pacientes)) : null, 
   [firestore, mode]);
 
   const { data: firestoreStaff } = useCollection<UserType>(staffQuery);

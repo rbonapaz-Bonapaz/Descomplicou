@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, addDoc, doc, updateDoc, increment, deleteDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { Patient, HealthPlan } from '@/app/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -25,7 +26,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export default function PacientesPage() {
-  const { isGuest, isGestor, user, firebaseUser } = useAuth();
+  const { user, firebaseUser, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const [pacientes, setPacientes] = useState<Patient[]>([]);
   const [convenios, setConvenios] = useState<HealthPlan[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,8 +74,8 @@ export default function PacientesPage() {
       const saved = localStorage.getItem('demo_convenios');
       setConvenios(saved ? JSON.parse(saved) : []);
     } else {
-      return onSnapshot(query(collection(db, 'convenios')), (snap) => {
-        setConvenios(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as HealthPlan[]);
+      return onSnapshot(query(col<HealthPlan>(db, clinicaId!, SUB.convenios)), (snap) => {
+        setConvenios(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as HealthPlan[]);
       });
     }
   }, [isGuest, firebaseUser]);
@@ -84,8 +89,8 @@ export default function PacientesPage() {
        window.addEventListener('storage', loadData);
        return () => window.removeEventListener('storage', loadData);
     } else {
-      return onSnapshot(query(collection(db, 'pacientes')), (snap) => {
-        setPacientes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Patient[]);
+      return onSnapshot(query(col<Patient>(db, clinicaId!, SUB.pacientes)), (snap) => {
+        setPacientes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Patient[]);
       });
     }
   }, [isGuest, firebaseUser]);
@@ -108,8 +113,8 @@ export default function PacientesPage() {
     }
     try {
       if (db && !isGuest) {
-        if (editingId) await updateDoc(doc(db, 'pacientes', editingId), newPatient);
-        else await addDoc(collection(db, 'pacientes'), { ...newPatient, historico_clinico: [], saldo_creditos: 0 });
+        if (editingId) await updateDoc(ref<Patient>(db, clinicaId!, SUB.pacientes, editingId), newPatient);
+        else await addDoc(col<Patient>(db, clinicaId!, SUB.pacientes), { ...newPatient, historico_clinico: [], saldo_creditos: 0 });
       } else {
         let updated = editingId 
           ? pacientes.map(p => p.id === editingId ? { ...newPatient, id: p.id } as Patient : p) 
@@ -130,7 +135,7 @@ export default function PacientesPage() {
     if (!selectedPatient) return;
     try {
       if (db && !isGuest) {
-        await updateDoc(doc(db, 'pacientes', selectedPatient.id), {
+        await updateDoc(ref<Patient>(db, clinicaId!, SUB.pacientes, selectedPatient.id), {
           saldo_creditos: increment(creditAmount)
         });
       } else {
@@ -146,7 +151,7 @@ export default function PacientesPage() {
   };
 
   const handleDeletePatient = async (id: string) => {
-    if (!isGestor && !user?.can_delete_data) {
+    if (!ehAdmin && !user?.can_delete_data) {
       toast({ 
         variant: 'destructive', 
         title: "Acesso Negado", 
@@ -159,7 +164,7 @@ export default function PacientesPage() {
 
     try {
       if (db && !isGuest) {
-        await deleteDoc(doc(db, 'pacientes', id));
+        await deleteDoc(ref<Patient>(db, clinicaId!, SUB.pacientes, id));
       } else {
         const updated = pacientes.filter(p => p.id !== id);
         setPacientes(updated);

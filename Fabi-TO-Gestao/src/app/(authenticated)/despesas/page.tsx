@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { redirect } from 'next/navigation';
 import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { ExpenseCategory, ExpenseStatus, RecurringExpense, ExpenseRecord, MonthlyClosure, Appointment } from '@/app/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -40,7 +41,11 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export default function DespesasPage() {
-  const { isGestor, loading: authLoading, isGuest, user } = useAuth();
+  const { loading: authLoading, user, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState('lancamentos');
@@ -77,10 +82,10 @@ export default function DespesasPage() {
   const isMonthClosed = !!activeClosure;
 
   useEffect(() => {
-    if (!authLoading && !isGestor) {
+    if (!authLoading && !ehAdmin) {
       redirect('/dashboard');
     }
-  }, [isGestor, authLoading]);
+  }, [ehAdmin, authLoading]);
 
   useEffect(() => {
     if (!db && !isGuest) return;
@@ -100,23 +105,21 @@ export default function DespesasPage() {
       return;
     }
 
-    const unsubRec = onSnapshot(collection(db!, 'despesas_recorrentes'), (snap) => {
-      setRecurringExpenses(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as RecurringExpense)));
+    const unsubRec = onSnapshot(col(db!, clinicaId!, SUB.despesasRecorrentes), (snap) => {
+      setRecurringExpenses(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as RecurringExpense)));
     });
 
-    const unsubRecs = onSnapshot(collection(db!, 'lancamentos_financeiros'), (snap) => {
-      setExpenseRecords(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExpenseRecord)));
+    const unsubRecs = onSnapshot(col(db!, clinicaId!, SUB.despesas), (snap) => {
+      setExpenseRecords(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as ExpenseRecord)));
     });
 
-    const unsubClosures = onSnapshot(collection(db!, 'fechamentos_mensais'), (snap) => {
-      setClosures(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MonthlyClosure)));
+    const unsubClosures = onSnapshot(col(db!, clinicaId!, SUB.fechamentosMensais), (snap) => {
+      setClosures(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as MonthlyClosure)));
     });
 
-    const unsubApts = onSnapshot(collection(db!, 'agendamentos'), (snap) => {
-      setAppointments(snap.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        data_hora: doc.data().data_hora instanceof Timestamp ? doc.data().data_hora.toDate().toISOString() : doc.data().data_hora
+    const unsubApts = onSnapshot(col<Appointment>(db!, clinicaId!, SUB.agendamentos), (snap) => {
+      setAppointments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id,
+        data_hora: (doc.data().data_hora as any) instanceof Timestamp ? (doc.data().data_hora as any).toDate().toISOString() : doc.data().data_hora
       } as Appointment)));
     });
 
@@ -182,7 +185,7 @@ export default function DespesasPage() {
         setExpenseRecords(updated);
         localStorage.setItem('demo_expense_records', JSON.stringify(updated));
       } else {
-        await addDoc(collection(db!, 'lancamentos_financeiros'), recordData);
+        await addDoc(col(db!, clinicaId!, SUB.despesas), recordData);
       }
       setIsNewDialogOpen(false);
       toast({ title: 'Sucesso', description: 'Despesa registrada.' });
@@ -217,9 +220,9 @@ export default function DespesasPage() {
       } else {
         const batch = writeBatch(db!);
         recordsToClose.forEach(rec => {
-          batch.update(doc(db!, 'lancamentos_financeiros', rec.id), { bloqueado_fechamento: true });
+          batch.update(ref(db!, clinicaId!, SUB.despesas, rec.id), { bloqueado_fechamento: true });
         });
-        batch.set(doc(db!, 'fechamentos_mensais', mesAno), closureData);
+        batch.set(ref(db!, clinicaId!, SUB.fechamentosMensais, mesAno), closureData);
         await batch.commit();
       }
       setIsClosureDialogOpen(false);
@@ -244,9 +247,9 @@ export default function DespesasPage() {
         const batch = writeBatch(db!);
         const recordsToOpen = expenseRecords.filter(r => r.mes_ano === mesAno);
         recordsToOpen.forEach(rec => {
-          batch.update(doc(db!, 'lancamentos_financeiros', rec.id), { bloqueado_fechamento: false });
+          batch.update(ref(db!, clinicaId!, SUB.despesas, rec.id), { bloqueado_fechamento: false });
         });
-        batch.delete(doc(db!, 'fechamentos_mensais', mesAno));
+        batch.delete(ref(db!, clinicaId!, SUB.fechamentosMensais, mesAno));
         await batch.commit();
       }
       toast({ title: 'Mês Reaberto', description: 'Os lançamentos foram desbloqueados para edição.' });
@@ -289,7 +292,7 @@ export default function DespesasPage() {
       localStorage.setItem('demo_expense_records', JSON.stringify(updated));
     } else {
       for (const rec of newRecords) {
-        await addDoc(collection(db!, 'lancamentos_financeiros'), rec);
+        await addDoc(col(db!, clinicaId!, SUB.despesas), rec);
       }
     }
     toast({ title: 'Automação Concluída', description: `${newRecords.length} despesas geradas.` });
@@ -309,7 +312,7 @@ export default function DespesasPage() {
       setExpenseRecords(updated);
       localStorage.setItem('demo_expense_records', JSON.stringify(updated));
     } else {
-      await updateDoc(doc(db!, 'lancamentos_financeiros', record.id), { status: newStatus, pagamento: payDate });
+      await updateDoc(ref(db!, clinicaId!, SUB.despesas, record.id), { status: newStatus, pagamento: payDate });
     }
     toast({ title: 'Status Atualizado' });
   };
@@ -327,7 +330,7 @@ export default function DespesasPage() {
         setRecurringExpenses(updated);
         localStorage.setItem('demo_recurring_expenses', JSON.stringify(updated));
       } else {
-        await addDoc(collection(db!, 'despesas_recorrentes'), newRecurring);
+        await addDoc(col(db!, clinicaId!, SUB.despesasRecorrentes), newRecurring);
       }
       setIsRecurringDialogOpen(false);
       toast({ title: 'Sucesso' });
@@ -343,7 +346,7 @@ export default function DespesasPage() {
         setRecurringExpenses(updated);
         localStorage.setItem('demo_recurring_expenses', JSON.stringify(updated));
       } else {
-        await deleteDoc(doc(db!, 'despesas_recorrentes', id));
+        await deleteDoc(ref(db!, clinicaId!, SUB.despesasRecorrentes, id));
       }
       toast({ title: 'Sucesso' });
     } catch (e) {

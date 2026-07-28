@@ -5,6 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, doc, deleteDoc, onSnapshot, orderBy, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { Appointment, User, Patient, HealthPlan, ClinicSettings, AppointmentStatus, Holiday } from '@/app/lib/types';
 import { Card, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,7 +77,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { logAction } from '@/services/auditService';
+import { registrarAuditoria } from '@/services/auditService';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -112,7 +113,11 @@ const normalizeDate = (d: any): Date | null => {
 };
 
 export default function AgendaPage() {
-  const { user, isGestor, isGuest } = useAuth();
+  const { user, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
@@ -154,9 +159,9 @@ export default function AgendaPage() {
     recorrencia: 'nenhuma'
   });
 
-  const professionalsQuery = useMemo(() => firestore ? query(collection(firestore, 'usuarios'), where('possui_agenda', '==', true)) : null, [firestore]);
-  const patientsQuery = useMemo(() => firestore ? query(collection(firestore, 'pacientes')) : null, [firestore]);
-  const plansQuery = useMemo(() => firestore ? query(collection(firestore, 'convenios')) : null, [firestore]);
+  const professionalsQuery = useMemo(() => firestore ? query(col<User>(firestore, clinicaId!, SUB.usuarios), where('possui_agenda', '==', true)) : null, [firestore]);
+  const patientsQuery = useMemo(() => firestore ? query(col<Patient>(firestore, clinicaId!, SUB.pacientes)) : null, [firestore]);
+  const plansQuery = useMemo(() => firestore ? query(col<HealthPlan>(firestore, clinicaId!, SUB.convenios)) : null, [firestore]);
   
   const { data: professionals } = useCollection<User>(professionalsQuery);
   const { data: patients } = useCollection<Patient>(patientsQuery);
@@ -182,22 +187,22 @@ export default function AgendaPage() {
       return;
     }
 
-    const qApts = query(collection(firestore, 'agendamentos'), orderBy('data_hora', 'asc'));
+    const qApts = query(col<Appointment>(firestore, clinicaId!, SUB.agendamentos), orderBy('data_hora', 'asc'));
     const unsubApts = onSnapshot(qApts, (snap) => {
       setAppointments(snap.docs.map(d => {
         const data = d.data();
         let dt = data.data_hora;
-        if (dt instanceof Timestamp) dt = dt.toDate().toISOString();
+        if ((dt as any) instanceof Timestamp) dt = (dt as any).toDate().toISOString();
         return { id: d.id, ...data, data_hora: dt } as Appointment;
       }));
     });
 
-    const unsubSet = onSnapshot(doc(firestore, 'configuracoes', 'clinica'), (snap) => {
+    const unsubSet = onSnapshot(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica'), (snap) => {
       if (snap.exists()) setSettings(snap.data() as ClinicSettings);
     });
 
-    const unsubHol = onSnapshot(collection(firestore, 'feriados'), (snap) => {
-      setHolidays(snap.docs.map(d => ({ id: d.id, ...d.data() } as Holiday)));
+    const unsubHol = onSnapshot(col<Holiday>(firestore, clinicaId!, SUB.feriados), (snap) => {
+      setHolidays(snap.docs.map(d => ({ ...d.data(), id: d.id } as Holiday)));
     });
 
     return () => { unsubApts(); unsubSet(); unsubHol(); };
@@ -372,7 +377,7 @@ export default function AgendaPage() {
             const updated = saved.map((x: any) => x.id === apt.id ? { ...x, conflito_com_bloqueio: true } : x);
             localStorage.setItem('demo_appointments', JSON.stringify(updated));
           } else if (firestore) {
-            updateDoc(doc(firestore, 'agendamentos', apt.id), { conflito_com_bloqueio: true });
+            updateDoc(ref(firestore, clinicaId!, SUB.agendamentos, apt.id), { conflito_com_bloqueio: true });
           }
         });
       }
@@ -390,9 +395,9 @@ export default function AgendaPage() {
       window.dispatchEvent(new Event('storage'));
       closeModalAndClear();
     } else if (firestore) {
-      const appointmentsRef = collection(firestore, 'agendamentos');
+      const appointmentsRef = col<Appointment>(firestore, clinicaId!, SUB.agendamentos);
       const mutation = editingAppointmentId 
-        ? updateDoc(doc(firestore, 'agendamentos', editingAppointmentId), payload) 
+        ? updateDoc(ref(firestore, clinicaId!, SUB.agendamentos, editingAppointmentId), payload) 
         : addDoc(appointmentsRef, payload);
 
       mutation.catch(async (error) => {
@@ -416,7 +421,7 @@ export default function AgendaPage() {
         setSettings(updated);
         localStorage.setItem('demo_settings', JSON.stringify(updated));
       } else if (firestore) {
-        updateDoc(doc(firestore, 'configuracoes', 'clinica'), { motivos_bloqueio: novosMotivos });
+        updateDoc(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica'), { motivos_bloqueio: novosMotivos });
       }
       setFormData(prev => ({ ...prev, motivo_bloqueio: novo }));
       toast({ title: "Motivo adicionado" });
@@ -456,10 +461,10 @@ export default function AgendaPage() {
       if (newStatus === 'atendimento') router.push(`/pacientes/prontuario/?id=${apt.paciente_id}`);
       return;
     } else if (firestore) {
-      const ref = doc(firestore, 'agendamentos', apt.id);
-      updateDoc(ref, update).catch(async (error) => {
+      const aptRef = ref(firestore, clinicaId!, SUB.agendamentos, apt.id);
+      updateDoc(aptRef, update).catch(async (error) => {
          errorEmitter.emit('permission-error', new FirestorePermissionError({
-           path: ref.path,
+           path: aptRef.path,
            operation: 'update',
            requestResourceData: update,
          }));
@@ -484,7 +489,7 @@ export default function AgendaPage() {
       localStorage.setItem('demo_appointments', JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
     } else if (firestore) {
-      updateDoc(doc(firestore, 'agendamentos', apt.id), update);
+      updateDoc(ref(firestore, clinicaId!, SUB.agendamentos, apt.id), update);
     }
     if (tel) window.open(`https://wa.me/55${tel}`, '_blank');
     toast({ title: "Lembrete enviado", description: "Status alterado para aguardando retorno." });
@@ -503,7 +508,7 @@ export default function AgendaPage() {
       localStorage.setItem('demo_appointments', JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
     } else if (firestore) {
-      updateDoc(doc(firestore, 'agendamentos', apt.id), update);
+      updateDoc(ref(firestore, clinicaId!, SUB.agendamentos, apt.id), update);
     }
     toast({ title: "Etapa Estornada" });
   };
@@ -526,7 +531,7 @@ export default function AgendaPage() {
       localStorage.setItem('demo_appointments', JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
     } else if (firestore) {
-      updateDoc(doc(firestore, 'agendamentos', selectedAppointment.id), update);
+      updateDoc(ref(firestore, clinicaId!, SUB.agendamentos, selectedAppointment.id), update);
     }
 
     setIsCancelDialogOpen(false);
@@ -568,13 +573,13 @@ export default function AgendaPage() {
       localStorage.setItem('demo_appointments', JSON.stringify(updated));
       window.dispatchEvent(new Event('storage'));
     } else if (firestore) {
-      deleteDoc(doc(firestore, 'agendamentos', selectedAppointment.id));
-      logAction(firestore, {
-        userId: user?.uid || 'anon',
-        userName: user?.nome || 'Admin',
-        action: 'Exclusão de Agendamento',
-        module: 'Agenda',
-        details: `Paciente: ${selectedAppointment.paciente_nome}. Justificativa: ${deleteJustification}`
+      deleteDoc(ref(firestore, clinicaId!, SUB.agendamentos, selectedAppointment.id));
+      registrarAuditoria(firestore, clinicaId, {
+        uid: user?.uid || 'anon',
+        nome: user?.nome || 'Admin',
+        acao: 'Exclusão de Agendamento',
+        modulo: 'Agenda',
+        detalhe: `Paciente: ${selectedAppointment.paciente_nome}. Justificativa: ${deleteJustification}`
       });
     }
     setIsDeleteConfirmOpen(false);
@@ -663,7 +668,7 @@ export default function AgendaPage() {
               )}
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem onClick={() => handleUndoStep(apt)} disabled={!apt.status_anterior} className="rounded-xl py-2.5 cursor-pointer gap-3 text-indigo-600 font-bold text-xs"><RotateCcw className="h-4 w-4" /> Estornar</DropdownMenuItem>
-              {isGestor && (
+              {ehAdmin && (
                 <DropdownMenuItem onClick={() => { setSelectedAppointment(apt); setIsDeleteConfirmOpen(true); }} className="rounded-xl py-2.5 cursor-pointer gap-3 text-rose-800 font-black text-[10px] uppercase"><Trash2 className="h-4 w-4" /> EXCLUIR</DropdownMenuItem>
               )}
             </DropdownMenuContent>

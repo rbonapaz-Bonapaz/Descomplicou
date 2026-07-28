@@ -1,98 +1,463 @@
 rules_version = '2';
+
+// =============================================================================
+// REGRAS DE SEGURANÇA — Prontta
+//
+// Esta é a ÚNICA barreira real do sistema. O app é exportado como site estático:
+// qualquer pessoa baixa o JavaScript, descobre todas as telas e chama o Firestore
+// direto. Botão escondido não protege nada. O que protege é este arquivo.
+//
+// Três invariantes que nunca podem ser quebradas:
+//
+//   1. ISOLAMENTO — dado de uma clínica só é acessível por quem tem o claim
+//      `clinicaId` daquela clínica. Nenhuma regra faz `|| superadmin()` em dado
+//      de cliente: o dono do sistema administra planos, não lê paciente.
+//
+//   2. PRONTUÁRIO — só o papel `profissional` lê ou escreve. Recepção e
+//      administração da clínica são barradas aqui mesmo tendo acesso ao cadastro.
+//
+//   3. SEM AUTOPROMOÇÃO — ninguém edita os próprios papéis, o próprio salário
+//      nem a própria assinatura. Papel só muda por Cloud Function (Admin SDK,
+//      que ignora estas regras) ou por um admin da clínica.
+//
+// A autoridade sobre quem é quem vem do CUSTOM CLAIM do token, não de um
+// documento no banco. Documento o usuário poderia tentar editar; claim, não.
+// =============================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regras de segurança para a Clínica Dra. Fabiula
 
-    function isAuthenticated() {
+    // ---------------------------------------------------------------------
+    // Identidade (lida do token verificado)
+    // ---------------------------------------------------------------------
+
+    function logado() {
       return request.auth != null;
     }
 
-    function getUserProfile() {
-      let path = /databases/$(database)/documents/usuarios/$(request.auth.uid);
-      return exists(path) ? get(path).data.perfil : 'visitante';
+    function claims() {
+      return request.auth.token;
     }
 
-    match /usuarios/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || getUserProfile() == 'gestor');
+    /** Usuário pertence a esta clínica? */
+    function daClinica(clinicaId) {
+      return logado() && claims().get('clinicaId', '') == clinicaId;
     }
 
-    match /catalogo_produtos/{productId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (getUserProfile() == 'gestor' || getUserProfile() == 'secretaria');
+    /** Tem o papel indicado? Papéis vivem no claim, como lista. */
+    function papel(nome) {
+      return logado()
+        && claims().get('papeis', []) is list
+        && nome in claims().get('papeis', []);
     }
 
-    match /logs_auditoria/{logId} {
-      allow read: if isAuthenticated() && getUserProfile() == 'gestor';
-      allow create: if isAuthenticated();
-      allow update, delete: if false; // Imutável por definição
+    /** Dono do sistema. Administra a plataforma; não enxerga dado de cliente. */
+    function superadmin() {
+      return logado() && claims().get('superadmin', false) == true;
     }
 
-    match /convenios/{convenioId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && getUserProfile() == 'gestor';
+    function souEu(uid) {
+      return logado() && request.auth.uid == uid;
     }
 
-    match /feriados/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && getUserProfile() == 'gestor';
+    /** Administra a clínica (equipe, financeiro, configurações). */
+    function adminDaClinica(clinicaId) {
+      return daClinica(clinicaId) && papel('admin_clinica');
     }
 
-    match /pacientes/{patientId} {
-      allow read: if isAuthenticated() && (getUserProfile() == 'gestor' || getUserProfile() == 'secretaria' || getUserProfile() == 'colaborador');
-      allow write: if isAuthenticated() && (getUserProfile() == 'gestor' || getUserProfile() == 'secretaria');
+    /**
+     * Profissional de saúde desta clínica. Único caminho para o prontuário.
+     * Note que `admin_clinica` NÃO entra aqui: administrar não é atender.
+     */
+    function profissional(clinicaId) {
+      return daClinica(clinicaId) && papel('profissional');
     }
 
-    match /agendamentos/{appointmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        getUserProfile() == 'gestor' || 
-        getUserProfile() == 'secretaria' || 
-        (getUserProfile() == 'colaborador' && request.auth.uid == (resource != null ? resource.data.profissional_id : request.resource.data.profissional_id))
-      );
+    function recepcao(clinicaId) {
+      return daClinica(clinicaId) && papel('recepcao');
     }
 
-    match /configuracoes/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && getUserProfile() == 'gestor';
-    }
-    
-    match /lancamentos_financeiros/{id} {
-      allow read, write: if isAuthenticated() && getUserProfile() == 'gestor';
+    function veFinanceiro(clinicaId) {
+      return daClinica(clinicaId) && (papel('admin_clinica') || papel('financeiro'));
     }
 
-    match /transacoes_financeiras/{id} {
-      allow read, write: if isAuthenticated() && (getUserProfile() == 'gestor' || getUserProfile() == 'secretaria');
-    }
-    
-    match /despesas_recorrentes/{id} {
-      allow read, write: if isAuthenticated() && getUserProfile() == 'gestor';
-    }
-    
-    match /fechamentos_mensais/{id} {
-      allow read, write: if isAuthenticated() && getUserProfile() == 'gestor';
+    // ---------------------------------------------------------------------
+    // Assinatura ativa
+    // ---------------------------------------------------------------------
+
+    /**
+     * Clínica com plano vencido entra em somente-leitura: continua consultando
+     * o histórico (não sequestramos o dado de ninguém), mas não grava nada novo.
+     *
+     * O `get()` custa uma leitura, por isso só roda em escrita — leitura fica livre.
+     */
+    function assinaturaAtiva(clinicaId) {
+      let a = get(/databases/$(database)/documents/assinaturas/$(clinicaId)).data;
+      // `expira_em` é epoch em milissegundos e vale tanto para o fim do teste
+      // quanto para o fim do plano pago — um campo só, comparação numérica, sem
+      // ambiguidade de fuso ou de formato de data.
+      return a.plano != 'vencido'
+        && a.plano != 'cancelado'
+        && a.get('expira_em', 0) > request.time.toMillis();
     }
 
-    match /batidas_ponto/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    /** Pode gravar nesta clínica? Combina papel com assinatura em dia. */
+    function podeGravar(clinicaId) {
+      return daClinica(clinicaId) && assinaturaAtiva(clinicaId);
     }
 
-    match /fechamentos_ponto/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && getUserProfile() == 'gestor';
+    // ---------------------------------------------------------------------
+    // Coleções da plataforma (fora das clínicas)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quem é dono do sistema. Fechado dos dois lados no cliente: a informação
+     * chega pelo claim, e a lista só muda pelo Admin SDK. Assim ninguém se
+     * cadastra como dono do sistema.
+     */
+    match /superadmins/{uid} {
+      allow read, write: if false;
     }
 
-    match /comunicados/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (getUserProfile() == 'gestor' || getUserProfile() == 'secretaria');
+    /** Preços, dias de teste e versão dos termos. Todos leem; só o dono edita. */
+    match /plataforma/{docId} {
+      allow read: if logado();
+      allow write: if superadmin();
     }
 
-    match /solicitacoes_ferias/{id} {
-      allow read: if isAuthenticated() && (getUserProfile() == 'gestor' || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && getUserProfile() == 'gestor';
+    /**
+     * Estado comercial de cada clínica. A clínica LÊ o próprio plano (para exibir
+     * "faltam X dias"), mas não escreve — senão qualquer admin estenderia a
+     * própria assinatura de graça.
+     */
+    match /assinaturas/{clinicaId} {
+      allow read: if daClinica(clinicaId) || superadmin();
+      allow write: if superadmin();
+    }
+
+    /** Índice uid -> clinicaId, para o primeiro login. Só o próprio dono lê. */
+    match /membros/{uid} {
+      allow read: if souEu(uid) || superadmin();
+      allow write: if false; // só Cloud Function
+    }
+
+    /**
+     * Aceite de termos. O usuário cria o próprio e nunca mais mexe — é prova de
+     * consentimento, então tem que ser imutável.
+     */
+    match /aceites/{aceiteId} {
+      allow read: if logado() && resource.data.uid == request.auth.uid;
+      allow create: if logado()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.versao_termos is string
+        && request.resource.data.versao_privacidade is string;
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // A clínica
+    // ---------------------------------------------------------------------
+
+    match /clinicas/{clinicaId} {
+
+      // Todo membro lê os dados da própria clínica (nome, tema, módulos ligados).
+      allow read: if daClinica(clinicaId);
+      // Criar clínica é ato do dono do sistema (via Cloud Function).
+      allow create: if false;
+      // O admin ajusta dados e personalização. Não pode mexer no próprio plano:
+      // plano mora em /assinaturas, que ele não escreve.
+      allow update: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
       allow delete: if false;
+
+      // -------------------------------------------------------------------
+      // Equipe
+      // -------------------------------------------------------------------
+      match /usuarios/{uid} {
+
+        // Cada um lê o próprio cadastro. Ver a ficha dos colegas — com CPF,
+        // salário e pró-labore — exige administrar a clínica.
+        allow read: if souEu(uid) && daClinica(clinicaId)
+                    || adminDaClinica(clinicaId);
+
+        // Admissão de membro é feita por Cloud Function, que também grava o claim.
+        // Criar aqui deixaria o documento e o claim fora de sincronia.
+        allow create: if false;
+
+        /**
+         * O próprio usuário edita só o que é dele de fato: foto, telefone,
+         * apelido, cor da agenda. Papéis, vínculo e remuneração ficam de fora —
+         * é a trava contra autopromoção.
+         */
+        allow update: if souEu(uid) && daClinica(clinicaId)
+          && assinaturaAtiva(clinicaId)
+          && request.resource.data.papeis == resource.data.papeis
+          && request.resource.data.get('ativo', true) == resource.data.get('ativo', true)
+          && request.resource.data.get('vinculo', '') == resource.data.get('vinculo', '')
+          && request.resource.data.get('salario_base', 0) == resource.data.get('salario_base', 0)
+          && request.resource.data.get('pro_labore', 0) == resource.data.get('pro_labore', 0)
+          && request.resource.data.get('repasse_valor', 0) == resource.data.get('repasse_valor', 0)
+          && request.resource.data.get('cobranca_valor', 0) == resource.data.get('cobranca_valor', 0);
+
+        // Admin edita a ficha completa, inclusive remuneração. Papéis continuam
+        // saindo daqui: mudar papel tem que mexer no claim junto, então é Function.
+        allow update: if adminDaClinica(clinicaId)
+          && assinaturaAtiva(clinicaId)
+          && request.resource.data.papeis == resource.data.papeis;
+
+        // Desligamento marca `ativo: false` (acima). Apagar destruiria o histórico
+        // de ponto e de quem assinou cada evolução.
+        allow delete: if false;
+      }
+
+      // -------------------------------------------------------------------
+      // Pacientes — cadastro administrativo
+      // -------------------------------------------------------------------
+      match /pacientes/{pacienteId} {
+
+        // Recepção e profissionais leem o cadastro: nome, contato, convênio.
+        // Nada de conteúdo clínico mora aqui (ver a subcoleção `prontuario`).
+        allow read: if profissional(clinicaId)
+                    || recepcao(clinicaId)
+                    || adminDaClinica(clinicaId);
+
+        allow create, update: if podeGravar(clinicaId)
+          && (papel('recepcao') || papel('profissional') || papel('admin_clinica'))
+          // Trava estrutural: impede reintroduzir conteúdo clínico no documento
+          // que a recepção lê. Sem isso, uma tela poderia recriar o vazamento.
+          && !request.resource.data.keys().hasAny(['historico_clinico', 'queixa_principal']);
+
+        // Excluir paciente é ato de administração (e do direito de eliminação).
+        allow delete: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+
+        // -----------------------------------------------------------------
+        // PRONTUÁRIO — o dado mais sensível do sistema
+        // -----------------------------------------------------------------
+        match /prontuario/{entradaId} {
+
+          // Só profissional de saúde. Recepção não lê. Administrador que não
+          // atende também não lê. É a invariante nº 2 deste arquivo.
+          allow read: if profissional(clinicaId);
+
+          allow create: if profissional(clinicaId)
+            && assinaturaAtiva(clinicaId)
+            // A autoria não pode ser forjada: a entrada nasce com o uid de quem grava.
+            && request.resource.data.profissional_id == request.auth.uid
+            && request.resource.data.descricao is string
+            && request.resource.data.descricao.size() > 0
+            && request.resource.data.descricao.size() < 20000;
+
+          /**
+           * Evolução assinada é imutável — correção se faz por retificação
+           * (entrada nova apontando para a anterior), não reescrevendo o passado.
+           * Enquanto não assinada, só o próprio autor ajusta.
+           */
+          allow update: if profissional(clinicaId)
+            && assinaturaAtiva(clinicaId)
+            && resource.data.profissional_id == request.auth.uid
+            && resource.data.get('assinatura_digital', false) == false
+            && request.resource.data.profissional_id == resource.data.profissional_id;
+
+          // Prontuário não se apaga. Nem pelo admin.
+          allow delete: if false;
+        }
+
+        match /anexos/{anexoId} {
+          allow read: if profissional(clinicaId);
+          allow create: if profissional(clinicaId) && assinaturaAtiva(clinicaId)
+            && request.resource.data.enviado_por == request.auth.uid;
+          allow update: if false;
+          allow delete: if profissional(clinicaId) && assinaturaAtiva(clinicaId);
+        }
+      }
+
+      // -------------------------------------------------------------------
+      // Agenda
+      // -------------------------------------------------------------------
+      match /agendamentos/{agendamentoId} {
+
+        // Toda a equipe enxerga a agenda da clínica — recepção precisa marcar
+        // para qualquer profissional, e a agenda coletiva depende disso.
+        // O agendamento diz QUEM e QUANDO; o que aconteceu na sessão está no prontuário.
+        allow read: if daClinica(clinicaId);
+
+        // Recepção e admin marcam para qualquer profissional.
+        allow create, update: if podeGravar(clinicaId)
+          && (papel('recepcao') || papel('admin_clinica'));
+
+        // Profissional mexe apenas na própria agenda.
+        allow create: if podeGravar(clinicaId)
+          && papel('profissional')
+          && request.resource.data.profissional_id == request.auth.uid;
+
+        allow update: if podeGravar(clinicaId)
+          && papel('profissional')
+          && resource.data.profissional_id == request.auth.uid
+          && request.resource.data.profissional_id == request.auth.uid;
+
+        // Cancelar mantém o registro (status `cancelado`); apagar é do admin,
+        // e a tela exige justificativa.
+        allow delete: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      // -------------------------------------------------------------------
+      // Financeiro
+      // -------------------------------------------------------------------
+
+      // Caixa da recepção: registra recebimento do atendimento.
+      match /transacoes/{id} {
+        allow read: if veFinanceiro(clinicaId) || recepcao(clinicaId);
+        allow create, update: if podeGravar(clinicaId)
+          && (papel('recepcao') || papel('financeiro') || papel('admin_clinica'));
+        allow delete: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      // Despesas, recorrências e fechamento: sem a recepção.
+      match /despesas/{id} {
+        allow read: if veFinanceiro(clinicaId);
+        allow write: if veFinanceiro(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      match /despesas_recorrentes/{id} {
+        allow read: if veFinanceiro(clinicaId);
+        allow write: if veFinanceiro(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      match /fechamentos_mensais/{id} {
+        allow read: if veFinanceiro(clinicaId);
+        // Fechamento é marco contábil: cria uma vez, não reescreve.
+        allow create: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+        allow update, delete: if false;
+      }
+
+      match /convenios/{id} {
+        allow read: if daClinica(clinicaId);
+        allow write: if veFinanceiro(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      // -------------------------------------------------------------------
+      // Ponto eletrônico
+      //
+      // Para o espelho de ponto ter valor, a batida precisa ser inviolável:
+      // ninguém — nem o funcionário, nem o administrador — edita uma batida
+      // registrada. Correção existe, mas como PEDIDO em `ajustes_ponto`, que o
+      // administrador aprova. Assim fica o rastro de quem pediu e quem aprovou.
+      // -------------------------------------------------------------------
+      match /batidas_ponto/{id} {
+
+        allow read: if souEu(resource.data.userId) && daClinica(clinicaId)
+                    || adminDaClinica(clinicaId);
+
+        // Cada um bate o próprio ponto, e a hora vem do servidor — não do relógio
+        // do celular, que o usuário controla.
+        allow create: if podeGravar(clinicaId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.registrado_em == request.time
+          && request.resource.data.origem in ['app', 'mobile', 'totem'];
+
+        // Batida registrada é imutável. Sem exceção.
+        allow update, delete: if false;
+      }
+
+      match /ajustes_ponto/{id} {
+        allow read: if souEu(resource.data.userId) && daClinica(clinicaId)
+                    || adminDaClinica(clinicaId);
+
+        // O funcionário pede a inclusão/correção, sempre como pendente.
+        allow create: if podeGravar(clinicaId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pendente'
+          && request.resource.data.justificativa is string
+          && request.resource.data.justificativa.size() > 0;
+
+        // Só o administrador decide, e o pedido não muda de dono no caminho.
+        allow update: if adminDaClinica(clinicaId)
+          && assinaturaAtiva(clinicaId)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status in ['aprovado', 'reprovado'];
+
+        allow delete: if false;
+      }
+
+      match /fechamentos_ponto/{id} {
+        allow read: if daClinica(clinicaId);
+        allow create: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+        allow update, delete: if false;
+      }
+
+      // -------------------------------------------------------------------
+      // RH
+      // -------------------------------------------------------------------
+      match /solicitacoes_ferias/{id} {
+        allow read: if souEu(resource.data.userId) && daClinica(clinicaId)
+                    || adminDaClinica(clinicaId);
+        allow create: if podeGravar(clinicaId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pendente';
+        allow update: if adminDaClinica(clinicaId)
+          && assinaturaAtiva(clinicaId)
+          && request.resource.data.userId == resource.data.userId;
+        allow delete: if false;
+      }
+
+      match /comunicados/{id} {
+        allow read: if daClinica(clinicaId);
+        allow write: if podeGravar(clinicaId)
+          && (papel('admin_clinica') || papel('recepcao'));
+      }
+
+      // -------------------------------------------------------------------
+      // Configuração da clínica
+      // -------------------------------------------------------------------
+      match /configuracoes/{id} {
+        // Todos leem: horário de expediente e duração de sessão alimentam a agenda.
+        allow read: if daClinica(clinicaId);
+        allow write: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      match /feriados/{id} {
+        allow read: if daClinica(clinicaId);
+        allow write: if adminDaClinica(clinicaId) && assinaturaAtiva(clinicaId);
+      }
+
+      // -------------------------------------------------------------------
+      // LGPD
+      // -------------------------------------------------------------------
+
+      /**
+       * Trilha de auditoria (art. 37): quem acessou qual dado e quando.
+       * Qualquer membro escreve — todo acesso a prontuário gera registro — mas
+       * o registro nasce com o uid de quem agiu e nunca mais muda.
+       */
+      match /auditoria/{id} {
+        allow read: if adminDaClinica(clinicaId);
+        allow create: if daClinica(clinicaId)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.registrado_em == request.time;
+        allow update, delete: if false;
+      }
+
+      /** Consentimento do titular para tratar dado de saúde (art. 11). */
+      match /consentimentos/{id} {
+        allow read: if profissional(clinicaId)
+                    || recepcao(clinicaId)
+                    || adminDaClinica(clinicaId);
+        allow create: if podeGravar(clinicaId)
+          && (papel('recepcao') || papel('profissional') || papel('admin_clinica'))
+          && request.resource.data.colhido_por_uid == request.auth.uid;
+        // Revogação é a única alteração possível — consentimento não se reescreve.
+        allow update: if podeGravar(clinicaId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['revogado_em', 'concedido']);
+        allow delete: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Fecho: nada fora do que está descrito acima é acessível.
+    // Coleção nova sem regra explícita nasce negada, não aberta.
+    // ---------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

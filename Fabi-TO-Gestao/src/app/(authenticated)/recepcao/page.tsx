@@ -41,6 +41,7 @@ import {
 import { useAuth } from '@/components/providers/auth-provider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, doc, updateDoc, Timestamp, orderBy } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { Appointment, Transaction } from '@/app/lib/types';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -51,7 +52,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function RecepcaoCobrancaPage() {
-  const { isGuest, firebaseUser, loading: authLoading } = useAuth();
+  const { firebaseUser, loading: authLoading, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -64,7 +68,7 @@ export default function RecepcaoCobrancaPage() {
   const queueQuery = useMemo(() => {
     if (!firestore || !firebaseUser || isGuest) return null;
     return query(
-      collection(firestore, 'agendamentos'),
+      col<Appointment>(firestore, clinicaId!, SUB.agendamentos),
       where('status', 'in', ['espera', 'cancelado']),
       orderBy('data_hora', 'asc')
     );
@@ -89,7 +93,7 @@ export default function RecepcaoCobrancaPage() {
   // 2. Carregar Transações para Caixa e Alertas de Débito
   const transactionsQuery = useMemo(() => {
     if (!firestore || !firebaseUser || isGuest) return null;
-    return query(collection(firestore, 'transacoes_financeiras'));
+    return query(col<Transaction>(firestore, clinicaId!, SUB.transacoes));
   }, [firestore, firebaseUser, isGuest]);
 
   const { data: firestoreTransactions } = useCollection<Transaction>(transactionsQuery);
@@ -133,9 +137,9 @@ export default function RecepcaoCobrancaPage() {
 
     try {
       if (firestore && !isGuest) {
-        await processarFechamentoSessao(firestore, selectedApt, paymentMethod);
+        await processarFechamentoSessao(firestore, clinicaId!, selectedApt, paymentMethod);
         
-        const aptRef = doc(firestore, 'agendamentos', selectedApt.id);
+        const aptRef = ref(firestore, clinicaId!, SUB.agendamentos, selectedApt.id);
         await updateDoc(aptRef, { cancelamento_cobrado: false, status_financeiro: 'pago' });
       } else {
         const newTrans: Transaction = {

@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { VacationRequest } from '@/app/lib/types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,7 +22,11 @@ import { cn } from '@/lib/utils';
 
 export default function FeriasPage() {
   const router = useRouter();
-  const { user, isGuest, isGestor } = useAuth();
+  const { user, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -36,15 +41,15 @@ export default function FeriasPage() {
       const saved = localStorage.getItem('demo_vacations');
       if (saved) setRequests(JSON.parse(saved));
     } else if (firestore) {
-      const q = isGestor 
-        ? collection(firestore, 'solicitacoes_ferias') 
-        : query(collection(firestore, 'solicitacoes_ferias'), where('userId', '==', user.uid));
+      const q = ehAdmin 
+        ? col<VacationRequest>(firestore, clinicaId!, SUB.solicitacoesFerias) 
+        : query(col<VacationRequest>(firestore, clinicaId!, SUB.solicitacoesFerias), where('userId', '==', user.uid));
         
       return onSnapshot(q, (snap) => {
-        setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as VacationRequest)));
+        setRequests(snap.docs.map(d => ({ ...d.data(), id: d.id } as VacationRequest)));
       });
     }
-  }, [user, isGuest, isGestor, firestore]);
+  }, [user, isGuest, ehAdmin, firestore]);
 
   const handleRequest = async () => {
     if (!newReq.start || !newReq.end || !user) return;
@@ -65,7 +70,7 @@ export default function FeriasPage() {
         localStorage.setItem('demo_vacations', JSON.stringify([{ ...data, id: Math.random().toString() }, ...saved]));
         setRequests([{ ...data, id: Math.random().toString() } as VacationRequest, ...requests]);
       } else if (firestore) {
-        await addDoc(collection(firestore, 'solicitacoes_ferias'), data);
+        await addDoc(col<VacationRequest>(firestore, clinicaId!, SUB.solicitacoesFerias), data);
       }
       toast({ title: 'Solicitação Enviada', description: 'O gestor será notificado para análise.' });
       setIsDialogOpen(false);
@@ -82,7 +87,7 @@ export default function FeriasPage() {
       if (isGuest) {
         setRequests(requests.map(r => r.id === id ? { ...r, status } : r));
       } else if (firestore) {
-        await updateDoc(doc(firestore, 'solicitacoes_ferias', id), { status });
+        await updateDoc(ref(firestore, clinicaId!, SUB.solicitacoesFerias, id), { status });
       }
       toast({ title: status === 'aprovado' ? 'Férias Aprovadas' : 'Solicitação Reprovada' });
     } catch (e) {
@@ -125,7 +130,7 @@ export default function FeriasPage() {
                         <Calendar className="h-7 w-7" />
                      </div>
                      <div>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">{isGestor ? req.userName : 'Período Solicitado'}</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">{ehAdmin ? req.userName : 'Período Solicitado'}</p>
                         <h3 className="text-lg font-black text-slate-800 tabular-nums">
                            {format(parseISO(req.data_inicio), 'dd/MM/yy')} <span className="text-slate-300 font-medium px-2">até</span> {format(parseISO(req.data_fim), 'dd/MM/yy')}
                         </h3>
@@ -140,7 +145,7 @@ export default function FeriasPage() {
                         {req.status}
                      </Badge>
                      
-                     {isGestor && req.status === 'pendente' && (
+                     {ehAdmin && req.status === 'pendente' && (
                         <div className="flex gap-2 border-l pl-4">
                            <Button size="icon" variant="ghost" className="h-10 w-10 text-emerald-600 rounded-xl hover:bg-emerald-50" onClick={() => handleAction(req.id, 'aprovado')}><CheckCircle2 className="h-5 w-5" /></Button>
                            <Button size="icon" variant="ghost" className="h-10 w-10 text-rose-600 rounded-xl hover:bg-rose-50" onClick={() => handleAction(req.id, 'reprovado')}><XCircle className="h-5 w-5" /></Button>

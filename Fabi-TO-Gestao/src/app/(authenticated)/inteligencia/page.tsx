@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, differenceInDays, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { collection, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { Appointment, Transaction, Patient, User, HealthPlan } from '@/app/lib/types';
 import { cn } from '@/lib/utils';
@@ -43,7 +44,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const COLORS = ['#4F6D7A', '#BA8E32', '#10B981', '#F43F5E', '#8B5CF6'];
 
 export default function InteligenciaClinicaPage() {
-  const { isGestor, loading: authLoading, isGuest } = useAuth();
+  const { loading: authLoading, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -53,8 +58,8 @@ export default function InteligenciaClinicaPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !isGestor) redirect('/dashboard');
-  }, [isGestor, authLoading]);
+    if (!authLoading && !ehAdmin) redirect('/dashboard');
+  }, [ehAdmin, authLoading]);
 
   useEffect(() => {
     if (!db && !isGuest) return;
@@ -72,28 +77,26 @@ export default function InteligenciaClinicaPage() {
       return;
     }
 
-    const unsubApts = onSnapshot(collection(db!, 'agendamentos'), (snap) => {
-      setAppointments(snap.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        data_hora: doc.data().data_hora instanceof Timestamp ? doc.data().data_hora.toDate().toISOString() : doc.data().data_hora
+    const unsubApts = onSnapshot(col<Appointment>(db!, clinicaId!, SUB.agendamentos), (snap) => {
+      setAppointments(snap.docs.map(doc => ({ ...doc.data(), id: doc.id,
+        data_hora: (doc.data().data_hora as any) instanceof Timestamp ? (doc.data().data_hora as any).toDate().toISOString() : doc.data().data_hora
       })) as Appointment[]);
     });
 
-    const unsubTrans = onSnapshot(collection(db!, 'transacoes_financeiras'), (snap) => {
-      setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Transaction[]);
+    const unsubTrans = onSnapshot(col<Transaction>(db!, clinicaId!, SUB.transacoes), (snap) => {
+      setTransactions(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Transaction[]);
     });
 
-    const unsubPatients = onSnapshot(collection(db!, 'pacientes'), (snap) => {
-      setPatients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Patient[]);
+    const unsubPatients = onSnapshot(col<Patient>(db!, clinicaId!, SUB.pacientes), (snap) => {
+      setPatients(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Patient[]);
     });
 
-    const unsubStaff = onSnapshot(collection(db!, 'usuarios'), (snap) => {
-      setStaff(snap.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
+    const unsubStaff = onSnapshot(col<User>(db!, clinicaId!, SUB.usuarios), (snap) => {
+      setStaff(snap.docs.map(doc => ({ ...doc.data(), uid: doc.id })) as User[]);
     });
 
-    const unsubPlans = onSnapshot(collection(db!, 'convenios'), (snap) => {
-      setPlans(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as HealthPlan[]);
+    const unsubPlans = onSnapshot(col<HealthPlan>(db!, clinicaId!, SUB.convenios), (snap) => {
+      setPlans(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })) as HealthPlan[]);
     });
 
     setLoading(false);

@@ -1,55 +1,83 @@
-
 'use client';
 
-import { 
-  Firestore, 
-  collection, 
-  addDoc 
-} from 'firebase/firestore';
+import { addDoc, serverTimestamp, type Firestore } from 'firebase/firestore';
+import { col, SUB } from '@/lib/tenancy';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-export type AuditSeverity = 'info' | 'warning' | 'critical';
+export type AuditSeverity = 'info' | 'alerta' | 'critico';
 
 export interface AuditLogInput {
-  userId: string;
-  userName: string;
-  action: string;
-  module: string;
-  details: string;
-  severity?: AuditSeverity;
+  uid: string;
+  nome: string;
+  acao: string;
+  modulo: string;
+  detalhe: string;
+  /** Preenchido quando a ação toca dado de um paciente — é o que a LGPD quer rastrear. */
+  pacienteId?: string;
+  severidade?: AuditSeverity;
 }
 
 /**
- * SERVIÇO DE AUDITORIA IMUTÁVEL
- * Registra ações críticas do sistema para conformidade e segurança.
+ * TRILHA DE AUDITORIA (LGPD art. 37)
+ *
+ * Registra quem fez o quê com dado pessoal. O registro é imutável pelas regras:
+ * cria e nunca mais muda — nem para o administrador da clínica.
+ *
+ * A hora vem do servidor (`serverTimestamp`), e as regras exigem exatamente isso.
+ * Log com hora escolhida pelo próprio autor não prova nada.
  */
-export async function logAction(
+export async function registrarAuditoria(
   db: Firestore | null,
+  clinicaId: string | null,
   input: AuditLogInput
 ) {
-  if (!db) {
-    // Fallback para modo demo/local se necessário, mas idealmente loga no console em desenvolvimento
-    console.log('[AUDIT LOG]', input);
-    return;
-  }
+  if (!db || !clinicaId) return;
 
-  const logData = {
-    ...input,
-    timestamp: new Date().toISOString(),
-    severity: input.severity || 'info'
+  const dados = {
+    uid: input.uid,
+    nome: input.nome,
+    acao: input.acao,
+    modulo: input.modulo,
+    detalhe: input.detalhe,
+    ...(input.pacienteId ? { paciente_id: input.pacienteId } : {}),
+    severidade: input.severidade || 'info',
+    registrado_em: serverTimestamp(),
   };
 
-  const logsRef = collection(db, 'logs_auditoria');
-  
-  // Não usamos await para não bloquear a experiência do usuário
-  addDoc(logsRef, logData)
-    .catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: logsRef.path,
+  const colecao = col(db, clinicaId, SUB.auditoria);
+
+  // Sem await: auditar não pode travar a tela de quem está atendendo.
+  addDoc(colecao, dados).catch(() => {
+    errorEmitter.emit(
+      'permission-error',
+      new FirestorePermissionError({
+        path: colecao.path,
         operation: 'create',
-        requestResourceData: logData,
-      } satisfies SecurityRuleContext);
-      errorEmitter.emit('permission-error', permissionError);
-    });
+        requestResourceData: dados,
+      } satisfies SecurityRuleContext)
+    );
+  });
+}
+
+/**
+ * Atalho para o caso mais sensível: alguém abriu o prontuário de um paciente.
+ * Toda tela que exibe evolução clínica deve chamar isto.
+ */
+export async function registrarAcessoProntuario(
+  db: Firestore | null,
+  clinicaId: string | null,
+  autor: { uid: string; nome: string },
+  pacienteId: string,
+  pacienteNome: string
+) {
+  return registrarAuditoria(db, clinicaId, {
+    uid: autor.uid,
+    nome: autor.nome,
+    acao: 'acessou_prontuario',
+    modulo: 'prontuario',
+    pacienteId,
+    detalhe: `Prontuário de ${pacienteNome} aberto.`,
+    severidade: 'alerta',
+  });
 }

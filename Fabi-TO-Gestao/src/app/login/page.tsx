@@ -7,37 +7,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Sparkles, Loader2, Smartphone, Fingerprint, ShieldCheck, UserCog, Briefcase, Eye } from 'lucide-react';
+import { Sparkles, Loader2, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/components/providers/auth-provider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export default function LoginPage() {
   const auth = useFirebase();
-  const { loginAsGuest } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasBiometricLink, setHasBiometricLink] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
-       const isLinked = localStorage.getItem('biometrics_configured') === 'true';
-       setHasBiometricLink(isLinked);
-    }
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,28 +31,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // O destino depende dos papéis no token; o AuthProvider redireciona
+      // assim que a identidade carrega.
       router.push('/dashboard/');
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro ao entrar', description: 'Verifique suas credenciais.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBiometricLogin = async () => {
-    setLoading(true);
-    try {
-      if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        const options: any = { publicKey: { challenge, timeout: 60000, userVerification: "required", allowCredentials: [] } };
-        try { await navigator.credentials.get(options); } catch (err) { console.warn("Bypass hardware check."); }
-      }
-      const lastProfile = localStorage.getItem('last_profile') || 'gestor';
-      loginAsGuest(lastProfile as any);
-      toast({ title: "Acesso Biométrico", description: "Login concluído com sucesso." });
-    } catch (e) {
-      toast({ variant: 'destructive', title: "Erro na Biometria" });
+    } catch {
+      // Mensagem propositalmente genérica: dizer "este e-mail não existe" entrega
+      // a quem sonda quais contas são válidas.
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível entrar',
+        description: 'E-mail ou senha incorretos.',
+      });
     } finally {
       setLoading(false);
     }
@@ -82,41 +56,17 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary text-primary-foreground mb-4 shadow-xl">
             <Sparkles className="h-6 w-6 md:h-8 md:w-8" />
           </div>
-          <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Clínica Dra. Fabiula</h1>
-          <p className="text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em] opacity-60">SISTEMA DE GESTÃO CLÍNICA</p>
+          <h1 className="text-3xl font-headline font-bold text-primary tracking-tight">Prontta</h1>
+          <p className="text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em] opacity-60">GESTÃO CLÍNICA DESCOMPLICADA</p>
         </div>
 
         <Card className="border-none shadow-2xl overflow-hidden rounded-[2.5rem] bg-white">
           <CardHeader className="bg-muted/30 pb-8 pt-10 text-center border-b border-dashed">
-            <CardTitle className="text-2xl font-headline text-primary">Bem-vinda de volta</CardTitle>
-            <CardDescription className="text-xs font-medium">Selecione seu método de acesso seguro.</CardDescription>
+            <CardTitle className="text-2xl font-headline text-primary">Bem-vindo de volta</CardTitle>
+            <CardDescription className="text-xs font-medium">Entre com seus dados de acesso.</CardDescription>
           </CardHeader>
-          
-          <CardContent className="space-y-8 pt-10 px-8">
-            {hasBiometricLink && (
-              <div className="space-y-4">
-                <button 
-                  onClick={handleBiometricLogin}
-                  disabled={loading}
-                  className="w-full h-28 rounded-[2.5rem] border-4 border-emerald-100 bg-emerald-50/40 flex items-center gap-6 px-8 hover:bg-emerald-50 hover:border-emerald-200 transition-all group shadow-lg relative overflow-hidden"
-                >
-                  <div className="h-16 w-16 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-xl group-hover:scale-105 transition-transform shrink-0">
-                    <Fingerprint className="h-9 w-9" />
-                  </div>
-                  <div className="text-left min-w-0">
-                    <p className="font-black text-[14px] text-emerald-800 uppercase tracking-widest leading-none">Acessar com Digital</p>
-                    <p className="text-[10px] font-bold text-emerald-600/70 uppercase mt-2">Reconhecimento biométrico ativo</p>
-                  </div>
-                </button>
-                <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-dashed" /></div>
-                  <div className="relative flex justify-center text-[10px] font-black uppercase">
-                    <span className="bg-white px-4 text-muted-foreground/40 tracking-widest">ou use sua senha</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
+          <CardContent className="space-y-8 pt-10 px-8">
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[10px] font-black uppercase text-muted-foreground ml-2">E-mail Corporativo</Label>
@@ -133,44 +83,21 @@ export default function LoginPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-6 pb-10 px-8">
-            <div className="grid grid-cols-2 gap-4 w-full">
-              <Link href="/ponto-mobile/">
-                <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-primary/10 text-primary font-black uppercase text-[9px] tracking-widest gap-2">
-                  <Smartphone className="h-4 w-4" /> Ponto Mobile
-                </Button>
-              </Link>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-primary/10 text-primary font-black uppercase text-[9px] tracking-widest gap-2">
-                    <Eye className="h-4 w-4" /> Simular
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 rounded-2xl p-2 shadow-2xl bg-white border-none ring-1 ring-border" align="end">
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground p-3">Perfis Demo</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => loginAsGuest('gestor')} className="rounded-xl py-3 cursor-pointer gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <ShieldCheck className="h-5 w-5" />
-                    </div>
-                    <p className="font-black text-xs uppercase text-primary">Gestor (a)</p>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => loginAsGuest('secretaria')} className="rounded-xl py-3 cursor-pointer gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-                      <UserCog className="h-5 w-5" />
-                    </div>
-                    <p className="font-black text-xs uppercase text-blue-700">Secretária</p>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => loginAsGuest('colaborador')} className="rounded-xl py-3 cursor-pointer gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                      <Briefcase className="h-5 w-5" />
-                    </div>
-                    <p className="font-black text-xs uppercase text-accent">Profissional</p>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <p className="text-center text-[10px] text-muted-foreground font-medium uppercase">Problemas? <Link href="/register" className="text-primary font-black hover:underline">Solicitar Cadastro</Link></p>
+            <Link href="/ponto-mobile/" className="w-full">
+              <Button type="button" variant="outline" className="w-full h-12 rounded-xl border-primary/10 text-primary font-black uppercase text-[9px] tracking-widest gap-2">
+                <Smartphone className="h-4 w-4" /> Bater ponto pelo celular
+              </Button>
+            </Link>
+
+            <p className="text-center text-[10px] text-muted-foreground font-medium uppercase">
+              Ainda não tem conta?{' '}
+              <Link href="/register/" className="text-primary font-black hover:underline">Solicitar acesso</Link>
+            </p>
+            <p className="text-center text-[10px] text-muted-foreground/70 leading-relaxed">
+              Ao entrar você concorda com os{' '}
+              <Link href="/termos/" className="font-bold underline">Termos de Uso</Link> e a{' '}
+              <Link href="/privacidade/" className="font-bold underline">Política de Privacidade</Link>.
+            </p>
           </CardFooter>
         </Card>
       </div>

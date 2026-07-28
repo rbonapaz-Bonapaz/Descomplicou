@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFirestore } from '@/firebase';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { Appointment, User, ClinicSettings } from '@/app/lib/types';
 import { format, isSameDay, parseISO, isAfter, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -27,7 +28,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function TVDashboardPage() {
   const firestore = useFirestore();
-  const { isGuest, firebaseUser, loading: authLoading } = useAuth();
+  const { firebaseUser, loading: authLoading, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [comunicados, setComunicados] = useState<{ id: string; texto: string }[]>([]);
@@ -65,10 +69,10 @@ export default function TVDashboardPage() {
       return () => window.removeEventListener('storage', loadSimulation);
 
     } else if (firestore && firebaseUser) {
-      const unsubCom = onSnapshot(collection(firestore, 'comunicados'), (snap) => setComunicados(snap.docs.map(d => ({ id: d.id, ...d.data() } as any))));
-      const unsubSet = onSnapshot(doc(firestore, 'configuracoes', 'clinica'), (snap) => snap.exists() && setSettings(snap.data() as ClinicSettings));
-      const unsubApts = onSnapshot(collection(firestore, 'agendamentos'), (snap) => setAllApts(snap.docs.map(d => ({ id: d.id, ...d.data() } as any))));
-      const unsubStaff = onSnapshot(collection(firestore, 'usuarios'), (snap) => setStaff(snap.docs.map(d => ({ uid: d.id, ...d.data() } as User))));
+      const unsubCom = onSnapshot(col(firestore, clinicaId!, SUB.comunicados), (snap) => setComunicados(snap.docs.map(d => ({ ...d.data(), id: d.id } as any))));
+      const unsubSet = onSnapshot(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica'), (snap) => snap.exists() && setSettings(snap.data() as ClinicSettings));
+      const unsubApts = onSnapshot(col<Appointment>(firestore, clinicaId!, SUB.agendamentos), (snap) => setAllApts(snap.docs.map(d => ({ ...d.data(), id: d.id } as any))));
+      const unsubStaff = onSnapshot(col<User>(firestore, clinicaId!, SUB.usuarios), (snap) => setStaff(snap.docs.map(d => ({ ...d.data(), uid: d.id } as User))));
       return () => { unsubCom(); unsubSet(); unsubApts(); unsubStaff(); };
     }
   }, [firestore, isGuest, firebaseUser, authLoading, mounted]);

@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { col, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { Transaction, User, Appointment, ExpenseRecord, HealthPlan } from '@/app/lib/types';
 import { format, isSameMonth } from 'date-fns';
@@ -36,7 +37,11 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function FinanceiroPage() {
-  const { isGestor, loading: authLoading, isGuest } = useAuth();
+  const { loading: authLoading, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const { toast } = useToast();
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -47,17 +52,17 @@ export default function FinanceiroPage() {
   const [activeTab, setActiveTab] = useState('fluxo');
 
   useEffect(() => {
-    if (!authLoading && !isGestor) redirect('/dashboard');
-  }, [isGestor, authLoading]);
+    if (!authLoading && !ehAdmin) redirect('/dashboard');
+  }, [ehAdmin, authLoading]);
 
   useEffect(() => {
     if (!db) return;
 
     if (isGuest) {
       setStaff([
-        { uid: 'g1', nome: 'Dra. Fabiula de Oliveira', vinculo: 'proprietario', pro_labore: 8000, perfil: 'gestor', role_profissional: true, destino_pagamento: 'clinica', repasse_tipo: 'percentual', repasse_valor: 100 },
-        { uid: 'u2', nome: 'Ana Secretária', vinculo: 'clt', salario_base: 2500, perfil: 'secretaria' },
-        { uid: 'u3', nome: 'Dra. Ana Paula (Fono)', vinculo: 'parceiro', perfil: 'colaborador', possui_agenda: true, cobranca_tipo: 'fixo', cobranca_valor: 50, destino_pagamento: 'profissional' },
+        { uid: 'g1', nome: 'Dra. Fabiula de Oliveira', email: 'g1@demo.local', papeis: [], vinculo: 'proprietario', pro_labore: 8000, perfil: 'gestor', role_profissional: true, destino_pagamento: 'clinica', repasse_tipo: 'percentual', repasse_valor: 100 },
+        { uid: 'u2', nome: 'Ana Secretária', email: 'u2@demo.local', papeis: [], vinculo: 'clt', salario_base: 2500, perfil: 'secretaria' },
+        { uid: 'u3', nome: 'Dra. Ana Paula (Fono)', email: 'u3@demo.local', papeis: [], vinculo: 'parceiro', perfil: 'colaborador', possui_agenda: true, cobranca_tipo: 'fixo', cobranca_valor: 50, destino_pagamento: 'profissional' },
       ]);
       setAppointments(JSON.parse(localStorage.getItem('demo_appointments') || '[]'));
       setExpenses(JSON.parse(localStorage.getItem('demo_expense_records') || '[]'));
@@ -66,28 +71,28 @@ export default function FinanceiroPage() {
       return;
     }
 
-    const unsubTrans = onSnapshot(query(collection(db, 'transacoes_financeiras'), orderBy('data_criacao', 'desc')), (snap) => {
-      setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Transaction)));
+    const unsubTrans = onSnapshot(query(col<Transaction>(db, clinicaId!, SUB.transacoes), orderBy('data_criacao', 'desc')), (snap) => {
+      setTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as Transaction)));
     });
 
-    const unsubStaff = onSnapshot(query(collection(db, 'usuarios')), (snap) => {
+    const unsubStaff = onSnapshot(query(col<User>(db, clinicaId!, SUB.usuarios)), (snap) => {
       setStaff(snap.docs.map(d => ({ ...d.data() } as User)));
     });
 
-    const unsubApts = onSnapshot(collection(db, 'agendamentos'), (snap) => {
+    const unsubApts = onSnapshot(col<Appointment>(db, clinicaId!, SUB.agendamentos), (snap) => {
       setAppointments(snap.docs.map(d => ({ 
         ...d.data(), 
         id: d.id, 
-        data_hora: d.data().data_hora instanceof Timestamp ? d.data().data_hora.toDate().toISOString() : d.data().data_hora 
+        data_hora: (d.data().data_hora as any) instanceof Timestamp ? d.data().data_hora.toDate().toISOString() : d.data().data_hora 
       } as Appointment)));
     });
 
-    const unsubExp = onSnapshot(collection(db, 'lancamentos_financeiros'), (snap) => {
-      setExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() } as ExpenseRecord)));
+    const unsubExp = onSnapshot(col<Transaction>(db, clinicaId!, SUB.transacoes), (snap) => {
+      setExpenses(snap.docs.map(d => ({ ...d.data(), id: d.id } as ExpenseRecord)));
     });
 
-    const unsubPlans = onSnapshot(collection(db, 'convenios'), (snap) => {
-      setPlans(snap.docs.map(d => ({ id: d.id, ...d.data() } as HealthPlan)));
+    const unsubPlans = onSnapshot(col<HealthPlan>(db, clinicaId!, SUB.convenios), (snap) => {
+      setPlans(snap.docs.map(d => ({ ...d.data(), id: d.id } as HealthPlan)));
     });
 
     return () => { unsubTrans(); unsubStaff(); unsubApts(); unsubExp(); unsubPlans(); };

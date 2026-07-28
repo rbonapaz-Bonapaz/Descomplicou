@@ -4,29 +4,33 @@
 import React, { useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
+import { RouteGuard } from '@/components/layout/route-guard';
+import { AceiteTermos } from '@/components/layout/aceite-termos';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/components/providers/auth-provider';
-import { CloudOff, Wifi } from 'lucide-react';
+import { Wifi } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Appointment } from '@/app/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { col, SUB } from '@/lib/tenancy';
 
 export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isGuest, firebaseUser, user } = useAuth();
+  const { firebaseUser, user, identidade, clinica } = useAuth();
+  const clinicaId = identidade.clinicaId;
   const firestore = useFirestore();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!firestore || isGuest || !user?.possui_agenda) return;
+    if (!firestore || !identidade.clinicaId || !user?.possui_agenda) return;
 
     const q = query(
-      collection(firestore, 'agendamentos'),
+      col(firestore, identidade.clinicaId, SUB.agendamentos),
       where('profissional_id', '==', user.uid),
       where('status', '==', 'espera'),
       orderBy('chegada_horario', 'desc'),
@@ -47,9 +51,11 @@ export default function AuthenticatedLayout({
     });
 
     return () => unsub();
-  }, [firestore, isGuest, user, toast]);
+  }, [firestore, identidade.clinicaId, user, toast]);
 
   return (
+    // O aceite envolve tudo: sem termos aceitos na versão vigente, nem o menu aparece.
+    <AceiteTermos>
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="h-svh flex flex-col overflow-hidden">
@@ -58,15 +64,11 @@ export default function AuthenticatedLayout({
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex-1 flex items-center justify-between min-w-0">
             <h2 className="text-sm font-bold text-primary uppercase tracking-wider truncate mr-2">
-              Clínica Dra. Fabiula
+              {clinica?.nome || 'Prontta'}
             </h2>
-            
+
             <div className="flex items-center gap-2 shrink-0">
-              {isGuest ? (
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-black uppercase px-2 py-0.5 whitespace-nowrap">
-                  <CloudOff className="h-2.5 w-2.5 mr-1 hidden xs:block" /> Simulação
-                </Badge>
-              ) : firebaseUser ? (
+              {firebaseUser ? (
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] font-black uppercase px-2 py-0.5 whitespace-nowrap">
                   <Wifi className="h-2.5 w-2.5 mr-1 hidden xs:block" /> Nuvem
                 </Badge>
@@ -80,10 +82,11 @@ export default function AuthenticatedLayout({
         </header>
         <main className="flex-1 overflow-y-auto">
           <div className="p-2 md:p-6 lg:p-10 max-w-full">
-            {children}
+            <RouteGuard>{children}</RouteGuard>
           </div>
         </main>
       </SidebarInset>
     </SidebarProvider>
+    </AceiteTermos>
   );
 }

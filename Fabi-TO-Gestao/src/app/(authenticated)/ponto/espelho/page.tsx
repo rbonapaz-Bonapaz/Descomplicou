@@ -25,6 +25,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { ClockInRecord, TimeClosure, ClinicSettings } from '@/app/lib/types';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -35,7 +36,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function EspelhoPontoPage() {
-  const { user, isGuest } = useAuth();
+  const { user, identidade } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const firestore = useFirestore();
   const router = useRouter();
 
@@ -66,28 +70,26 @@ export default function EspelhoPontoPage() {
       }
       setLoading(false);
     } else if (firestore) {
-      getDoc(doc(firestore, 'configuracoes', 'clinica')).then(snap => {
+      getDoc(ref(firestore, clinicaId!, SUB.configuracoes, 'clinica')).then(snap => {
         if (snap.exists()) setSettings(snap.data() as ClinicSettings);
       });
 
       const q = query(
-        collection(firestore, 'batidas_ponto'),
+        col<ClockInRecord>(firestore, clinicaId!, SUB.batidasPonto),
         where('userId', '==', user.uid),
         orderBy('timestamp', 'asc')
       );
 
       const unsubPunches = onSnapshot(q, (snap) => {
-        const data = snap.docs.map(d => ({
-          id: d.id,
-          ...d.data(),
-          timestamp: d.data().timestamp instanceof Timestamp ? d.data().timestamp.toDate().toISOString() : d.data().timestamp
+        const data = snap.docs.map(d => ({ ...d.data(), id: d.id,
+          timestamp: (d.data().timestamp as any) instanceof Timestamp ? (d.data().timestamp as any).toDate().toISOString() : d.data().timestamp
         } as ClockInRecord));
         setPunchRecords(data);
         setLoading(false);
       });
 
-      const unsubClosures = onSnapshot(collection(firestore, 'fechamentos_ponto'), (snap) => {
-        setClosures(snap.docs.map(d => ({ id: d.id, ...d.data() } as TimeClosure)));
+      const unsubClosures = onSnapshot(col<TimeClosure>(firestore, clinicaId!, SUB.fechamentosPonto), (snap) => {
+        setClosures(snap.docs.map(d => ({ ...d.data(), id: d.id } as TimeClosure)));
       });
 
       return () => { unsubPunches(); unsubClosures(); };

@@ -1,16 +1,5 @@
-
 {
   "indexes": [
-    {
-      "collectionGroup": "agendamentos",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "profissional_id", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "chegada_horario", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "DESCENDING" }
-      ]
-    },
     {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
@@ -18,6 +7,14 @@
         { "fieldPath": "profissional_id", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "chegada_horario", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "agendamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profissional_id", "order": "ASCENDING" },
+        { "fieldPath": "data_hora", "order": "ASCENDING" }
       ]
     },
     {
@@ -37,11 +34,59 @@
       ]
     },
     {
+      "collectionGroup": "pacientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ativo", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "prontuario",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "data", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "batidas_ponto",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        { "fieldPath": "registrado_em", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ajustes_ponto",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "solicitado_em", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "data_vencimento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "paciente_id", "order": "ASCENDING" },
+        { "fieldPath": "registrado_em", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "solicitacoes_ferias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "data_inicio", "order": "ASCENDING" }
       ]
     }
   ],

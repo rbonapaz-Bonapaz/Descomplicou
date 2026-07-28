@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { redirect } from 'next/navigation';
 import { collection, query, onSnapshot, addDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { col, ref, SUB } from '@/lib/tenancy';
 import { db } from '@/lib/firebase';
 import { HealthPlan, PriceLog } from '@/app/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -21,7 +22,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function ConveniosPage() {
-  const { isGestor, loading: authLoading, isGuest, user } = useAuth();
+  const { loading: authLoading, user, identidade, temPapel } = useAuth();
+  const clinicaId = identidade.clinicaId;
+  const ehAdmin = temPapel('admin_clinica');
+  // Modo demo removido: dava sessão de gestor sem autenticação nenhuma.
+  const isGuest = false;
   const [plans, setPlans] = useState<HealthPlan[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -37,10 +42,10 @@ export default function ConveniosPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!authLoading && !isGestor) {
+    if (!authLoading && !ehAdmin) {
       redirect('/dashboard');
     }
-  }, [isGestor, authLoading]);
+  }, [ehAdmin, authLoading]);
 
   useEffect(() => {
     if (!db && !isGuest) return;
@@ -72,9 +77,9 @@ export default function ConveniosPage() {
       return;
     }
 
-    const q = query(collection(db!, 'convenios'));
+    const q = query(col<HealthPlan>(db!, clinicaId!, SUB.convenios));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as HealthPlan[];
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as HealthPlan[];
       setPlans(data);
     });
     return () => unsubscribe();
@@ -97,7 +102,7 @@ export default function ConveniosPage() {
 
     try {
       if (db && !isGuest) {
-        await addDoc(collection(db, 'convenios'), { 
+        await addDoc(col<HealthPlan>(db, clinicaId!, SUB.convenios), { 
           ...newPlan, 
           historico_precos: [initialLog] 
         });
@@ -150,7 +155,7 @@ export default function ConveniosPage() {
           updateData.historico_precos = arrayUnion(log);
         }
 
-        await updateDoc(doc(db, 'convenios', selectedPlan.id), updateData);
+        await updateDoc(ref<HealthPlan>(db, clinicaId!, SUB.convenios, selectedPlan.id), updateData);
         toast({ title: 'Sucesso', description: 'Plano atualizado.' });
       } else {
         const updated = plans.map(p => {

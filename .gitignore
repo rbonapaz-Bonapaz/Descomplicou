@@ -1,5 +1,9 @@
 # Sessões/config locais do Claude Code — nunca devem ir pro repositório.
-.claude/
+.claude/*
+
+# Exceção: skills são regra compartilhada do projeto, não config de máquina.
+# Precisam ser versionadas para valer em qualquer sessão e para qualquer pessoa.
+!.claude/skills/
 
 # Dependências instaladas (Cloud Functions, etc.) — reconstrói com npm install.
 node_modules/
