@@ -394,20 +394,13 @@ async function ensureProfile() {
   await setDoc(r, { ultimoLogin: serverTimestamp() }, { merge: true });
 }
 
-// Deriva as iniciais do logo a partir do nome do negócio (ex: "Rodrigo PRO" -> "RP").
-function initials(nome) {
-  const palavras = String(nome || '').trim().split(/\s+/).filter(Boolean);
-  if (!palavras.length) return 'FB';
-  if (palavras.length === 1) return palavras[0].slice(0, 2).toUpperCase();
-  return (palavras[0][0] + palavras[1][0]).toUpperCase();
-}
-
 function setupUI() {
   $('uname').textContent = state.profile?.nome || state.user.displayName || porGenero(state.profile?.genero, { f: 'Consultora', m: 'Consultor', x: 'Consultor(a)' });
   $('uemail').textContent = state.user.email || '';
   $('photo').src = state.profile.fotoPerfil || state.user.photoURL || '';
-  $('brandName').textContent = state.profile.nomeNegocio || 'FaroBella';
-  $('sideLogo').textContent = initials(state.profile.nomeNegocio);
+  // A barra lateral mostra a marca da PLATAFORMA (logo + FaroBella + slogan), fixa pra todo mundo —
+  // é a identidade do produto, não da consultora. O nome do negócio dela continua aparecendo onde
+  // de fato importa pra clientela: catálogo, PDFs de pedido, link de evento e o título da aba.
   document.title = state.profile.nomeNegocio || 'FaroBella';
   aplicarTemaPersonalizado(state.profile);
   document.querySelectorAll('.admin-only').forEach(e =>

@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=88">
+  <link rel="stylesheet" href="css/style.css?v=89">
 </head>
 <body>
   <div id="loading" class="loading">Carregando...</div>
@@ -102,8 +102,8 @@
     <aside class="side">
       <button id="sideToggle" class="side-toggle" onclick="App.toggleSidebar()" title="Recolher menu">‹</button>
       <div class="brand">
-        <div class="logo sm" id="sideLogo">CV</div>
-        <div><b id="brandName">CRM de Vendas</b></div>
+        <img class="logo sm" id="sideLogo" src="icons/icon-192.png?v=2" alt="FaroBella">
+        <div><b id="brandName">FaroBella</b><span id="brandSlogan">Gestão fácil, vendas Brilhantes</span></div>
       </div>
       <nav id="nav">
         <button class="active" data-page="dashboard"><span class="nav-ico">🏠</span><span class="nav-label-full">Painel Inicial</span><span class="nav-label-short">Painel</span></button>
@@ -189,7 +189,7 @@
   <div id="toast"></div>
   <div id="printArea"></div>
 
-  <script type="module" src="js/app.js?v=223"></script>
+  <script type="module" src="js/app.js?v=224"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
