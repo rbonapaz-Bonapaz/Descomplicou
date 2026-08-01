@@ -1,0 +1,67 @@
+name: Gerar locução FaroBella com Iapetus
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ai/farobella-iapetus
+    paths:
+      - tools/farobella_iapetus_cloud.py
+      - .github/workflows/farobella-iapetus.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - tools/farobella_iapetus_cloud.py
+      - .github/workflows/farobella-iapetus.yml
+
+permissions:
+  contents: read
+
+jobs:
+  gerar-locucoes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Validar credencial do FaroBella
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || {
+            echo "Secret FIREBASE_SERVICE_ACCOUNT ausente"
+            exit 1
+          }
+
+      - name: Autenticar no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Preparar Python e FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet --upgrade "google-cloud-texttospeech>=2.29.0"
+
+      - name: Gerar locuções oficiais Iapetus pela Cloud TTS
+        run: python3 tools/farobella_iapetus_cloud.py
+
+      - name: Publicar áudios gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: farobella-iapetus-audio
+          path: |
+            farobella_tts_output/farobella_completo_iapetus_cloud.wav
+            farobella_tts_output/farobella_teaser_iapetus_cloud.wav
+            farobella_tts_output/roteiro_falado_iapetus_cloud.txt
+            farobella_tts_output/*_cloud_report.json
+          retention-days: 1
+          if-no-files-found: error
