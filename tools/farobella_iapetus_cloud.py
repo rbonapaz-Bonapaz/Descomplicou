@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 import wave
 from pathlib import Path
 
+from google.api_core import exceptions as google_exceptions
 from google.cloud import texttospeech
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +24,17 @@ FINAL_RATE = 48_000
 VOICE = "Iapetus"
 MODEL = "gemini-2.5-flash-tts"
 LANGUAGE = "pt-BR"
+MAX_SYNTHESIS_ATTEMPTS = 6
+
+RETRIABLE_TTS_ERRORS = (
+    google_exceptions.Aborted,
+    google_exceptions.Cancelled,
+    google_exceptions.DeadlineExceeded,
+    google_exceptions.InternalServerError,
+    google_exceptions.ResourceExhausted,
+    google_exceptions.ServiceUnavailable,
+    google_exceptions.Unknown,
+)
 
 FULL_SEGMENTS = [
     (10.0, "Se você vende fár-ma-si e ainda controla clientes, pedidos, pagamentos e entregas entre caderno, planilha e WhatsApp, qualquer esquecimento pode virar perda de tempo, de dinheiro ou de uma nova venda."),
@@ -75,19 +88,42 @@ def atempo_chain(value: float) -> str:
 
 
 def synthesize(client: texttospeech.TextToSpeechClient, text: str, output: Path) -> None:
-    response = client.synthesize_speech(
-        input=texttospeech.SynthesisInput(text=text, prompt=PROMPT),
-        voice=texttospeech.VoiceSelectionParams(
-            language_code=LANGUAGE,
-            name=VOICE,
-            model_name=MODEL,
-        ),
-        audio_config=texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.LINEAR16,
-            sample_rate_hertz=24_000,
-        ),
-    )
-    output.write_bytes(response.audio_content)
+    last_error: Exception | None = None
+
+    for attempt in range(1, MAX_SYNTHESIS_ATTEMPTS + 1):
+        try:
+            response = client.synthesize_speech(
+                input=texttospeech.SynthesisInput(text=text, prompt=PROMPT),
+                voice=texttospeech.VoiceSelectionParams(
+                    language_code=LANGUAGE,
+                    name=VOICE,
+                    model_name=MODEL,
+                ),
+                audio_config=texttospeech.AudioConfig(
+                    audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=24_000,
+                ),
+                timeout=180,
+            )
+            if not response.audio_content:
+                raise RuntimeError("A API respondeu sem conteúdo de áudio.")
+            output.write_bytes(response.audio_content)
+            return
+        except RETRIABLE_TTS_ERRORS as exc:
+            last_error = exc
+            if attempt >= MAX_SYNTHESIS_ATTEMPTS:
+                break
+            delay = min(30, 2 ** attempt)
+            print(
+                f"Falha temporária na síntese ({type(exc).__name__}). "
+                f"Nova tentativa {attempt + 1}/{MAX_SYNTHESIS_ATTEMPTS} em {delay}s.",
+                flush=True,
+            )
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"Falha ao sintetizar o trecho após {MAX_SYNTHESIS_ATTEMPTS} tentativas: {last_error}"
+    ) from last_error
 
 
 def process_segment(source: Path, target: Path, window: float) -> dict[str, float]:
@@ -135,6 +171,7 @@ def build(client: texttospeech.TextToSpeechClient, name: str, segments: list[tup
         timing = process_segment(raw, proc, window)
         processed.append(proc)
         report.append({"segment": index, "text": text, **timing})
+        time.sleep(0.8)
 
     concat = OUT / f"{name}_cloud_concat.txt"
     concat.write_text("\n".join(f"file '{p.as_posix()}'" for p in processed) + "\n", encoding="utf-8")
