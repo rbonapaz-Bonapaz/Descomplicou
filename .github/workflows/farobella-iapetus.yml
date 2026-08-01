@@ -7,6 +7,7 @@ on:
     paths:
       - tools/farobella_iapetus.py
       - tools/farobella_iapetus_cloud.py
+      - tools/farobella_iapetus_vertex.py
       - .github/workflows/farobella-iapetus.yml
   pull_request:
     branches:
@@ -14,6 +15,7 @@ on:
     paths:
       - tools/farobella_iapetus.py
       - tools/farobella_iapetus_cloud.py
+      - tools/farobella_iapetus_vertex.py
       - .github/workflows/farobella-iapetus.yml
 
 permissions:
@@ -32,26 +34,18 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          python3 -m pip install --quiet --upgrade "google-cloud-texttospeech>=2.29.0"
+          python3 -m pip install --quiet --upgrade "google-genai>=1.54.0" "google-cloud-texttospeech>=2.29.0"
 
-      - name: Autenticar e ativar Cloud Text-to-Speech
+      - name: Gerar locuções oficiais Iapetus pela Vertex AI
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
+          GOOGLE_CLOUD_REGION: global
         run: |
           test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "Secret FIREBASE_SERVICE_ACCOUNT ausente"; exit 1; }
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/farobella-google-key.json
-          gcloud auth activate-service-account --key-file=/tmp/farobella-google-key.json --project="$GOOGLE_CLOUD_PROJECT"
-          gcloud services enable texttospeech.googleapis.com --project="$GOOGLE_CLOUD_PROJECT" --quiet
-
-      - name: Gerar locuções oficiais Iapetus pela Cloud TTS
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
-        run: |
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/farobella-google-key.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/farobella-google-key.json
-          python3 tools/farobella_iapetus_cloud.py
+          python3 tools/farobella_iapetus_vertex.py
 
       - name: Publicar áudios gerados
         uses: actions/upload-artifact@v4
@@ -60,7 +54,7 @@ jobs:
           path: |
             farobella_tts_output/farobella_completo_iapetus_cloud.wav
             farobella_tts_output/farobella_teaser_iapetus_cloud.wav
-            farobella_tts_output/roteiro_falado_iapetus_cloud.txt
+            farobella_tts_output/roteiro_falado_iapetus_vertex.txt
             farobella_tts_output/*_cloud_report.json
           retention-days: 1
           if-no-files-found: error
