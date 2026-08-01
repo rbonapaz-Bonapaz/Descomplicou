@@ -6,12 +6,14 @@ on:
       - ai/farobella-iapetus
     paths:
       - tools/farobella_iapetus.py
+      - tools/farobella_iapetus_cloud.py
       - .github/workflows/farobella-iapetus.yml
   pull_request:
     branches:
       - main
     paths:
       - tools/farobella_iapetus.py
+      - tools/farobella_iapetus_cloud.py
       - .github/workflows/farobella-iapetus.yml
 
 permissions:
@@ -26,27 +28,30 @@ jobs:
       - name: Baixar repositório
         uses: actions/checkout@v4
 
-      - name: Instalar FFmpeg
+      - name: Preparar Python e FFmpeg
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --quiet --upgrade "google-cloud-texttospeech>=2.29.0"
 
-      - name: Desativar credencial antiga do arquivo local
-        run: mv Fabi-TO-Gestao/.env Fabi-TO-Gestao/.env.disabled 2>/dev/null || true
-
-      - name: Gerar locuções oficiais Iapetus
+      - name: Gerar locuções oficiais Iapetus pela Cloud TTS
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python3 tools/farobella_iapetus.py
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "Secret FIREBASE_SERVICE_ACCOUNT ausente"; exit 1; }
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/farobella-google-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/farobella-google-key.json
+          python3 tools/farobella_iapetus_cloud.py
 
       - name: Publicar áudios gerados
         uses: actions/upload-artifact@v4
         with:
           name: farobella-iapetus-audio
           path: |
-            farobella_tts_output/farobella_completo_iapetus.wav
-            farobella_tts_output/farobella_teaser_iapetus.wav
-            farobella_tts_output/roteiro_falado_iapetus.txt
-            farobella_tts_output/*_report.json
+            farobella_tts_output/farobella_completo_iapetus_cloud.wav
+            farobella_tts_output/farobella_teaser_iapetus_cloud.wav
+            farobella_tts_output/roteiro_falado_iapetus_cloud.txt
+            farobella_tts_output/*_cloud_report.json
           retention-days: 1
           if-no-files-found: error
