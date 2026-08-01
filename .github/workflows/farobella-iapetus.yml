@@ -34,12 +34,21 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           python3 -m pip install --quiet --upgrade "google-cloud-texttospeech>=2.29.0"
 
-      - name: Gerar locuções oficiais Iapetus pela Cloud TTS
+      - name: Autenticar e ativar Cloud Text-to-Speech
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
         run: |
           test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "Secret FIREBASE_SERVICE_ACCOUNT ausente"; exit 1; }
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/farobella-google-key.json
+          gcloud auth activate-service-account --key-file=/tmp/farobella-google-key.json --project="$GOOGLE_CLOUD_PROJECT"
+          gcloud services enable texttospeech.googleapis.com --project="$GOOGLE_CLOUD_PROJECT" --quiet
+
+      - name: Gerar locuções oficiais Iapetus pela Cloud TTS
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_CLOUD_PROJECT: crm-consultora-de-beleza
+        run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/farobella-google-key.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/farobella-google-key.json
           python3 tools/farobella_iapetus_cloud.py
