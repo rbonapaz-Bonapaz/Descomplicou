@@ -7,6 +7,12 @@ on:
     paths:
       - tools/farobella_iapetus.py
       - .github/workflows/farobella-iapetus.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - tools/farobella_iapetus.py
+      - .github/workflows/farobella-iapetus.yml
 
 permissions:
   contents: read
