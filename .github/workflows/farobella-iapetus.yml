@@ -31,7 +31,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
+      - name: Desativar credencial antiga do arquivo local
+        run: mv Fabi-TO-Gestao/.env Fabi-TO-Gestao/.env.disabled 2>/dev/null || true
+
       - name: Gerar locuções oficiais Iapetus
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python3 tools/farobella_iapetus.py
 
       - name: Publicar áudios gerados
