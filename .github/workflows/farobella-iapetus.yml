@@ -1,6 +1,7 @@
 name: Gerar locução FaroBella com Iapetus
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - ai/farobella-iapetus
@@ -38,47 +39,11 @@ jobs:
           }
 
       - name: Autenticar no Google Cloud
-        id: google-auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
-
-      - name: Preparar Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
-
-      - name: Garantir permissão mínima para Gemini TTS
-        shell: bash
-        run: |
-          set -euo pipefail
-          SA_EMAIL="$(python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          key_path = Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-          data = json.loads(key_path.read_text(encoding="utf-8"))
-          print(data["client_email"])
-          PY
-          )"
-          test -n "$SA_EMAIL" || {
-            echo "Não foi possível identificar a conta de serviço."
-            exit 1
-          }
-          echo "::add-mask::$SA_EMAIL"
-
-          if ! gcloud projects add-iam-policy-binding "$GOOGLE_CLOUD_PROJECT" \
-            --member="serviceAccount:$SA_EMAIL" \
-            --role="roles/aiplatform.user" \
-            --quiet >/tmp/iam-binding.log 2>&1; then
-            cat /tmp/iam-binding.log
-            echo "A conta de serviço não tem permissão para alterar o IAM do projeto."
-            echo "Conceda a ela o papel roles/aiplatform.user no projeto $GOOGLE_CLOUD_PROJECT."
-            exit 1
-          fi
 
       - name: Preparar Python e FFmpeg
         run: |
