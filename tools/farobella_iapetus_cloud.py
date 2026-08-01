@@ -24,8 +24,8 @@ MODEL = "gemini-2.5-flash-tts"
 LANGUAGE = "pt-BR"
 
 FULL_SEGMENTS = [
-    (10.0, "Se você vende Fármasi e ainda controla clientes, pedidos, pagamentos e entregas entre caderno, planilha e WhatsApp, qualquer esquecimento pode virar perda de tempo, de dinheiro ou de uma nova venda."),
-    (11.0, "O Faro Béla foi criado para consultoras e consultores Fármasi que querem cuidar de toda a operação em um só lugar. Logo no painel, você enxerga seu dia, seus resultados e o que precisa de atenção."),
+    (10.0, "Se você vende fár-ma-si e ainda controla clientes, pedidos, pagamentos e entregas entre caderno, planilha e WhatsApp, qualquer esquecimento pode virar perda de tempo, de dinheiro ou de uma nova venda."),
+    (11.0, "O Faro Béla foi criado para consultoras e consultores fár-ma-si que querem cuidar de toda a operação em um só lugar. Logo no painel, você enxerga seu dia, seus resultados e o que precisa de atenção."),
     (12.0, "Na visão completa de cada cliente, histórico de compras, agendamentos, interesses e créditos ficam reunidos. O sistema também lembra aniversários e clientes sem contato, com acesso rápido ao WhatsApp."),
     (17.0, "Na hora de vender, monte o carrinho em segundos, aplique descontos por item ou no pedido, escolha entrega imediata ou futura e envie o resumo pelo WhatsApp. O estoque reservado evita que o mesmo produto seja vendido duas vezes."),
     (14.0, "Para receber, gere um código Pix com o valor exato ou calcule o cartão parcelado, já considerando a taxa da maquininha. Sinais, pagamentos parciais e créditos da cliente também ficam registrados."),
@@ -36,13 +36,11 @@ FULL_SEGMENTS = [
 ]
 
 TEASER_SEGMENTS = [
-    (3.0, "Você vende Fármasi, mas ainda controla tudo em vários lugares?"),
-    (4.0, "Clientes, estoque, pedidos, pagamentos e entregas também precisam de controle."),
-    (5.0, "Com o Faro Béla, tudo fica organizado em um só lugar."),
-    (6.0, "Monte pedidos, receba por Pix ou cartão e acompanhe cada entrega."),
-    (5.0, "Compartilhe seu catálogo e transforme interesse em oportunidade."),
-    (4.0, "E saiba o que realmente está dando resultado."),
-    (3.0, "Faro Béla. Gestão fácil, vendas brilhantes. Fale com a gente."),
+    (6.0, "Você vende fár-ma-si, mas ainda controla clientes, estoque, pedidos, pagamentos e entregas em vários lugares?"),
+    (5.0, "Com o Faro Béla, sua operação fica organizada em um só sistema."),
+    (8.0, "Monte carrinhos, receba por Pix ou cartão, compartilhe catálogos e acompanhe cada entrega."),
+    (5.0, "Veja seu lucro real e saiba onde agir."),
+    (6.0, "Faro Béla. Gestão fácil, vendas brilhantes. Fale agora pelo WhatsApp."),
 ]
 
 PROMPT = """
@@ -50,9 +48,10 @@ Fale em português brasileiro nativo com a voz masculina Iapetus.
 Use estilo de locução comercial moderno, simpático, confiante e envolvente.
 O ritmo deve ser ágil e natural, com energia, sem soar lento, monótono ou robótico.
 Use dicção clara e pausas curtas. Leia somente o texto fornecido, sem acrescentar explicações.
-REGRA DE PRONÚNCIA OBRIGATÓRIA: a marca escrita como Fármasi deve ser pronunciada
-como uma palavra de três sílabas: FÁR-ma-si, com tonicidade forte na primeira sílaba FÁR
-e som de S suave. Nunca pronuncie em inglês, nunca diga far-má-zi, e não soletre a palavra.
+REGRA DE PRONÚNCIA OBRIGATÓRIA: a marca escrita como fár-ma-si deve ser pronunciada
+como uma única palavra de três sílabas: FÁR-ma-si, com tonicidade forte na primeira sílaba FÁR
+e som de S suave. Não leia os hífens, não soletre a palavra, não use pronúncia inglesa
+e nunca diga far-má-zi.
 Pronuncie Faro Béla naturalmente em português brasileiro.
 """.strip()
 
