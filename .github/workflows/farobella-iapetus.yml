@@ -1,0 +1,41 @@
+name: Gerar locução FaroBella com Iapetus
+
+on:
+  push:
+    branches:
+      - ai/farobella-iapetus
+    paths:
+      - tools/farobella_iapetus.py
+      - .github/workflows/farobella-iapetus.yml
+
+permissions:
+  contents: read
+
+jobs:
+  gerar-locucoes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Gerar locuções oficiais Iapetus
+        run: python3 tools/farobella_iapetus.py
+
+      - name: Publicar áudios gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: farobella-iapetus-audio
+          path: |
+            farobella_tts_output/farobella_completo_iapetus.wav
+            farobella_tts_output/farobella_teaser_iapetus.wav
+            farobella_tts_output/roteiro_falado_iapetus.txt
+            farobella_tts_output/*_report.json
+          retention-days: 1
+          if-no-files-found: error
