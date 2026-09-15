@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "descomplicou-89090"
+  },
+  "targets": {
+    "descomplicou-89090": {
+      "hosting": {
+        "infraestrutura": [
+          "infraestrutura"
+        ]
+      }
+    }
+  }
+}
