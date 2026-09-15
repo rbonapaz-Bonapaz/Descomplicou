@@ -148,18 +148,34 @@
     .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: auto minmax(0,1fr); }
     .side-tools {
       position: relative; width: 76px; min-height: 0; padding: 10px 8px;
-      display: flex; flex-direction: column; gap: 8px; overflow: visible; z-index: 45;
+      display: flex; flex-direction: column; gap: 8px; overflow-x: hidden; overflow-y: auto; z-index: 45;
       background: rgba(7, 13, 29, .9); border-right: 1px solid var(--line);
       backdrop-filter: blur(16px); transition: width .2s ease;
     }
     .side-tools.expanded { width: 218px; }
+    .side-tools-head { min-height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 4px 7px; border-bottom: 1px solid var(--line); }
+    .side-tools-head strong { min-width: 0; flex: 1; display: none; align-items: center; gap: 9px; padding-left: 6px; font-size: 13px; }
+    .side-tools.expanded .side-tools-head strong { display: flex; }
+    .side-tools-head button { width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid var(--line); border-radius: 10px; background: rgba(20,34,67,.62); color: var(--text); cursor: pointer; font-size: 20px; }
+    .side-tools:not(.expanded) .side-tools-head { justify-content: center; }
+    .sidebar-section { display: none; padding: 5px 10px 0; color: rgba(146,168,197,.62); font-size: 9px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    .side-tools.expanded .sidebar-section { display: block; }
     .side-tools > .btn, .side-tools > .tool-menu > summary { width: 100%; justify-content: flex-start; padding: 0 16px; overflow: hidden; }
     .side-tools > .btn > span:first-child, .side-tools > .tool-menu > summary > span:first-child { width: 20px; flex: 0 0 20px; text-align: center; }
     .side-tools > .btn .label, .side-tools > .tool-menu > summary .label { display: none; }
     .side-tools.expanded > .btn .label, .side-tools.expanded > .tool-menu > summary .label { display: inline; }
     .side-tools > .tool-menu { width: 100%; }
-    .side-tools > .tool-menu .tool-menu-panel { top: 0; left: calc(100% + 9px); right: auto; }
-    .side-tools .sidebar-toggle { margin-bottom: 2px; }
+    .side-tools > .tool-menu .tool-menu-panel {
+      position: static; width: auto; margin: 4px 0 2px 17px; padding: 2px 0 2px 10px;
+      gap: 2px; border: 0; border-left: 2px solid rgba(128,166,220,.24); border-radius: 0;
+      background: transparent; box-shadow: none; backdrop-filter: none;
+    }
+    .side-tools > .tool-menu .tool-menu-panel .menu-title { display: none; }
+    .side-tools > .tool-menu .tool-menu-panel .btn { min-height: 35px; height: auto; padding: 7px 9px; border-color: transparent; border-radius: 9px; background: transparent; font-size: 12px; font-weight: 650; white-space: normal; line-height: 1.25; text-align: left; }
+    .side-tools > .tool-menu .tool-menu-panel .btn:hover { background: rgba(255,255,255,.07); transform: none; }
+    .side-tools > .tool-menu .tool-menu-panel .btn.primary { color: var(--text); background: rgba(56,216,255,.10); }
+    .side-tools > .tool-menu[open] > summary { background: linear-gradient(90deg, rgba(56,216,255,.15), rgba(56,216,255,.03)); box-shadow: inset 3px 0 0 var(--cyan); }
+    .side-tools:not(.expanded) > .tool-menu .tool-menu-panel { display: none; }
     .side-tools .sidebar-divider { height: 1px; margin: 1px 4px; background: var(--line); }
     .side-tools .sidebar-help { margin-top: auto; }
     .side-tools:not(.expanded) > .btn, .side-tools:not(.expanded) > .tool-menu > summary { justify-content: center; padding: 0; }
@@ -420,10 +436,14 @@
 
     <main class="workspace">
       <aside class="side-tools expanded" id="sideTools" aria-label="Ferramentas do mapa">
-        <button class="btn sidebar-toggle" id="toggleSideTools" type="button" title="Recolher painel"><span>☰</span><span class="label">Ferramentas</span></button>
-        <div class="sidebar-divider"></div>
+        <div class="side-tools-head">
+          <strong><span>☷</span><span>Ferramentas</span></strong>
+          <button id="toggleSideTools" type="button" title="Recolher painel" aria-label="Recolher painel">‹</button>
+        </div>
+        <div class="sidebar-section">Criar</div>
         <button class="btn primary" id="addDevice" type="button" title="Adicionar equipamento"><span>＋</span><span class="label">Equipamento</span></button>
         <button class="btn mint" id="addLink" type="button" title="Adicionar conexão"><span>⌁</span><span class="label">Conexão</span></button>
+        <div class="sidebar-section">Gestão do mapa</div>
         <details class="tool-menu" id="manageMenu">
           <summary class="btn" title="Gerenciar equipamentos e conexões"><span>☷</span><span class="label">Gerenciar</span></summary>
           <div class="tool-menu-panel">
@@ -529,7 +549,7 @@
     <div class="dialog-inner">
       <h2>Como usar</h2>
       <ol>
-        <li>No computador, as ferramentas ficam no painel lateral. Use <b>☰</b> para expandir ou recolher.</li>
+        <li>No computador, as ferramentas ficam no painel lateral. Use a seta para expandir ou recolher e clique em <b>Gerenciar</b>, <b>Visualização</b>, <b>Relatórios</b> ou <b>Arquivo</b> para abrir os submenus.</li>
         <li>Arraste os equipamentos pelo cabeçalho.</li>
         <li>Se mover algo por engano, use <b>Desfazer</b> ou <b>Ctrl+Z</b>.</li>
         <li>Em <b>Visualização</b>, você pode organizar automaticamente, ativar o 3D e salvar ou restaurar as posições do mapa.</li>
@@ -1716,8 +1736,11 @@
     if (savedSidePanel === 'collapsed' || (!savedSidePanel && window.innerWidth < 1250)) sideTools.classList.remove('expanded');
     const updateSidePanelButton = () => {
       const expanded = sideTools.classList.contains('expanded');
-      $('toggleSideTools').title = expanded ? 'Recolher painel' : 'Expandir painel';
-      $('toggleSideTools').setAttribute('aria-expanded', String(expanded));
+      const button = $('toggleSideTools');
+      button.textContent = expanded ? '‹' : '›';
+      button.title = expanded ? 'Recolher painel' : 'Expandir painel';
+      button.setAttribute('aria-label', button.title);
+      button.setAttribute('aria-expanded', String(expanded));
     };
     updateSidePanelButton();
     $('toggleSideTools').onclick = () => {
@@ -1726,6 +1749,28 @@
       updateSidePanelButton();
       setTimeout(fitView, 220);
     };
+    const sideMenus = [...sideTools.querySelectorAll(':scope > details.tool-menu')];
+    const savedSideGroup = localStorage.getItem('mapa-rede-3d-side-group') || 'manageMenu';
+    const initialSideMenu = $(savedSideGroup);
+    if (initialSideMenu?.closest('#sideTools')) initialSideMenu.open = true;
+    let changingSideMenus = false;
+    sideMenus.forEach(menu => menu.addEventListener('toggle', () => {
+      if (changingSideMenus) return;
+      if (menu.open) {
+        changingSideMenus = true;
+        sideMenus.forEach(other => { if (other !== menu) other.open = false; });
+        changingSideMenus = false;
+        localStorage.setItem('mapa-rede-3d-side-group', menu.id);
+        if (!sideTools.classList.contains('expanded')) {
+          sideTools.classList.add('expanded');
+          localStorage.setItem('mapa-rede-3d-side-tools', 'expanded');
+          updateSidePanelButton();
+          setTimeout(fitView, 220);
+        }
+      } else if (localStorage.getItem('mapa-rede-3d-side-group') === menu.id) {
+        localStorage.removeItem('mapa-rede-3d-side-group');
+      }
+    }));
     $('loginGoogleBtn').onclick = signInGoogle;
     $('localModeBtn').onclick = () => {
       localOnlyMode = true; updateAuthUi(authUser); renderMapSwitcher();
@@ -1746,10 +1791,14 @@
       });
     });
     document.querySelectorAll('.tool-menu-panel .btn').forEach(button => {
-      button.addEventListener('click', () => button.closest('details')?.removeAttribute('open'));
+      button.addEventListener('click', () => {
+        const menu = button.closest('details');
+        if (menu && !menu.closest('#sideTools')) menu.removeAttribute('open');
+      });
     });
     document.addEventListener('click', event => {
       document.querySelectorAll('.tool-menu[open]').forEach(menu => {
+        if (menu.closest('#sideTools')) return;
         if (!menu.contains(event.target)) menu.removeAttribute('open');
       });
     });
