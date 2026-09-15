@@ -298,6 +298,12 @@
     .form-actions .btn { flex: 1; }
     .danger { border-color: rgba(255,96,120,.35); color: #ff9cab; }
     .hint { border: 1px solid var(--line); background: rgba(16,31,57,.55); border-radius: 12px; padding: 11px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .map-transfer { display: grid; gap: 10px; padding: 13px; border: 1px solid rgba(56,216,255,.22); border-radius: 13px; background: rgba(56,216,255,.055); }
+    .map-transfer-title { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; font-weight: 850; }
+    .map-transfer-title span { color: var(--cyan); }
+    .map-transfer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .map-transfer-actions .btn { width: 100%; min-height: 40px; }
+    .map-transfer-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
     .secret-wrap { position: relative; }
     .secret-wrap input { padding-right: 42px; }
     .reveal { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border: 0; background: transparent; cursor: pointer; color: var(--muted); }
@@ -409,6 +415,9 @@
       .secret-wrap .reveal { width: 42px; height: 40px; }
       .form-actions { position: sticky; bottom: 0; z-index: 4; margin: 4px -14px 0; padding: 12px 14px max(12px, env(safe-area-inset-bottom)); background: rgba(8,14,31,.98); border-top: 1px solid var(--line); }
       .form-actions .btn { min-height: 48px; }
+      .map-transfer { padding: 14px; }
+      .map-transfer-actions { grid-template-columns: 1fr; }
+      .map-transfer-actions .btn { min-height: 48px; }
       .link-card-actions { grid-template-columns: 1fr; }
       .device-list-card { grid-template-columns: 58px minmax(0,1fr); }
       .device-list-card .btn { grid-column: 1 / -1; min-height: 46px; }
@@ -597,6 +606,7 @@
         <li>Clique no lápis para editar a identificação, o local, o IP, o acesso e as observações do equipamento.</li>
         <li>Na ficha do equipamento, use <b>Adicionar foto</b>. A imagem será comprimida e salva no Firebase Storage.</li>
         <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
+        <li>Na ficha do equipamento, use <b>Mover ou copiar para outro mapa</b>. A cópia mantém o original; ao mover, as conexões do mapa atual são removidas.</li>
         <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
         <li>No celular, use a barra inferior. O botão <b>Menu</b> abre um painel lateral com os mesmos submenus; use <b>Gerenciar → Equipamentos</b> para lançar os dados.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
@@ -698,19 +708,21 @@
       try { return JSON.parse(localStorage.getItem(SECRET_STORAGE_KEY)) || {}; }
       catch { return {}; }
     }
-    function getLocalPassword(deviceId) {
+    function getLocalPasswordForMap(mapId, deviceId) {
       const vault = loadSecretVault();
-      return vault[secretScope()]?.[currentMapId]?.[deviceId] || vault.local?.[currentMapId]?.[deviceId] || '';
+      return vault[secretScope()]?.[mapId]?.[deviceId] || vault.local?.[mapId]?.[deviceId] || '';
     }
-    function setLocalPassword(deviceId, password) {
+    function getLocalPassword(deviceId) { return getLocalPasswordForMap(currentMapId, deviceId); }
+    function setLocalPasswordForMap(mapId, deviceId, password) {
       const vault = loadSecretVault();
       const scope = secretScope();
       vault[scope] ||= {};
-      vault[scope][currentMapId] ||= {};
-      if (password) vault[scope][currentMapId][deviceId] = password;
-      else delete vault[scope][currentMapId][deviceId];
+      vault[scope][mapId] ||= {};
+      if (password) vault[scope][mapId][deviceId] = password;
+      else delete vault[scope][mapId][deviceId];
       localStorage.setItem(SECRET_STORAGE_KEY, JSON.stringify(vault));
     }
+    function setLocalPassword(deviceId, password) { setLocalPasswordForMap(currentMapId, deviceId, password); }
     function deleteLocalPasswordsForMap(mapId) {
       const vault = loadSecretVault();
       for (const scope of Object.keys(vault)) if (vault[scope]?.[mapId]) delete vault[scope][mapId];
@@ -976,6 +988,42 @@
         applyMap(doc.data(), nextId, mapsMeta[0].name); watchCurrentMap();
       } else applyMap(loadState(nextId), nextId, mapsMeta[0].name);
       toast('Mapa excluído');
+    }
+    async function loadMapForTransfer(mapId) {
+      const meta = mapsMeta.find(map => map.id === mapId);
+      if (!meta) throw new Error('O mapa de destino não existe mais.');
+      if (authUser && cloudReady && !localOnlyMode) {
+        const snapshot = await mapCollection().doc(mapId).get();
+        if (!snapshot.exists) throw new Error('O mapa de destino não foi encontrado na nuvem.');
+        const data = snapshot.data();
+        return migrateState(data, data.name || data.mapName || meta.name);
+      }
+      return loadState(mapId);
+    }
+    async function saveMapForTransfer(mapId, mapState) {
+      const now = new Date().toISOString();
+      mapState.updatedAt = now;
+      const localPayload = sanitizedState(mapState);
+      localPayload.updatedAt = now;
+      localStorage.setItem(localStateKey(mapId), JSON.stringify(localPayload));
+      if (authUser && cloudReady && !localOnlyMode) {
+        const cloudPayload = sanitizedState(mapState);
+        cloudPayload.name = cloudPayload.mapName;
+        cloudPayload.clientUpdatedAt = now;
+        cloudPayload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+        await mapCollection().doc(mapId).set(cloudPayload, { merge:false });
+      }
+    }
+    function availableDevicePosition(devices, preferredX, preferredY) {
+      const candidates = [
+        { x:clamp(Number(preferredX) + 38, 20, WORLD.width - 245), y:clamp(Number(preferredY) + 38, 20, WORLD.height - 155) }
+      ];
+      for (let y = 45; y <= WORLD.height - 155; y += 180) {
+        for (let x = 45; x <= WORLD.width - 245; x += 275) candidates.push({ x, y });
+      }
+      return candidates.find(candidate => !devices.some(device =>
+        Math.abs(Number(device.x) - candidate.x) < 235 && Math.abs(Number(device.y) - candidate.y) < 145
+      )) || candidates[0];
     }
     function updateAuthUi(user) {
       $('authGate').hidden = Boolean(user) || localOnlyMode;
@@ -1306,6 +1354,85 @@
       toast('Foto removida');
     }
 
+    async function copyEquipmentPhoto(device, targetMapId, targetDeviceId) {
+      if (!device.photoUrl && !device.photoPath) return { photoUrl:'', photoPath:'' };
+      if (!authUser || !storage || localOnlyMode) throw new Error('A foto exige conexão com o Firebase Storage.');
+      const sourceUrl = device.photoUrl || await storage.ref(device.photoPath).getDownloadURL();
+      const response = await fetch(sourceUrl);
+      if (!response.ok) throw new Error('Não foi possível baixar a foto original.');
+      const blob = await response.blob();
+      const targetPath = `users/${authUser.uid}/equipment-photos/${targetMapId}/${targetDeviceId}.jpg`;
+      await storage.ref(targetPath).put(blob, {
+        contentType:blob.type || 'image/jpeg',
+        cacheControl:'public,max-age=86400',
+        customMetadata:{ mapId:targetMapId, deviceId:targetDeviceId }
+      });
+      return { photoPath:targetPath, photoUrl:await storage.ref(targetPath).getDownloadURL() };
+    }
+
+    async function transferDeviceToMap(device, targetMapId, operation, form) {
+      const targetMeta = mapsMeta.find(map => map.id === targetMapId);
+      if (!targetMeta || targetMapId === currentMapId) return toast('Escolha outro mapa');
+      const moving = operation === 'move';
+      const attachedLinks = state.links.filter(link => link.from === device.id || link.to === device.id);
+      const connectionWarning = moving && attachedLinks.length
+        ? `\n\n${attachedLinks.length} conexão(ões) deste equipamento serão removidas do mapa atual.`
+        : '';
+      if (moving && !confirm(`Mover “${deviceDisplayName(device)}” para “${targetMeta.name}”?${connectionWarning}`)) return;
+
+      const controls = [...form.querySelectorAll('.transfer-map, .copyDevice, .moveDevice')];
+      controls.forEach(control => { control.disabled = true; });
+      $('saveState').textContent = moving ? 'Movendo equipamento…' : 'Copiando equipamento…';
+      try {
+        persistNow();
+        const sourceMapId = currentMapId;
+        const targetState = await loadMapForTransfer(targetMapId);
+        const password = getLocalPasswordForMap(sourceMapId, device.id);
+        const idConflict = targetState.devices.some(item => item.id === device.id);
+        const targetDeviceId = moving && !idConflict ? device.id : uid('device');
+        const targetDevice = clone(device);
+        targetDevice.id = targetDeviceId;
+        Object.assign(targetDevice, availableDevicePosition(targetState.devices, device.x, device.y));
+
+        let photoCopied = true;
+        if (!moving && (device.photoUrl || device.photoPath)) {
+          try { Object.assign(targetDevice, await copyEquipmentPhoto(device, targetMapId, targetDeviceId)); }
+          catch (error) {
+            console.warn('A foto não pôde ser duplicada.', error);
+            targetDevice.photoUrl = ''; targetDevice.photoPath = ''; photoCopied = false;
+          }
+        }
+
+        targetState.devices.push(targetDevice);
+        await saveMapForTransfer(targetMapId, targetState);
+        setLocalPasswordForMap(targetMapId, targetDeviceId, password);
+
+        if (moving) {
+          state.devices = state.devices.filter(item => item.id !== device.id);
+          state.links = state.links.filter(link => link.from !== device.id && link.to !== device.id);
+          setLocalPasswordForMap(sourceMapId, device.id, '');
+          closePanel();
+          persistNow('Equipamento movido');
+          if (authUser && cloudReady && !localOnlyMode) await saveCloudNow();
+          render();
+          toast(`Equipamento movido para “${targetMeta.name}”`);
+        } else {
+          $('saveState').textContent = authUser && cloudReady && !localOnlyMode
+            ? 'Salvo neste navegador e na nuvem'
+            : 'Salvo neste navegador';
+          toast(photoCopied
+            ? `Equipamento copiado para “${targetMeta.name}”`
+            : `Equipamento copiado sem a foto para “${targetMeta.name}”`);
+        }
+      } catch (error) {
+        console.error(error);
+        $('saveState').textContent = 'Falha ao transferir equipamento';
+        toast(error.message || 'Não foi possível transferir o equipamento');
+      } finally {
+        controls.forEach(control => { control.disabled = false; });
+      }
+    }
+
     function deviceForm(device) {
       const form = document.createElement('form'); form.className = 'form';
       form.innerHTML = `
@@ -1355,6 +1482,15 @@
             <label>Versão de firmware<input name="firmware" maxlength="100" placeholder="Ex.: 1.3.6 Build 2026"></label>
           </div>
         </details>
+        <div class="map-transfer">
+          <div class="map-transfer-title"><span>⇄</span> Mover ou copiar para outro mapa</div>
+          <label>Mapa de destino<select class="transfer-map" aria-label="Mapa de destino"></select></label>
+          <div class="map-transfer-actions">
+            <button class="btn copyDevice" type="button">⧉ Copiar equipamento</button>
+            <button class="btn mint moveDevice" type="button">⇢ Mover equipamento</button>
+          </div>
+          <p class="map-transfer-note">Copiar mantém o equipamento nos dois mapas. Mover retira do mapa atual; as conexões do mapa atual não são transferidas.</p>
+        </div>
         <div class="hint"><b>Privacidade:</b> a senha fica somente neste navegador. Os demais dados sincronizam com sua conta Google.</div>
         <div class="form-actions"><button class="btn danger deleteDevice" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
       const preview = form.querySelector('.photo-preview');
@@ -1370,6 +1506,22 @@
       choosePhoto.onclick = () => photoUpload.click();
       photoUpload.onchange = () => { const file = photoUpload.files[0]; if (file) uploadEquipmentPhoto(device, file, form); photoUpload.value = ''; };
       form.querySelector('.photo-remove').onclick = () => removeEquipmentPhoto(device);
+      const targetSelect = form.querySelector('.transfer-map');
+      const targetMaps = mapsMeta.filter(map => map.id !== currentMapId);
+      if (targetMaps.length) {
+        for (const map of targetMaps) {
+          const option = document.createElement('option'); option.value = map.id; option.textContent = map.name;
+          targetSelect.appendChild(option);
+        }
+      } else {
+        const option = document.createElement('option'); option.value = ''; option.textContent = 'Crie outro mapa primeiro';
+        targetSelect.appendChild(option); targetSelect.disabled = true;
+      }
+      const copyDeviceButton = form.querySelector('.copyDevice');
+      const moveDeviceButton = form.querySelector('.moveDevice');
+      copyDeviceButton.disabled = moveDeviceButton.disabled = targetMaps.length === 0;
+      copyDeviceButton.onclick = () => transferDeviceToMap(device, targetSelect.value, 'copy', form);
+      moveDeviceButton.onclick = () => transferDeviceToMap(device, targetSelect.value, 'move', form);
       const editableKeys = ['displayName','name','location','type','lan','ipMode','mode','username','lastMaintenance','notes','brand','model','mac','wanIp','vlan','firmware'];
       for (const key of editableKeys) form.elements[key].value = device[key] || '';
       form.elements.password.value = getLocalPassword(device.id);
@@ -1461,7 +1613,7 @@
         const details = document.createElement('span');
         details.textContent = [device.displayName ? device.name : '', info.label, device.location, device.lan].filter(Boolean).join(' · ') || 'Dados ainda não preenchidos';
         text.append(name, details);
-        const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn'; editBtn.textContent = 'Editar dados'; editBtn.onclick = () => openDevice(device.id);
+        const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn'; editBtn.textContent = 'Editar / mover'; editBtn.onclick = () => openDevice(device.id);
         card.append(photo, text, editBtn); wrap.appendChild(card);
       }
       panelContent.replaceChildren(wrap);
