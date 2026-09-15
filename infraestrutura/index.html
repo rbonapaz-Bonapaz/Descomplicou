@@ -831,6 +831,12 @@
     function uid(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
     function escapeText(v) { return String(v ?? ''); }
     function infoFor(type) { return TYPE_INFO[type] || TYPE_INFO.other; }
+    function deviceOptionLabel(device) {
+      return [device.name || 'Sem nome', device.location, device.lan]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .join(' — ');
+    }
 
     function capturePositions(devices = state.devices) {
       return Object.fromEntries(devices.map(d => [d.id, { x:d.x, y:d.y }]));
@@ -1166,7 +1172,7 @@
 
     function linkForm(link) {
       const form = document.createElement('form'); form.className = 'form';
-      const options = state.devices.map(d => `<option value="${escapeAttr(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+      const options = state.devices.map(device => `<option value="${escapeAttr(device.id)}">${escapeHtml(deviceOptionLabel(device))}</option>`).join('');
       form.innerHTML = `
         <label>De<select name="from">${options}</select></label>
         <label>Para<select name="to">${options}</select></label>
