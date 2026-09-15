@@ -64,8 +64,7 @@
     .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; letter-spacing: .01em; }
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
     .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
-    .primary-actions, .desktop-tools { display: flex; gap: 8px; min-width: 0; align-items: center; }
-    .mobile-main-menu { display: none; }
+    .mobile-main-menu, .mobile-bottom-tools { display: none; }
     .tool-group { display: flex; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
     .tool-group:last-child { border-right: 0; }
     .btn {
@@ -146,7 +145,25 @@
     .photo-progress[hidden] { display: none; }
     .photo-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--mint)); transition: width .15s ease; }
 
-    .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr); }
+    .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: auto minmax(0,1fr); }
+    .side-tools {
+      position: relative; width: 76px; min-height: 0; padding: 10px 8px;
+      display: flex; flex-direction: column; gap: 8px; overflow: visible; z-index: 45;
+      background: rgba(7, 13, 29, .9); border-right: 1px solid var(--line);
+      backdrop-filter: blur(16px); transition: width .2s ease;
+    }
+    .side-tools.expanded { width: 218px; }
+    .side-tools > .btn, .side-tools > .tool-menu > summary { width: 100%; justify-content: flex-start; padding: 0 16px; overflow: hidden; }
+    .side-tools > .btn > span:first-child, .side-tools > .tool-menu > summary > span:first-child { width: 20px; flex: 0 0 20px; text-align: center; }
+    .side-tools > .btn .label, .side-tools > .tool-menu > summary .label { display: none; }
+    .side-tools.expanded > .btn .label, .side-tools.expanded > .tool-menu > summary .label { display: inline; }
+    .side-tools > .tool-menu { width: 100%; }
+    .side-tools > .tool-menu .tool-menu-panel { top: 0; left: calc(100% + 9px); right: auto; }
+    .side-tools .sidebar-toggle { margin-bottom: 2px; }
+    .side-tools .sidebar-divider { height: 1px; margin: 1px 4px; background: var(--line); }
+    .side-tools .sidebar-help { margin-top: auto; }
+    .side-tools:not(.expanded) > .btn, .side-tools:not(.expanded) > .tool-menu > summary { justify-content: center; padding: 0; }
+    .side-tools:not(.expanded) > .tool-menu > summary::after { display: none; }
     .viewport { position: relative; min-width: 0; overflow: hidden; cursor: grab; }
     .viewport.panning { cursor: grabbing; }
     .world {
@@ -292,16 +309,16 @@
     .dialog-inner ol { padding-left: 22px; }
     .dialog-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 
-    @media (max-width: 1180px) {
+    @media (max-width: 1600px) {
       .save-state { display: none; }
       .topbar { grid-template-columns: minmax(165px, auto) minmax(0, 1fr) auto; gap: 12px; }
       .auth-btn .label { display: none; }
       .auth-btn { width: 42px; padding: 0; }
     }
 
-    @media (max-width: 1320px) {
-      .desktop-tools > .btn .label, .desktop-tools > .tool-menu > summary .label { display: none; }
-      .desktop-tools > .btn, .desktop-tools > .tool-menu > summary { padding-left: 11px; padding-right: 11px; }
+    @media (max-width: 1380px) {
+      .brand p { display: none; }
+      .topbar { grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto; }
     }
 
     @media (max-width: 980px) {
@@ -309,7 +326,7 @@
       .brand p { display: none; }
       .btn .label { display: none; }
       .btn { padding: 0 11px; }
-      .desktop-tools { gap: 6px; }
+      .side-tools.expanded > .btn .label, .side-tools.expanded > .tool-menu > summary .label, .tool-menu-panel .btn .label { display: inline; }
     }
 
     @media (max-width: 680px) {
@@ -318,19 +335,27 @@
       .brand { min-width: 0; }
       .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
       .brand h1 { font-size: 15px; }
-      .toolbar { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; overflow: visible; padding: 0; }
+      .toolbar { width: 100%; display: block; overflow: visible; padding: 0; }
       .map-switcher { grid-column: 1 / -1; width: 100%; padding: 0; border-right: 0; }
       .map-switcher select { width: auto; min-width: 0; flex: 1; font-size: 15px; }
-      .primary-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-      .desktop-tools { display: none; }
+      .workspace { grid-template-columns: minmax(0,1fr); }
+      .side-tools { display: none; }
+      .mobile-bottom-tools {
+        position: absolute; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 45;
+        display: grid; grid-template-columns: 1fr 1fr auto; gap: 7px; padding: 6px;
+        border: 1px solid rgba(128,166,220,.28); border-radius: 15px;
+        background: rgba(7,13,29,.94); box-shadow: var(--shadow); backdrop-filter: blur(16px);
+      }
+      .mobile-bottom-tools > .btn { min-width: 0; }
       .mobile-main-menu { display: block; }
-      .toolbar .btn { min-height: 44px; padding: 0 12px; }
-      .primary-actions .btn .label, .mobile-main-menu > summary .label { display: inline; }
+      .toolbar .btn, .mobile-bottom-tools .btn { min-height: 44px; padding: 0 12px; }
+      .mobile-bottom-tools > .btn .label, .mobile-main-menu > summary .label { display: inline; }
       .account-area { position: absolute; top: 8px; right: 10px; }
       .auth-btn { width: 40px; min-height: 40px; }
       .tool-menu-panel { position: fixed; top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: calc(100dvh - 20px); overflow: auto; }
       .mobile-main-menu > summary { min-width: 48px; }
-      .mobile-main-menu .tool-menu-panel { grid-template-columns: 1fr; }
+      .mobile-main-menu .tool-menu-panel { grid-template-columns: 1fr; bottom: 72px; }
+      .workspace:has(.sidepanel.open) .mobile-bottom-tools { display: none; }
       .viewport { min-height: 0; touch-action: none; }
       .sidepanel { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 14px max(14px, env(safe-area-inset-bottom)); transform: translateX(101%); border-left: 0; }
       .sidepanel.open { transform: translateX(0); }
@@ -353,12 +378,12 @@
       .device-list-photo { width: 58px; height: 58px; }
       .photo-editor-main { grid-template-columns: 66px minmax(0,1fr); }
       .photo-preview { width: 66px; height: 66px; }
-      .zoom-controls { left: 10px; bottom: 10px; }
+      .zoom-controls { left: 10px; bottom: 78px; }
       dialog { max-height: 90vh; overflow: auto; }
     }
 
     @media print {
-      .topbar, .sidepanel, .zoom-controls, .toast { display: none !important; }
+      .topbar, .side-tools, .mobile-bottom-tools, .sidepanel, .zoom-controls, .toast { display: none !important; }
       html, body, .app, .workspace, .viewport { height: auto; overflow: visible; background: #071020; }
       .workspace { display: block; }
       .world { position: relative; transform: none !important; width: 1500px; height: 980px; }
@@ -386,74 +411,6 @@
             </div>
           </details>
         </div>
-        <div class="primary-actions">
-          <button class="btn primary" id="addDevice"><span>＋</span><span class="label">Equipamento</span></button>
-          <button class="btn mint" id="addLink"><span>⌁</span><span class="label">Conexão</span></button>
-        </div>
-        <div class="desktop-tools">
-          <details class="tool-menu" id="manageMenu">
-            <summary class="btn" title="Gerenciar equipamentos e conexões"><span>☷</span><span class="label">Gerenciar</span></summary>
-            <div class="tool-menu-panel">
-              <div class="menu-title">Cadastros</div>
-              <button class="btn" id="manageDevices" title="Listar e editar equipamentos"><span>▣</span><span class="label">Equipamentos</span></button>
-              <button class="btn" id="manageLinks" title="Ver, editar ou excluir conexões"><span>⌁</span><span class="label">Conexões</span></button>
-            </div>
-          </details>
-          <button class="btn" id="undoBtn" title="Desfazer último movimento" disabled><span>↶</span><span class="label">Desfazer</span></button>
-          <details class="tool-menu" id="viewMenu">
-            <summary class="btn" title="Organização e aparência"><span>◈</span><span class="label">Visualização</span></summary>
-            <div class="tool-menu-panel">
-              <div class="menu-title">Aparência e posição</div>
-              <button class="btn active" id="toggle3d" title="Alternar profundidade visual"><span>◈</span><span class="label">Modo 3D</span></button>
-              <button class="btn" id="autoLayout" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar automaticamente</span></button>
-              <button class="btn" id="saveLayout" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar posições atuais</span></button>
-              <button class="btn" id="restoreLayout" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Restaurar posições salvas</span></button>
-            </div>
-          </details>
-          <details class="tool-menu" id="reportMenu">
-            <summary class="btn" title="Visualizar e exportar relatórios"><span>▤</span><span class="label">Relatórios</span></summary>
-            <div class="tool-menu-panel">
-              <div class="menu-title">Documentação</div>
-              <button class="btn" id="completeReportBtn" title="Ver todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Visualizar relatório completo</span></button>
-              <button class="btn" id="printBtn" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar diagrama em PDF</span></button>
-            </div>
-          </details>
-          <details class="tool-menu" id="fileMenu">
-            <summary class="btn" title="Backup e arquivos"><span>⇩</span><span class="label">Arquivo</span></summary>
-            <div class="tool-menu-panel">
-              <div class="menu-title">Backup e segurança</div>
-              <button class="btn primary" id="exportBtn" title="Baixar cópia de segurança"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
-              <button class="btn" id="importBtn" title="Restaurar uma cópia de segurança"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
-              <div class="menu-divider"></div>
-              <div class="menu-title">Opção avançada</div>
-              <button class="btn" id="downloadHtmlBtn" title="Baixar uma cópia portátil do mapa"><span>⬇</span><span class="label">Exportar cópia em HTML</span></button>
-              <input id="importFile" type="file" accept="application/json,.json" hidden>
-            </div>
-          </details>
-          <button class="btn icon" id="helpBtn" title="Como usar">?</button>
-        </div>
-        <details class="tool-menu mobile-main-menu" id="mobileMainMenu">
-          <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
-          <div class="tool-menu-panel">
-            <div class="menu-title">Gerenciar</div>
-            <button class="btn" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
-            <button class="btn" data-proxy="manageLinks"><span>⌁</span><span class="label">Conexões</span></button>
-            <button class="btn" data-proxy="undoBtn"><span>↶</span><span class="label">Desfazer</span></button>
-            <div class="menu-divider"></div>
-            <div class="menu-title">Visualização</div>
-            <button class="btn" data-proxy="toggle3d"><span>◈</span><span class="label">Modo 3D</span></button>
-            <button class="btn" data-proxy="autoLayout"><span>✦</span><span class="label">Organizar automaticamente</span></button>
-            <button class="btn" data-proxy="saveLayout"><span>★</span><span class="label">Salvar posições atuais</span></button>
-            <button class="btn" data-proxy="restoreLayout"><span>↺</span><span class="label">Restaurar posições salvas</span></button>
-            <div class="menu-divider"></div>
-            <div class="menu-title">Relatórios e arquivo</div>
-            <button class="btn" data-proxy="completeReportBtn"><span>☷</span><span class="label">Relatório completo</span></button>
-            <button class="btn" data-proxy="printBtn"><span>▣</span><span class="label">Exportar PDF</span></button>
-            <button class="btn" data-proxy="exportBtn"><span>⇩</span><span class="label">Baixar backup</span></button>
-            <button class="btn" data-proxy="importBtn"><span>⇧</span><span class="label">Restaurar backup</span></button>
-            <button class="btn" data-proxy="helpBtn"><span>?</span><span class="label">Ajuda</span></button>
-          </div>
-        </details>
       </nav>
       <div class="account-area">
         <span class="save-state" id="saveState">Aguardando login</span>
@@ -462,6 +419,50 @@
     </header>
 
     <main class="workspace">
+      <aside class="side-tools expanded" id="sideTools" aria-label="Ferramentas do mapa">
+        <button class="btn sidebar-toggle" id="toggleSideTools" type="button" title="Recolher painel"><span>☰</span><span class="label">Ferramentas</span></button>
+        <div class="sidebar-divider"></div>
+        <button class="btn primary" id="addDevice" type="button" title="Adicionar equipamento"><span>＋</span><span class="label">Equipamento</span></button>
+        <button class="btn mint" id="addLink" type="button" title="Adicionar conexão"><span>⌁</span><span class="label">Conexão</span></button>
+        <details class="tool-menu" id="manageMenu">
+          <summary class="btn" title="Gerenciar equipamentos e conexões"><span>☷</span><span class="label">Gerenciar</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Cadastros</div>
+            <button class="btn" id="manageDevices" type="button" title="Listar e editar equipamentos"><span>▣</span><span class="label">Equipamentos</span></button>
+            <button class="btn" id="manageLinks" type="button" title="Ver, editar ou excluir conexões"><span>⌁</span><span class="label">Conexões</span></button>
+          </div>
+        </details>
+        <button class="btn" id="undoBtn" type="button" title="Desfazer último movimento" disabled><span>↶</span><span class="label">Desfazer</span></button>
+        <details class="tool-menu" id="viewMenu">
+          <summary class="btn" title="Organização e aparência"><span>◈</span><span class="label">Visualização</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Aparência e posição</div>
+            <button class="btn active" id="toggle3d" type="button" title="Alternar profundidade visual"><span>◈</span><span class="label">Modo 3D</span></button>
+            <button class="btn" id="autoLayout" type="button" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar automaticamente</span></button>
+            <button class="btn" id="saveLayout" type="button" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar posições atuais</span></button>
+            <button class="btn" id="restoreLayout" type="button" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Restaurar posições salvas</span></button>
+          </div>
+        </details>
+        <details class="tool-menu" id="reportMenu">
+          <summary class="btn" title="Visualizar e exportar relatórios"><span>▤</span><span class="label">Relatórios</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Documentação</div>
+            <button class="btn" id="completeReportBtn" type="button" title="Ver todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Visualizar relatório completo</span></button>
+            <button class="btn" id="printBtn" type="button" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar diagrama em PDF</span></button>
+          </div>
+        </details>
+        <details class="tool-menu" id="fileMenu">
+          <summary class="btn" title="Backup e arquivos"><span>⇩</span><span class="label">Arquivo</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Backup e segurança</div>
+            <button class="btn primary" id="exportBtn" type="button" title="Baixar cópia de segurança"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
+            <button class="btn" id="importBtn" type="button" title="Restaurar uma cópia de segurança"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
+            <input id="importFile" type="file" accept="application/json,.json" hidden>
+          </div>
+        </details>
+        <button class="btn sidebar-help" id="helpBtn" type="button" title="Como usar"><span>?</span><span class="label">Ajuda</span></button>
+      </aside>
+
       <section class="viewport" id="viewport" aria-label="Área do diagrama">
         <div class="world" id="world">
           <div class="board mode-3d" id="board">
@@ -476,6 +477,33 @@
           <button id="fitBtn" title="Enquadrar tudo">⊙</button>
         </div>
       </section>
+
+      <nav class="mobile-bottom-tools" aria-label="Ações rápidas">
+        <button class="btn primary" type="button" data-proxy="addDevice"><span>＋</span><span class="label">Equipamento</span></button>
+        <button class="btn mint" type="button" data-proxy="addLink"><span>⌁</span><span class="label">Conexão</span></button>
+        <details class="tool-menu mobile-main-menu" id="mobileMainMenu">
+          <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Gerenciar</div>
+            <button class="btn" type="button" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
+            <button class="btn" type="button" data-proxy="manageLinks"><span>⌁</span><span class="label">Conexões</span></button>
+            <button class="btn" type="button" data-proxy="undoBtn"><span>↶</span><span class="label">Desfazer</span></button>
+            <div class="menu-divider"></div>
+            <div class="menu-title">Visualização</div>
+            <button class="btn" type="button" data-proxy="toggle3d"><span>◈</span><span class="label">Modo 3D</span></button>
+            <button class="btn" type="button" data-proxy="autoLayout"><span>✦</span><span class="label">Organizar automaticamente</span></button>
+            <button class="btn" type="button" data-proxy="saveLayout"><span>★</span><span class="label">Salvar posições atuais</span></button>
+            <button class="btn" type="button" data-proxy="restoreLayout"><span>↺</span><span class="label">Restaurar posições salvas</span></button>
+            <div class="menu-divider"></div>
+            <div class="menu-title">Relatórios e arquivo</div>
+            <button class="btn" type="button" data-proxy="completeReportBtn"><span>☷</span><span class="label">Relatório completo</span></button>
+            <button class="btn" type="button" data-proxy="printBtn"><span>▣</span><span class="label">Exportar PDF</span></button>
+            <button class="btn" type="button" data-proxy="exportBtn"><span>⇩</span><span class="label">Baixar backup</span></button>
+            <button class="btn" type="button" data-proxy="importBtn"><span>⇧</span><span class="label">Restaurar backup</span></button>
+            <button class="btn" type="button" data-proxy="helpBtn"><span>?</span><span class="label">Ajuda</span></button>
+          </div>
+        </details>
+      </nav>
 
       <aside class="sidepanel" id="sidepanel">
         <div class="side-head"><h2 id="panelTitle">Propriedades</h2><button id="closePanel" aria-label="Fechar">×</button></div>
@@ -501,6 +529,7 @@
     <div class="dialog-inner">
       <h2>Como usar</h2>
       <ol>
+        <li>No computador, as ferramentas ficam no painel lateral. Use <b>☰</b> para expandir ou recolher.</li>
         <li>Arraste os equipamentos pelo cabeçalho.</li>
         <li>Se mover algo por engano, use <b>Desfazer</b> ou <b>Ctrl+Z</b>.</li>
         <li>Em <b>Visualização</b>, você pode organizar automaticamente, ativar o 3D e salvar ou restaurar as posições do mapa.</li>
@@ -510,10 +539,9 @@
         <li>Na ficha do equipamento, use <b>Adicionar foto</b>. A imagem será comprimida e salva no Firebase Storage.</li>
         <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
         <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
-        <li>No celular, use <b>Menu → Equipamentos</b> para abrir a lista e lançar os dados com campos maiores.</li>
+        <li>No celular, use a barra inferior e <b>Menu → Equipamentos</b> para abrir a lista e lançar os dados com campos maiores.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
-        <li>A opção avançada <b>Exportar cópia em HTML</b> continua disponível dentro de Arquivo.</li>
       </ol>
       <p><b>Privacidade:</b> a senha de cada equipamento fica somente neste navegador e não é enviada ao Firestore, Storage, HTML, backup ou relatório.</p>
       <div class="dialog-actions"><button class="btn primary" id="closeHelp">Entendi</button></div>
@@ -601,6 +629,7 @@
     const linksEl = $('links');
     const sidepanel = $('sidepanel');
     const panelContent = $('panelContent');
+    const sideTools = $('sideTools');
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function validState(value) { return value && Array.isArray(value.devices) && Array.isArray(value.links); }
@@ -1590,23 +1619,6 @@
       const blob = new Blob([JSON.stringify({ ...sanitizedState(), exportedAt:new Date().toISOString() }, null, 2)], {type:'application/json'});
       downloadBlob(blob, `mapa-rede-backup-${new Date().toISOString().slice(0,10)}.json`); toast('Backup baixado');
     }
-    function exportCompleteHtml() {
-      persistNow('Mapa pronto para baixar');
-      const safeState = JSON.stringify(sanitizedState())
-        .replace(/</g, '\\u003c')
-        .replace(/>/g, '\\u003e')
-        .replace(/\u2028/g, '\\u2028')
-        .replace(/\u2029/g, '\\u2029');
-      const copy = document.documentElement.cloneNode(true);
-      copy.querySelector('#nodes')?.replaceChildren();
-      copy.querySelector('#links')?.replaceChildren();
-      copy.querySelector('#panelContent')?.replaceChildren();
-      copy.querySelector('#sidepanel')?.classList.remove('open');
-      const marker = /\/\* EMBEDDED_STATE_START \*\/[\s\S]*?\/\* EMBEDDED_STATE_END \*\//;
-      const html = '<!doctype html>\n' + copy.outerHTML.replace(marker, `/* EMBEDDED_STATE_START */ const EMBEDDED_STATE = ${safeState}; /* EMBEDDED_STATE_END */`);
-      downloadBlob(new Blob([html], {type:'text/html;charset=utf-8'}), 'infraestrutura-da-rede-3d.html');
-      toast('HTML completo baixado com todas as alterações');
-    }
     function exportCompleteReport() {
       persistNow();
       const report = window.open('', '_blank');
@@ -1685,7 +1697,6 @@
     $('saveLayout').onclick = saveLayoutPreset;
     $('restoreLayout').onclick = restoreLayoutPreset;
     $('toggle3d').onclick = () => { state.mode3d = !state.mode3d; saveState(); render(); };
-    $('downloadHtmlBtn').onclick = exportCompleteHtml;
     $('completeReportBtn').onclick = exportCompleteReport;
     $('exportBtn').onclick = exportBackup;
     $('importBtn').onclick = () => $('importFile').click();
@@ -1701,6 +1712,20 @@
     $('newMapBtn').onclick = createMap;
     $('renameMapBtn').onclick = renameMap;
     $('deleteMapBtn').onclick = deleteMap;
+    const savedSidePanel = localStorage.getItem('mapa-rede-3d-side-tools');
+    if (savedSidePanel === 'collapsed' || (!savedSidePanel && window.innerWidth < 1250)) sideTools.classList.remove('expanded');
+    const updateSidePanelButton = () => {
+      const expanded = sideTools.classList.contains('expanded');
+      $('toggleSideTools').title = expanded ? 'Recolher painel' : 'Expandir painel';
+      $('toggleSideTools').setAttribute('aria-expanded', String(expanded));
+    };
+    updateSidePanelButton();
+    $('toggleSideTools').onclick = () => {
+      sideTools.classList.toggle('expanded');
+      localStorage.setItem('mapa-rede-3d-side-tools', sideTools.classList.contains('expanded') ? 'expanded' : 'collapsed');
+      updateSidePanelButton();
+      setTimeout(fitView, 220);
+    };
     $('loginGoogleBtn').onclick = signInGoogle;
     $('localModeBtn').onclick = () => {
       localOnlyMode = true; updateAuthUi(authUser); renderMapSwitcher();
