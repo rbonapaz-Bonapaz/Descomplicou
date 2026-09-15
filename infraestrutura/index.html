@@ -64,7 +64,8 @@
     .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; letter-spacing: .01em; }
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
     .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
-    .mobile-tools { display: flex; gap: 8px; min-width: 0; align-items: center; }
+    .primary-actions, .desktop-tools { display: flex; gap: 8px; min-width: 0; align-items: center; }
+    .mobile-main-menu { display: none; }
     .tool-group { display: flex; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
     .tool-group:last-child { border-right: 0; }
     .btn {
@@ -95,6 +96,7 @@
       width: min(180px, 19vw); min-height: 40px; padding: 0 30px 0 11px;
       background: rgba(20, 34, 67, .72); border-radius: 11px; cursor: pointer;
     }
+    .map-switcher .tool-menu > summary::after { display: none; }
 
     .auth-gate {
       position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; padding: 20px;
@@ -126,8 +128,23 @@
       background: rgba(8, 14, 31, .98); box-shadow: var(--shadow); backdrop-filter: blur(18px);
     }
     .tool-menu-panel .btn { width: 100%; justify-content: flex-start; }
+    .tool-menu-panel .btn .label { display: inline; }
+    .tool-menu-panel .btn.active::after { content: 'Ativo'; margin-left: auto; color: var(--mint); font-size: 10px; font-weight: 850; text-transform: uppercase; }
     .menu-title { padding: 5px 8px 2px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .menu-divider { height: 1px; margin: 3px 2px; background: var(--line); }
+
+    .photo-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: rgba(16,31,57,.42); }
+    .photo-editor-main { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 12px; align-items: center; }
+    .photo-preview { width: 78px; height: 78px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: rgba(20,42,77,.8); border: 1px solid rgba(122,161,213,.28); color: var(--muted); font-size: 27px; }
+    .photo-preview img { width: 100%; height: 100%; object-fit: contain; opacity: .82; }
+    .photo-copy strong { display: block; font-size: 13px; }
+    .photo-copy span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .photo-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .photo-actions .btn { min-height: 38px; }
+    .photo-actions .photo-remove[hidden] { display: none; }
+    .photo-progress { height: 5px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.08); }
+    .photo-progress[hidden] { display: none; }
+    .photo-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--mint)); transition: width .15s ease; }
 
     .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr); }
     .viewport { position: relative; min-width: 0; overflow: hidden; cursor: grab; }
@@ -196,6 +213,7 @@
       border: 1px solid color-mix(in srgb, var(--node-color) 52%, transparent);
       overflow: hidden;
     }
+    .node-icon img { width: 100%; height: 100%; object-fit: contain; opacity: .82; }
     .node-title { min-width: 0; }
     .node-title strong { display: -webkit-box; font-size: 14px; line-height: 1.18; overflow: hidden; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
     .node-title span { display: block; margin-top: 3px; color: var(--node-color); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -254,7 +272,7 @@
     .link-card-actions .btn { min-height: 34px; padding: 6px 9px; }
     .device-list-card { border: 1px solid var(--line); border-radius: 13px; padding: 11px; background: rgba(16,31,57,.45); display: grid; grid-template-columns: 52px minmax(0,1fr) auto; gap: 11px; align-items: center; }
     .device-list-photo { width: 52px; height: 52px; border-radius: 11px; display: grid; place-items: center; overflow: hidden; background: rgba(20,42,77,.8); border: 1px solid rgba(122,161,213,.25); font-size: 22px; }
-    .device-list-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .device-list-photo img { width: 100%; height: 100%; object-fit: contain; opacity: .82; }
     .device-list-info { min-width: 0; }
     .device-list-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
     .device-list-info span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -281,11 +299,17 @@
       .auth-btn { width: 42px; padding: 0; }
     }
 
+    @media (max-width: 1320px) {
+      .desktop-tools > .btn .label, .desktop-tools > .tool-menu > summary .label { display: none; }
+      .desktop-tools > .btn, .desktop-tools > .tool-menu > summary { padding-left: 11px; padding-right: 11px; }
+    }
+
     @media (max-width: 980px) {
       .brand { min-width: auto; }
       .brand p { display: none; }
       .btn .label { display: none; }
       .btn { padding: 0 11px; }
+      .desktop-tools { gap: 6px; }
     }
 
     @media (max-width: 680px) {
@@ -294,17 +318,19 @@
       .brand { min-width: 0; }
       .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
       .brand h1 { font-size: 15px; }
-      .toolbar { width: 100%; display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; overflow: visible; padding: 0; }
-      .map-switcher { width: 100%; padding: 0; border-right: 0; }
+      .toolbar { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; overflow: visible; padding: 0; }
+      .map-switcher { grid-column: 1 / -1; width: 100%; padding: 0; border-right: 0; }
       .map-switcher select { width: auto; min-width: 0; flex: 1; font-size: 15px; }
-      .mobile-tools { width: 100%; overflow-x: auto; overflow-y: hidden; padding: 0 0 5px; scrollbar-width: thin; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
-      .tool-group { flex: 0 0 auto; scroll-snap-align: start; }
-      .mobile-tools > .btn, .mobile-tools > details { flex: 0 0 auto; }
+      .primary-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+      .desktop-tools { display: none; }
+      .mobile-main-menu { display: block; }
       .toolbar .btn { min-height: 44px; padding: 0 12px; }
-      .toolbar .btn .label { display: inline; }
+      .primary-actions .btn .label, .mobile-main-menu > summary .label { display: inline; }
       .account-area { position: absolute; top: 8px; right: 10px; }
       .auth-btn { width: 40px; min-height: 40px; }
       .tool-menu-panel { position: fixed; top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: calc(100dvh - 20px); overflow: auto; }
+      .mobile-main-menu > summary { min-width: 48px; }
+      .mobile-main-menu .tool-menu-panel { grid-template-columns: 1fr; }
       .viewport { min-height: 0; touch-action: none; }
       .sidepanel { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 14px max(14px, env(safe-area-inset-bottom)); transform: translateX(101%); border-left: 0; }
       .sidepanel.open { transform: translateX(0); }
@@ -325,6 +351,8 @@
       .device-list-card { grid-template-columns: 58px minmax(0,1fr); }
       .device-list-card .btn { grid-column: 1 / -1; min-height: 46px; }
       .device-list-photo { width: 58px; height: 58px; }
+      .photo-editor-main { grid-template-columns: 66px minmax(0,1fr); }
+      .photo-preview { width: 66px; height: 66px; }
       .zoom-controls { left: 10px; bottom: 10px; }
       dialog { max-height: 90vh; overflow: auto; }
     }
@@ -349,43 +377,83 @@
         <div class="map-switcher">
           <select id="mapSelect" aria-label="Mapa atual" title="Selecionar mapa"></select>
           <button class="btn icon" id="newMapBtn" title="Criar novo mapa" aria-label="Criar novo mapa">＋</button>
-          <button class="btn icon" id="renameMapBtn" title="Renomear mapa" aria-label="Renomear mapa">✎</button>
+          <details class="tool-menu" id="mapMenu">
+            <summary class="btn icon" title="Opções do mapa" aria-label="Opções do mapa">⋯</summary>
+            <div class="tool-menu-panel">
+              <div class="menu-title">Mapa atual</div>
+              <button class="btn" id="renameMapBtn" title="Renomear mapa"><span>✎</span><span class="label">Renomear mapa</span></button>
+              <button class="btn danger" id="deleteMapBtn" title="Excluir o mapa atual"><span>⌫</span><span class="label">Excluir mapa atual</span></button>
+            </div>
+          </details>
         </div>
-        <div class="mobile-tools">
-        <div class="tool-group">
+        <div class="primary-actions">
           <button class="btn primary" id="addDevice"><span>＋</span><span class="label">Equipamento</span></button>
           <button class="btn mint" id="addLink"><span>⌁</span><span class="label">Conexão</span></button>
         </div>
-        <div class="tool-group">
-          <button class="btn" id="manageDevices" title="Listar e editar equipamentos"><span>☷</span><span class="label">Inventário</span></button>
-          <button class="btn" id="manageLinks" title="Ver, editar ou excluir conexões"><span>☷</span><span class="label">Conexões</span></button>
-        </div>
-        <div class="tool-group">
+        <div class="desktop-tools">
+          <details class="tool-menu" id="manageMenu">
+            <summary class="btn" title="Gerenciar equipamentos e conexões"><span>☷</span><span class="label">Gerenciar</span></summary>
+            <div class="tool-menu-panel">
+              <div class="menu-title">Cadastros</div>
+              <button class="btn" id="manageDevices" title="Listar e editar equipamentos"><span>▣</span><span class="label">Equipamentos</span></button>
+              <button class="btn" id="manageLinks" title="Ver, editar ou excluir conexões"><span>⌁</span><span class="label">Conexões</span></button>
+            </div>
+          </details>
           <button class="btn" id="undoBtn" title="Desfazer último movimento" disabled><span>↶</span><span class="label">Desfazer</span></button>
-          <button class="btn" id="autoLayout" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar</span></button>
-          <button class="btn active" id="toggle3d" title="Alternar profundidade visual"><span>◈</span><span class="label">3D</span></button>
+          <details class="tool-menu" id="viewMenu">
+            <summary class="btn" title="Organização e aparência"><span>◈</span><span class="label">Visualização</span></summary>
+            <div class="tool-menu-panel">
+              <div class="menu-title">Aparência e posição</div>
+              <button class="btn active" id="toggle3d" title="Alternar profundidade visual"><span>◈</span><span class="label">Modo 3D</span></button>
+              <button class="btn" id="autoLayout" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar automaticamente</span></button>
+              <button class="btn" id="saveLayout" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar posições atuais</span></button>
+              <button class="btn" id="restoreLayout" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Restaurar posições salvas</span></button>
+            </div>
+          </details>
+          <details class="tool-menu" id="reportMenu">
+            <summary class="btn" title="Visualizar e exportar relatórios"><span>▤</span><span class="label">Relatórios</span></summary>
+            <div class="tool-menu-panel">
+              <div class="menu-title">Documentação</div>
+              <button class="btn" id="completeReportBtn" title="Ver todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Visualizar relatório completo</span></button>
+              <button class="btn" id="printBtn" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar diagrama em PDF</span></button>
+            </div>
+          </details>
+          <details class="tool-menu" id="fileMenu">
+            <summary class="btn" title="Backup e arquivos"><span>⇩</span><span class="label">Arquivo</span></summary>
+            <div class="tool-menu-panel">
+              <div class="menu-title">Backup e segurança</div>
+              <button class="btn primary" id="exportBtn" title="Baixar cópia de segurança"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
+              <button class="btn" id="importBtn" title="Restaurar uma cópia de segurança"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
+              <div class="menu-divider"></div>
+              <div class="menu-title">Opção avançada</div>
+              <button class="btn" id="downloadHtmlBtn" title="Baixar uma cópia portátil do mapa"><span>⬇</span><span class="label">Exportar cópia em HTML</span></button>
+              <input id="importFile" type="file" accept="application/json,.json" hidden>
+            </div>
+          </details>
+          <button class="btn icon" id="helpBtn" title="Como usar">?</button>
         </div>
-        <details class="tool-menu" id="fileMenu">
-          <summary class="btn" title="Salvar, restaurar e exportar"><span>⇩</span><span class="label">Salvar e exportar</span></summary>
+        <details class="tool-menu mobile-main-menu" id="mobileMainMenu">
+          <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
           <div class="tool-menu-panel">
-            <div class="menu-title">Posições do mapa</div>
-            <button class="btn" id="saveLayout" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar posições como padrão</span></button>
-            <button class="btn" id="restoreLayout" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Restaurar posições padrão</span></button>
+            <div class="menu-title">Gerenciar</div>
+            <button class="btn" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
+            <button class="btn" data-proxy="manageLinks"><span>⌁</span><span class="label">Conexões</span></button>
+            <button class="btn" data-proxy="undoBtn"><span>↶</span><span class="label">Desfazer</span></button>
             <div class="menu-divider"></div>
-            <div class="menu-title">Mapa atual</div>
-            <button class="btn danger" id="deleteMapBtn" title="Excluir o mapa atual"><span>⌫</span><span class="label">Excluir mapa atual</span></button>
+            <div class="menu-title">Visualização</div>
+            <button class="btn" data-proxy="toggle3d"><span>◈</span><span class="label">Modo 3D</span></button>
+            <button class="btn" data-proxy="autoLayout"><span>✦</span><span class="label">Organizar automaticamente</span></button>
+            <button class="btn" data-proxy="saveLayout"><span>★</span><span class="label">Salvar posições atuais</span></button>
+            <button class="btn" data-proxy="restoreLayout"><span>↺</span><span class="label">Restaurar posições salvas</span></button>
             <div class="menu-divider"></div>
-            <div class="menu-title">Arquivos e relatórios</div>
-            <button class="btn primary" id="downloadHtmlBtn" title="Baixar este mapa com todos os dados dentro"><span>⬇</span><span class="label">Salvar mapa em HTML</span></button>
-            <button class="btn" id="exportBtn" title="Baixar backup"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
-            <button class="btn" id="importBtn" title="Abrir backup"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
-            <button class="btn" id="printBtn" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar PDF organizado</span></button>
-            <button class="btn" id="completeReportBtn" title="Exportar todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Abrir relatório completo</span></button>
-            <input id="importFile" type="file" accept="application/json,.json" hidden>
+            <div class="menu-title">Relatórios e arquivo</div>
+            <button class="btn" data-proxy="completeReportBtn"><span>☷</span><span class="label">Relatório completo</span></button>
+            <button class="btn" data-proxy="printBtn"><span>▣</span><span class="label">Exportar PDF</span></button>
+            <button class="btn" data-proxy="exportBtn"><span>⇩</span><span class="label">Baixar backup</span></button>
+            <button class="btn" data-proxy="importBtn"><span>⇧</span><span class="label">Restaurar backup</span></button>
+            <button class="btn" data-proxy="helpBtn"><span>?</span><span class="label">Ajuda</span></button>
           </div>
         </details>
-        <button class="btn icon" id="helpBtn" title="Como usar">?</button>
-        </div>
       </nav>
       <div class="account-area">
         <span class="save-state" id="saveState">Aguardando login</span>
@@ -435,20 +503,19 @@
       <ol>
         <li>Arraste os equipamentos pelo cabeçalho.</li>
         <li>Se mover algo por engano, use <b>Desfazer</b> ou <b>Ctrl+Z</b>.</li>
-        <li>Quando terminar de posicionar tudo do seu jeito, clique em <b>Salvar padrão</b>. Depois, <b>Padrão</b> restaura exatamente essas posições.</li>
-        <li><b>Organizar</b> continua fazendo uma organização automática; ela também pode ser desfeita.</li>
-        <li><b>PDF organizado</b> prepara uma disposição limpa apenas para exportar e depois devolve os equipamentos às posições anteriores.</li>
-        <li><b>Relatório completo</b> cria uma lista com todos os dados de cada equipamento e as conexões cadastradas.</li>
+        <li>Em <b>Visualização</b>, você pode organizar automaticamente, ativar o 3D e salvar ou restaurar as posições do mapa.</li>
+        <li>Em <b>Relatórios</b>, abra a documentação completa ou exporte o diagrama organizado em PDF.</li>
+        <li>Em <b>Arquivo</b>, baixe ou restaure uma cópia de segurança em JSON.</li>
         <li>Clique no lápis para editar a identificação, o local, o IP, o acesso e as observações do equipamento.</li>
+        <li>Na ficha do equipamento, use <b>Adicionar foto</b>. A imagem será comprimida e salva no Firebase Storage.</li>
         <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
         <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
-        <li>No celular, use <b>Inventário</b> para abrir uma lista e lançar os dados com campos maiores.</li>
+        <li>No celular, use <b>Menu → Equipamentos</b> para abrir a lista e lançar os dados com campos maiores.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
-        <li>Use <b>Salvar HTML</b> para baixar uma cópia sem senhas, com equipamentos, conexões e posições.</li>
-        <li>Use <b>Backup</b> para criar também uma cópia dos dados em formato JSON.</li>
+        <li>A opção avançada <b>Exportar cópia em HTML</b> continua disponível dentro de Arquivo.</li>
       </ol>
-      <p><b>Privacidade:</b> a senha de cada equipamento fica somente neste navegador e não é enviada ao Firestore, HTML, backup ou relatório.</p>
+      <p><b>Privacidade:</b> a senha de cada equipamento fica somente neste navegador e não é enviada ao Firestore, Storage, HTML, backup ou relatório.</p>
       <div class="dialog-actions"><button class="btn primary" id="closeHelp">Entendi</button></div>
     </div>
   </dialog>
@@ -456,6 +523,7 @@
   <script src="/__/firebase/8.10.1/firebase-app.js"></script>
   <script src="/__/firebase/8.10.1/firebase-auth.js"></script>
   <script src="/__/firebase/8.10.1/firebase-firestore.js"></script>
+  <script src="/__/firebase/8.10.1/firebase-storage.js"></script>
   <script src="/__/firebase/init.js"></script>
   <script>
     'use strict';
@@ -507,6 +575,7 @@
     let authUser = null;
     let auth = null;
     let db = null;
+    let storage = null;
     let localOnlyMode = false;
     let cloudUnsubscribe = null;
     let cloudSaveTimer = null;
@@ -593,6 +662,7 @@
           ipMode: ['dhcp','reservation','static'].includes(raw.ipMode) ? raw.ipMode
             : (/dhcp/i.test(String(raw.lan || '')) ? 'dhcp' : (/fixo|est[aá]tico/i.test(String(raw.lan || '')) ? 'static' : '')),
           username: String(raw.username || ''), notes: String(raw.notes || ''), lastMaintenance: String(raw.lastMaintenance || ''),
+          photoUrl: String(raw.photoUrl || ''), photoPath: String(raw.photoPath || ''),
           x: Number.isFinite(Number(raw.x)) ? Number(raw.x) : 620,
           y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : 430
         };
@@ -638,8 +708,8 @@
         $('saveState').textContent = message;
         return true;
       } catch (error) {
-        $('saveState').textContent = 'Use Salvar HTML: armazenamento cheio';
-        toast('O navegador não conseguiu guardar tudo. Use Salvar HTML.');
+        $('saveState').textContent = 'Armazenamento local cheio';
+        toast('O navegador não conseguiu guardar tudo. Baixe um backup em Arquivo.');
         return false;
       }
     }
@@ -664,6 +734,7 @@
           firmware:String(device.firmware || ''), wanIp:String(device.wanIp || ''), lan:String(device.lan || ''),
           ipMode:String(device.ipMode || ''), username:String(device.username || ''), notes:String(device.notes || ''),
           lastMaintenance:String(device.lastMaintenance || ''),
+          photoUrl:String(device.photoUrl || ''), photoPath:String(device.photoPath || ''),
           x:Number(device.x) || 0, y:Number(device.y) || 0
         })),
         links: source.links.map(link => ({
@@ -689,6 +760,7 @@
       }));
       select.value = currentMapId;
       $('deleteMapBtn').disabled = mapsMeta.length <= 1;
+      syncMobileActions();
     }
     function scheduleCloudSave() {
       if (!authUser || !cloudReady || localOnlyMode) return;
@@ -803,6 +875,10 @@
       const current = mapsMeta.find(map => map.id === currentMapId);
       if (!confirm(`Excluir o mapa “${current?.name || state.mapName}”? Essa ação não pode ser desfeita.`)) return;
       stopCloudListener(); clearTimeout(cloudSaveTimer);
+      if (authUser && storage) {
+        const photoPaths = state.devices.map(device => device.photoPath).filter(Boolean);
+        await Promise.allSettled(photoPaths.map(path => storage.ref(path).delete()));
+      }
       if (authUser && cloudReady) await mapCollection().doc(currentMapId).delete();
       localStorage.removeItem(localStateKey(currentMapId)); deleteLocalPasswordsForMap(currentMapId);
       mapsMeta = mapsMeta.filter(map => map.id !== currentMapId); saveLocalMaps();
@@ -838,7 +914,7 @@
         $('authError').textContent = 'Login indisponível fora do Firebase Hosting. Você ainda pode usar o modo local.';
         updateAuthUi(null); return;
       }
-      auth = firebase.auth(); db = firebase.firestore();
+      auth = firebase.auth(); db = firebase.firestore(); storage = firebase.storage();
       auth.onAuthStateChanged(async user => {
         authUser = user || null; cloudReady = false; stopCloudListener(); updateAuthUi(authUser);
         if (authUser) {
@@ -874,6 +950,15 @@
         undoBtn.title = undoStack.length ? `Desfazer: ${undoStack[undoStack.length - 1].label}` : 'Nada para desfazer';
       }
       if (restoreBtn) restoreBtn.disabled = !state.layoutPreset || Object.keys(state.layoutPreset).length === 0;
+      syncMobileActions();
+    }
+    function syncMobileActions() {
+      document.querySelectorAll('[data-proxy]').forEach(proxy => {
+        const target = $(proxy.dataset.proxy);
+        if (!target) return;
+        proxy.disabled = Boolean(target.disabled);
+        proxy.classList.toggle('active', target.classList.contains('active'));
+      });
     }
     function undoLastMove() {
       const step = undoStack.pop();
@@ -910,6 +995,7 @@
     function render() {
       board.classList.toggle('mode-3d', state.mode3d !== false);
       $('toggle3d').classList.toggle('active', state.mode3d !== false);
+      syncMobileActions();
       renderNodes();
       renderLinks();
       updateTransform();
@@ -930,7 +1016,14 @@
         head.className = 'node-head';
         const icon = document.createElement('div');
         icon.className = 'node-icon';
-        icon.textContent = info.icon;
+        if (device.photoUrl) {
+          const image = document.createElement('img');
+          image.src = device.photoUrl;
+          image.alt = `Foto de ${deviceDisplayName(device)}`;
+          image.loading = 'lazy';
+          image.onerror = () => { icon.replaceChildren(document.createTextNode(info.icon)); };
+          icon.appendChild(image);
+        } else icon.textContent = info.icon;
         const title = document.createElement('div'); title.className = 'node-title';
         const strong = document.createElement('strong'); strong.textContent = deviceDisplayName(device);
         const type = document.createElement('span'); type.textContent = `${info.label}${device.displayName && device.name ? ' · ' + device.name : ''}`;
@@ -1046,10 +1139,97 @@
       renderNodes();
     }
 
+    function compressEquipmentPhoto(file) {
+      return new Promise((resolve, reject) => {
+        if (!file?.type?.startsWith('image/')) return reject(new Error('Escolha um arquivo de imagem.'));
+        if (file.size > 12 * 1024 * 1024) return reject(new Error('A foto deve ter no máximo 12 MB.'));
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const maxSide = 1200;
+            const ratio = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+            const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+            const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
+            context.drawImage(image, 0, 0, width, height);
+            canvas.toBlob(blob => {
+              URL.revokeObjectURL(objectUrl);
+              if (blob) resolve(blob); else reject(new Error('Não foi possível preparar a foto.'));
+            }, 'image/jpeg', .82);
+          } catch (error) { URL.revokeObjectURL(objectUrl); reject(error); }
+        };
+        image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('A imagem não pôde ser aberta.')); };
+        image.src = objectUrl;
+      });
+    }
+
+    async function uploadEquipmentPhoto(device, file, form) {
+      if (!authUser || !storage || localOnlyMode) return toast('Entre com o Google para sincronizar fotos');
+      const chooseButton = form.querySelector('.choosePhoto');
+      const progress = form.querySelector('.photo-progress');
+      const progressBar = progress.querySelector('span');
+      chooseButton.disabled = true; progress.hidden = false; progressBar.style.width = '4%';
+      try {
+        const blob = await compressEquipmentPhoto(file);
+        const path = `users/${authUser.uid}/equipment-photos/${currentMapId}/${device.id}.jpg`;
+        const upload = storage.ref(path).put(blob, {
+          contentType:'image/jpeg',
+          cacheControl:'public,max-age=86400',
+          customMetadata:{ mapId:currentMapId, deviceId:device.id }
+        });
+        await new Promise((resolve, reject) => upload.on('state_changed', snapshot => {
+          const percent = Math.max(4, Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100));
+          progressBar.style.width = `${percent}%`;
+        }, reject, resolve));
+        device.photoPath = path;
+        device.photoUrl = await storage.ref(path).getDownloadURL();
+        saveState('Foto salva e sincronizada'); render();
+        if (selected?.kind === 'device' && selected.id === device.id) openDevice(device.id);
+        toast('Foto do equipamento salva');
+      } catch (error) {
+        console.error(error);
+        toast(error.message || 'Não foi possível enviar a foto');
+      } finally {
+        chooseButton.disabled = false; progress.hidden = true;
+      }
+    }
+
+    async function removeEquipmentPhoto(device, reopen = true) {
+      if (!device.photoUrl && !device.photoPath) return;
+      if (!authUser || !storage || localOnlyMode) return toast('Entre com o Google para remover a foto sincronizada');
+      if (!confirm('Remover a foto deste equipamento?')) return;
+      const path = device.photoPath;
+      try {
+        if (path) await storage.ref(path).delete();
+      } catch (error) {
+        if (error.code !== 'storage/object-not-found') { console.error(error); return toast('Não foi possível remover a foto'); }
+      }
+      device.photoUrl = ''; device.photoPath = '';
+      saveState('Foto removida'); render();
+      if (reopen && selected?.kind === 'device' && selected.id === device.id) openDevice(device.id);
+      toast('Foto removida');
+    }
+
     function deviceForm(device) {
       const form = document.createElement('form'); form.className = 'form';
       form.innerHTML = `
         <div class="form-section-title">Identificação</div>
+        <div class="photo-editor">
+          <div class="photo-editor-main">
+            <div class="photo-preview" aria-label="Foto do equipamento"></div>
+            <div class="photo-copy"><strong>Foto do equipamento</strong><span>A imagem é comprimida e sincronizada entre seus dispositivos. No diagrama ela aparece suavemente transparente.</span></div>
+          </div>
+          <div class="photo-actions">
+            <button class="btn choosePhoto" type="button">＋ ${device.photoUrl ? 'Trocar foto' : 'Adicionar foto'}</button>
+            <button class="btn danger photo-remove" type="button" ${device.photoUrl ? '' : 'hidden'}>Excluir foto</button>
+            <input class="photoUpload" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          </div>
+          <div class="photo-progress" hidden><span></span></div>
+        </div>
         <label>Identificação amigável<input name="displayName" maxlength="80" placeholder="Ex.: Câmera Fundos ou Roteador Quarto"></label>
         <div class="form-row">
           <label>Hostname<input name="name" required maxlength="60" placeholder="Ex.: cam-fundos"></label>
@@ -1085,6 +1265,19 @@
         </details>
         <div class="hint"><b>Privacidade:</b> a senha fica somente neste navegador. Os demais dados sincronizam com sua conta Google.</div>
         <div class="form-actions"><button class="btn danger deleteDevice" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
+      const preview = form.querySelector('.photo-preview');
+      if (device.photoUrl) {
+        const image = document.createElement('img'); image.src = device.photoUrl; image.alt = `Foto de ${deviceDisplayName(device)}`;
+        image.onerror = () => { preview.replaceChildren(document.createTextNode(infoFor(device.type).icon)); };
+        preview.appendChild(image);
+      } else preview.textContent = infoFor(device.type).icon;
+      const choosePhoto = form.querySelector('.choosePhoto');
+      const photoUpload = form.querySelector('.photoUpload');
+      choosePhoto.disabled = !authUser || localOnlyMode;
+      choosePhoto.title = choosePhoto.disabled ? 'Entre com o Google para enviar fotos' : 'Escolher foto do equipamento';
+      choosePhoto.onclick = () => photoUpload.click();
+      photoUpload.onchange = () => { const file = photoUpload.files[0]; if (file) uploadEquipmentPhoto(device, file, form); photoUpload.value = ''; };
+      form.querySelector('.photo-remove').onclick = () => removeEquipmentPhoto(device);
       const editableKeys = ['displayName','name','location','type','lan','ipMode','mode','username','lastMaintenance','notes','brand','model','mac','wanIp','vlan','firmware'];
       for (const key of editableKeys) form.elements[key].value = device[key] || '';
       form.elements.password.value = getLocalPassword(device.id);
@@ -1110,6 +1303,9 @@
       form.querySelector('.reveal').onclick = () => { const input = form.elements.password; input.type = input.type === 'password' ? 'text' : 'password'; };
       form.querySelector('.deleteDevice').onclick = () => {
         if (!confirm(`Excluir “${deviceDisplayName(device)}” e suas conexões?`)) return;
+        if (device.photoPath && authUser && storage) storage.ref(device.photoPath).delete().catch(error => {
+          if (error.code !== 'storage/object-not-found') console.warn('Não foi possível excluir a foto do Storage.', error);
+        });
         state.devices = state.devices.filter(d => d.id !== device.id);
         state.links = state.links.filter(l => l.from !== device.id && l.to !== device.id);
         setLocalPassword(device.id, '');
@@ -1163,7 +1359,11 @@
         const info = infoFor(device.type);
         const card = document.createElement('div'); card.className = 'device-list-card';
         const photo = document.createElement('div'); photo.className = 'device-list-photo';
-        photo.textContent = info.icon;
+        if (device.photoUrl) {
+          const image = document.createElement('img'); image.src = device.photoUrl; image.alt = `Foto de ${deviceDisplayName(device)}`; image.loading = 'lazy';
+          image.onerror = () => { photo.replaceChildren(document.createTextNode(info.icon)); };
+          photo.appendChild(image);
+        } else photo.textContent = info.icon;
         const text = document.createElement('div'); text.className = 'device-list-info';
         const name = document.createElement('strong'); name.textContent = deviceDisplayName(device);
         const details = document.createElement('span');
@@ -1272,7 +1472,7 @@
 
     function addDevice() {
       const id = uid('device');
-      state.devices.push({ id, name:'novo-equipamento', displayName:'Novo equipamento', type:'router', mode:'', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'', ipMode:'', username:'', notes:'', lastMaintenance:'', x:620, y:430 });
+      state.devices.push({ id, name:'novo-equipamento', displayName:'Novo equipamento', type:'router', mode:'', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'', ipMode:'', username:'', notes:'', lastMaintenance:'', photoUrl:'', photoPath:'', x:620, y:430 });
       render(); openDevice(id, true); saveState();
     }
     function addLink() {
@@ -1414,7 +1614,10 @@
       const shown = value => value === undefined || value === null || value === '' ? '—' : escapeHtml(String(value));
       const deviceCards = state.devices.map((device, index) => {
         const info = infoFor(device.type);
-        const image = `<div class="device-photo placeholder">${escapeHtml(info.icon)}</div>`;
+        const safePhotoUrl = /^https:\/\//i.test(device.photoUrl || '') ? escapeAttr(device.photoUrl) : '';
+        const image = safePhotoUrl
+          ? `<img class="device-photo" src="${safePhotoUrl}" alt="Foto de ${escapeAttr(deviceDisplayName(device))}">`
+          : `<div class="device-photo placeholder">${escapeHtml(info.icon)}</div>`;
         const rows = [
           ['Identificação amigável', device.displayName],
           ['Hostname', device.name],
@@ -1511,6 +1714,12 @@
         localOnlyMode = false; updateAuthUi(null); await signInGoogle();
       }
     };
+    document.querySelectorAll('[data-proxy]').forEach(proxy => {
+      proxy.addEventListener('click', () => {
+        const target = $(proxy.dataset.proxy);
+        if (target && !target.disabled) target.click();
+      });
+    });
     document.querySelectorAll('.tool-menu-panel .btn').forEach(button => {
       button.addEventListener('click', () => button.closest('details')?.removeAttribute('open'));
     });
