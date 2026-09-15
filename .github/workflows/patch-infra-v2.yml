@@ -1,4 +1,4 @@
-name: Patch infraestrutura v2
+name: Validar infraestrutura
 
 on:
   push:
@@ -7,26 +7,14 @@ on:
       - '.github/workflows/patch-infra-v2.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Aplicar patch
-        run: python .github/scripts/patch_infra_v4.py
-
-      - name: Commitar alterações
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add infraestrutura/index.html
-          if git diff --cached --quiet; then
-            echo "Nenhuma alteração necessária."
-            exit 0
-          fi
-          git commit -m "feat(infraestrutura): conexões, PDF e backup de configuração"
-          git push
+      - name: Validar HTML e JavaScript
+        run: python .github/scripts/validate_infra.py
