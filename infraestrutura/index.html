@@ -843,6 +843,34 @@
       const text = String(value || '').trim();
       return Boolean(text) && !/^(dhcp|pppoe|est[aá]tico|fixo)$/i.test(text) && !/^\d{1,3}(\.\d{1,3}){3}/.test(text);
     }
+    function normalizedLinkText(value) {
+      return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+    function linkDedupeKey(link) {
+      const from = String(link?.from || '');
+      const to = String(link?.to || '');
+      const type = link?.type === 'cable' ? 'cable' : 'wireless';
+      if (type === 'wireless') return `${from}|${to}|wireless`;
+      return `${from}|${to}|cable|${normalizedLinkText(link?.fromPort)}|${normalizedLinkText(link?.toPort)}`;
+    }
+    function dedupeLinks(links) {
+      const unique = new Map();
+      for (const raw of Array.isArray(links) ? links : []) {
+        const link = { ...raw };
+        const key = linkDedupeKey(link);
+        const current = unique.get(key);
+        if (!current) {
+          unique.set(key, link);
+          continue;
+        }
+        for (const field of ['label','notes','fromPort','toPort']) {
+          if (!String(current[field] || '').trim() && String(link[field] || '').trim()) current[field] = link[field];
+        }
+        if ((!current.color || current.color === '#38d8ff') && link.color && link.color !== '#38d8ff') current.color = link.color;
+      }
+      return [...unique.values()];
+    }
+
     function migrateState(input, mapName = '') {
       const source = validState(input) ? clone(input) : clone(DEFAULT_STATE);
       const legacyPorts = new Map();
@@ -868,12 +896,12 @@
           y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : 430
         };
       });
-      source.links = source.links.map(raw => ({
+      source.links = dedupeLinks(source.links.map(raw => ({
         id: String(raw.id || uid('link')), from: String(raw.from || ''), to: String(raw.to || ''),
         fromPort: String(raw.fromPort || ''), toPort: String(raw.toPort || ''),
         type: raw.type === 'cable' ? 'cable' : 'wireless', label: String(raw.label || ''), notes: String(raw.notes || ''),
         color: /^#[0-9a-f]{6}$/i.test(raw.color || '') ? raw.color : '#38d8ff'
-      })).filter(link => source.devices.some(d => d.id === link.from) && source.devices.some(d => d.id === link.to));
+      })).filter(link => source.devices.some(d => d.id === link.from) && source.devices.some(d => d.id === link.to)));
       for (const [deviceId, port] of legacyPorts) {
         const attached = source.links.filter(link => link.from === deviceId || link.to === deviceId);
         if (attached.length !== 1) continue;
@@ -1037,8 +1065,15 @@
           .sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
         if (!mapsMeta.some(map => map.id === currentMapId)) currentMapId = mapsMeta[0].id;
         const doc = await collection.doc(currentMapId).get();
-        applyMap(doc.data(), currentMapId, mapsMeta.find(map => map.id === currentMapId)?.name);
+        const cloudData = doc.data();
+        const incomingLinkCount = Array.isArray(cloudData?.links) ? cloudData.links.length : 0;
+        applyMap(cloudData, currentMapId, mapsMeta.find(map => map.id === currentMapId)?.name);
         cloudReady = true;
+        if (state.links.length < incomingLinkCount) {
+          const removedLinks = incomingLinkCount - state.links.length;
+          await saveCloudNow();
+          toast(`${removedLinks} conexão(ões) duplicada(s) removida(s)`);
+        }
       }
       saveLocalMaps(); renderMapSwitcher(); watchCurrentMap();
       $('saveState').textContent = 'Salvo neste navegador e na nuvem';
@@ -1312,7 +1347,7 @@
 
     function renderLinks() {
       linksEl.replaceChildren();
-      for (const link of state.links) {
+      for (const link of dedupeLinks(state.links)) {
         const a = state.devices.find(d => d.id === link.from);
         const b = state.devices.find(d => d.id === link.to);
         if (!a || !b) continue;
@@ -1832,7 +1867,7 @@
         setLocalPassword(device.id, form.elements.password.value);
         saveState(); render(); openDevice(device.id); toast('Equipamento salvo');
       };
-      const relatedLinks = state.links.filter(link => link.from === device.id || link.to === device.id);
+      const relatedLinks = dedupeLinks(state.links.filter(link => link.from === device.id || link.to === device.id));
       if (relatedLinks.length) {
         const sectionTitle = document.createElement('div');
         sectionTitle.className = 'form-section-title';
@@ -1941,7 +1976,7 @@
       if (!state.links.length) {
         wrap.innerHTML = '<div class="empty-state" style="min-height:180px"><div><span class="big">⌁</span><p>Nenhuma conexão cadastrada.</p></div></div>';
       } else {
-        for (const link of state.links) {
+        for (const link of dedupeLinks(state.links)) {
           const fromDevice = state.devices.find(d => d.id === link.from);
           const toDevice = state.devices.find(d => d.id === link.to);
           const from = fromDevice ? deviceDisplayName(fromDevice) : 'Equipamento removido';
@@ -2016,6 +2051,16 @@
         event.preventDefault();
         if (form.elements.from.value === form.elements.to.value) return toast('Escolha dois equipamentos diferentes');
         for (const key of linkKeys) link[key] = form.elements[key].value.trim();
+        const duplicate = state.links.find(other => other.id !== link.id && linkDedupeKey(other) === linkDedupeKey(link));
+        if (duplicate) {
+          for (const field of ['label','notes','fromPort','toPort']) {
+            if (!String(duplicate[field] || '').trim() && String(link[field] || '').trim()) duplicate[field] = link[field];
+          }
+          if ((!duplicate.color || duplicate.color === '#38d8ff') && link.color && link.color !== '#38d8ff') duplicate.color = link.color;
+          state.links = state.links.filter(other => other.id !== link.id);
+          saveState(); render(); openLink(duplicate.id);
+          return toast('Essa conexão já existia; os dados foram reunidos em um único cadastro');
+        }
         saveState(); render(); openLink(link.id); toast('Conexão salva');
       };
       updatePortLabels();
@@ -2253,7 +2298,7 @@
           <dl>${rows}</dl>
         </article>`;
       }).join('');
-      const connectionRows = state.links.map((link, index) => {
+      const connectionRows = dedupeLinks(state.links).map((link, index) => {
         const fromDevice = state.devices.find(device => device.id === link.from);
         const toDevice = state.devices.find(device => device.id === link.to);
         const from = fromDevice ? deviceDisplayName(fromDevice) : 'Equipamento removido';
