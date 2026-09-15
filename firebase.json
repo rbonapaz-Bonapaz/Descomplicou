@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "target": "infraestrutura",
+    "public": "infraestrutura",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
+  }
+}
