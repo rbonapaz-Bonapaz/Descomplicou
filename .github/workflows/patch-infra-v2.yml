@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Aplicar patch
-        run: python .github/scripts/patch_infra_v2.py
+        run: python .github/scripts/patch_infra_v3.py
 
       - name: Commitar alterações
         run: |
