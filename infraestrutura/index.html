@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mapa de Rede 3D</title>
   <meta name="description" content="Editor visual portátil para diagramas de rede.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23071020'/%3E%3Cpath d='M14 42h36M20 34l12-12 12 12' fill='none' stroke='%2338d8ff' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='42' r='5' fill='%2359f1b7'/%3E%3Ccircle cx='50' cy='42' r='5' fill='%2359f1b7'/%3E%3Ccircle cx='32' cy='22' r='5' fill='%23ffb44a'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#071020">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23071020'/%3E%3Cpath d='M32 19v8M19 32h8M37 32h8M32 37v8' fill='none' stroke='%2338d8ff' stroke-width='4' stroke-linecap='round'/%3E%3Crect x='27' y='27' width='10' height='10' rx='3' fill='%2359f1b7'/%3E%3Ccircle cx='32' cy='14' r='5' fill='%2338d8ff'/%3E%3Ccircle cx='50' cy='32' r='5' fill='%23ffb44a'/%3E%3Ccircle cx='32' cy='50' r='5' fill='%23966bff'/%3E%3Ccircle cx='14' cy='32' r='5' fill='%234d84ff'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: dark;
@@ -26,6 +27,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -56,11 +58,12 @@
     .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .brand-mark {
       width: 42px; height: 42px; display: grid; place-items: center;
-      border-radius: 13px; font-size: 21px;
+      border-radius: 13px;
       background: linear-gradient(145deg, rgba(56,216,255,.25), rgba(89,241,183,.13));
       border: 1px solid rgba(56,216,255,.42);
       box-shadow: 0 0 30px rgba(56,216,255,.16);
     }
+    .brand-mark svg { width: 28px; height: 28px; display: block; }
     .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; letter-spacing: .01em; }
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
     .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
@@ -109,7 +112,8 @@
       border-radius: 22px; background: linear-gradient(155deg, rgba(20,34,66,.98), rgba(8,16,34,.98));
       box-shadow: var(--shadow); text-align: center;
     }
-    .auth-card .brand-mark { margin: 0 auto 16px; width: 56px; height: 56px; font-size: 27px; }
+    .auth-card .brand-mark { margin: 0 auto 16px; width: 56px; height: 56px; }
+    .auth-card .brand-mark svg { width: 38px; height: 38px; }
     .auth-card h2 { margin: 0 0 8px; font-size: 24px; }
     .auth-card p { margin: 0 0 20px; color: var(--muted); line-height: 1.55; }
     .auth-card .btn { width: 100%; min-height: 48px; margin-top: 8px; }
@@ -134,14 +138,16 @@
     .menu-divider { height: 1px; margin: 3px 2px; background: var(--line); }
 
     .photo-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: rgba(16,31,57,.42); }
-    .photo-editor-main { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 12px; align-items: center; }
+    .photo-editor-main { display: grid; grid-template-columns: 78px minmax(0,1fr); gap: 12px; align-items: start; }
     .photo-preview { width: 78px; height: 78px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: rgba(20,42,77,.8); border: 1px solid rgba(122,161,213,.28); color: var(--muted); font-size: 27px; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; opacity: .82; }
-    .photo-copy strong { display: block; font-size: 13px; }
-    .photo-copy span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.4; }
-    .photo-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-    .photo-actions .btn { min-height: 38px; }
+    .photo-copy { min-width: 0; padding-top: 2px; }
+    .photo-copy strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+    .photo-copy span { display: block; margin-top: 5px; max-width: 100%; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+    .photo-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: stretch; }
+    .photo-actions .btn { min-width: 0; min-height: 38px; white-space: normal; line-height: 1.2; }
     .photo-actions .photo-remove[hidden] { display: none; }
+    .photoUpload { display: none !important; }
     .photo-progress { height: 5px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.08); }
     .photo-progress[hidden] { display: none; }
     .photo-progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--mint)); transition: width .15s ease; }
@@ -366,7 +372,8 @@
         gap: 7px 9px; align-items: center; background: rgba(5,8,23,.96);
       }
       .brand { grid-column: 1; grid-row: 1; min-width: 0; gap: 9px; }
-      .brand-mark { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; font-size: 17px; }
+      .brand-mark { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; }
+      .brand-mark svg { width: 23px; height: 23px; }
       .brand h1 { font-size: 16px; }
       .brand p { display: none; }
       .toolbar { grid-column: 1 / -1; grid-row: 2; width: 100%; display: block; overflow: visible; padding: 0; }
@@ -437,7 +444,8 @@
       }
       .mobile-menu-head { min-height: calc(64px + env(safe-area-inset-top)); display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 14px 10px; border-bottom: 1px solid var(--line); }
       .mobile-menu-head strong { font-size: 17px; }
-      .mobile-menu-head button { width: 44px!important; min-height: 44px!important; padding: 0!important; justify-content: center!important; font-size: 25px; }
+      .mobile-menu-head button.mobile-menu-close { width: auto!important; min-width: 96px; min-height: 44px!important; padding: 0 12px!important; gap: 7px; justify-content: center!important; border-color: rgba(128,166,220,.3); font-size: 13px; font-weight: 800; touch-action: manipulation; }
+      .mobile-menu-close span:first-child { font-size: 24px; line-height: 1; }
       .mobile-menu-scroll { min-height: 0; padding: 12px 12px max(16px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
       .mobile-menu-section { border-bottom: 1px solid var(--line); }
       .mobile-menu-section > summary { min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 9px; list-style: none; color: var(--text); font-size: 15px; font-weight: 800; cursor: pointer; }
@@ -473,8 +481,10 @@
       .device-list-card { grid-template-columns: 58px minmax(0,1fr); padding: 13px; }
       .device-list-card .btn { grid-column: 1 / -1; min-height: 48px; }
       .device-list-photo { width: 58px; height: 58px; }
-      .photo-editor-main { grid-template-columns: 66px minmax(0,1fr); }
+      .photo-editor-main { grid-template-columns: 66px minmax(0,1fr); gap: 10px; }
       .photo-preview { width: 66px; height: 66px; }
+      .photo-actions { grid-template-columns: 1fr; }
+      .photo-actions .btn { width: 100%; min-height: 46px; }
       .toast { bottom: calc(86px + env(safe-area-inset-bottom)); max-width: calc(100% - 24px); text-align: center; }
       dialog { max-height: 90dvh; overflow: auto; }
     }
@@ -492,7 +502,7 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark">⌁</div>
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><path d="M32 19v8M19 32h8M37 32h8M32 37v8" fill="none" stroke="#38d8ff" stroke-width="4" stroke-linecap="round"/><rect x="27" y="27" width="10" height="10" rx="3" fill="#59f1b7"/><circle cx="32" cy="14" r="5" fill="#38d8ff"/><circle cx="50" cy="32" r="5" fill="#ffb44a"/><circle cx="32" cy="50" r="5" fill="#966bff"/><circle cx="14" cy="32" r="5" fill="#4d84ff"/></svg></div>
         <div><h1>Mapa de Rede</h1><p>Editor portátil • salvamento automático</p></div>
       </div>
       <nav class="toolbar" aria-label="Ferramentas">
@@ -587,7 +597,7 @@
           <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
           <button class="mobile-menu-backdrop" id="mobileMenuBackdrop" type="button" aria-label="Fechar menu"></button>
           <div class="tool-menu-panel mobile-drawer">
-            <div class="mobile-menu-head"><strong>Ferramentas</strong><button class="btn" id="closeMobileMenu" type="button" aria-label="Fechar menu">×</button></div>
+            <div class="mobile-menu-head"><strong>Ferramentas</strong><button class="btn mobile-menu-close" id="closeMobileMenu" type="button" aria-label="Fechar menu" title="Fechar menu"><span aria-hidden="true">×</span><span>Fechar</span></button></div>
             <div class="mobile-menu-scroll">
               <details class="mobile-menu-section" open>
                 <summary><span>☷</span><span>Gerenciar</span></summary>
@@ -635,7 +645,7 @@
 
   <div class="auth-gate" id="authGate">
     <section class="auth-card" aria-labelledby="authTitle">
-      <div class="brand-mark">⌁</div>
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><path d="M32 19v8M19 32h8M37 32h8M32 37v8" fill="none" stroke="#38d8ff" stroke-width="4" stroke-linecap="round"/><rect x="27" y="27" width="10" height="10" rx="3" fill="#59f1b7"/><circle cx="32" cy="14" r="5" fill="#38d8ff"/><circle cx="50" cy="32" r="5" fill="#ffb44a"/><circle cx="32" cy="50" r="5" fill="#966bff"/><circle cx="14" cy="32" r="5" fill="#4d84ff"/></svg></div>
       <h2 id="authTitle">Mapa de Rede 3D</h2>
       <p>Entre com sua conta Google para acessar e sincronizar seus mapas entre computador e celular.</p>
       <button class="btn primary" id="loginGoogleBtn"><span>G</span><span>Entrar com Google</span></button>
@@ -661,7 +671,7 @@
         <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
         <li>Na ficha do equipamento, use <b>Mover ou copiar para outro mapa</b>. A cópia mantém o original; ao mover, as conexões do mapa atual são removidas.</li>
         <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
-        <li>No celular, arraste o fundo para navegar e use dois dedos para ampliar. A barra inferior oferece <b>Novo</b>, <b>Conectar</b>, <b>Equipamentos</b> e <b>Menu</b>.</li>
+        <li>No celular, arraste o fundo para navegar e use dois dedos para ampliar. A barra inferior oferece <b>Novo</b>, <b>Conectar</b>, <b>Equipamentos</b> e <b>Menu</b>. Para sair do menu, use o botão <b>× Fechar</b> no topo ou toque fora dele.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
       </ol>
@@ -684,6 +694,7 @@
     const LOCAL_MAPS_KEY = 'mapa-rede-3d-local-maps-v1';
     /* EMBEDDED_STATE_START */ const EMBEDDED_STATE = null; /* EMBEDDED_STATE_END */
     const WORLD = { width: 1500, height: 980 };
+    const DESKTOP_DETAILS_RESERVE = 440;
     const TYPE_INFO = {
       antenna: { label: 'Antena', icon: '◔', color: '#ff9d4a' },
       gateway: { label: 'Gateway', icon: '◎', color: '#59f1b7' },
@@ -1857,19 +1868,25 @@
         maxY: Math.min(WORLD.height, Math.max(...state.devices.map(device => device.y + 165)) + 24)
       } : { minX:0, minY:0, maxX:WORLD.width, maxY:WORLD.height };
     }
+    function overviewRightReserve(padding) {
+      if (mobileLayout()) return 0;
+      const minimumMapWidth = 280;
+      return Math.min(DESKTOP_DETAILS_RESERVE, Math.max(0, viewport.clientWidth - padding * 2 - minimumMapWidth));
+    }
     function fitOverview() {
       const mobile = mobileLayout();
       const padding = mobile ? 18 : 40;
-      const availableW = viewport.clientWidth - padding * 2;
-      const availableH = viewport.clientHeight - padding * 2;
+      const rightReserve = overviewRightReserve(padding);
+      const availableW = Math.max(1, viewport.clientWidth - rightReserve - padding * 2);
+      const availableH = Math.max(1, viewport.clientHeight - padding * 2);
       const bounds = topologyBounds();
       const contentW = Math.max(1, bounds.maxX - bounds.minX);
       const contentH = Math.max(1, bounds.maxY - bounds.minY);
       const fitScale = Math.min(availableW / contentW, availableH / contentH);
       scale = mobile ? clamp(fitScale, minimumZoom(), .62) : clamp(fitScale, minimumZoom(), 1);
       pan = {
-        x:(viewport.clientWidth - contentW * scale) / 2 - bounds.minX * scale,
-        y:(viewport.clientHeight - contentH * scale) / 2 - bounds.minY * scale
+        x:padding + Math.max(0, (availableW - contentW * scale) / 2) - bounds.minX * scale,
+        y:padding + Math.max(0, (availableH - contentH * scale) / 2) - bounds.minY * scale
       };
       updateTransform();
     }
