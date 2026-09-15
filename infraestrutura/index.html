@@ -64,6 +64,7 @@
     .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; letter-spacing: .01em; }
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
     .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
+    .mobile-tools { display: flex; gap: 8px; min-width: 0; align-items: center; }
     .tool-group { display: flex; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
     .tool-group:last-child { border-right: 0; }
     .btn {
@@ -288,16 +289,18 @@
       .brand { min-width: 0; }
       .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
       .brand h1 { font-size: 15px; }
-      .toolbar { width: 100%; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 0 5px; scrollbar-width: thin; scroll-snap-type: x proximity; }
+      .toolbar { width: 100%; display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; overflow: visible; padding: 0; }
+      .map-switcher { width: 100%; padding: 0; border-right: 0; }
+      .map-switcher select { width: auto; min-width: 0; flex: 1; font-size: 15px; }
+      .mobile-tools { width: 100%; overflow-x: auto; overflow-y: hidden; padding: 0 0 5px; scrollbar-width: thin; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
       .tool-group { flex: 0 0 auto; scroll-snap-align: start; }
-      .toolbar > .btn { flex: 0 0 auto; }
+      .mobile-tools > .btn, .mobile-tools > details { flex: 0 0 auto; }
       .toolbar .btn { min-height: 44px; padding: 0 12px; }
       .toolbar .btn .label { display: inline; }
       .account-area { position: absolute; top: 8px; right: 10px; }
       .auth-btn { width: 40px; min-height: 40px; }
-      .map-switcher select { width: 170px; font-size: 14px; }
-      .tool-menu-panel { position: fixed; top: 108px; left: 10px; right: 10px; width: auto; max-height: calc(100vh - 120px); overflow: auto; }
-      .viewport { min-height: 0; }
+      .tool-menu-panel { position: fixed; top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: calc(100dvh - 20px); overflow: auto; }
+      .viewport { min-height: 0; touch-action: none; }
       .sidepanel { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 14px max(14px, env(safe-area-inset-bottom)); transform: translateX(101%); border-left: 0; }
       .sidepanel.open { transform: translateX(0); }
       .side-head { position: sticky; top: 0; z-index: 5; margin: 0 -14px 15px; padding: 14px; background: rgba(8,14,31,.98); border-bottom: 1px solid var(--line); }
@@ -341,6 +344,7 @@
           <button class="btn icon" id="newMapBtn" title="Criar novo mapa" aria-label="Criar novo mapa">＋</button>
           <button class="btn icon" id="renameMapBtn" title="Renomear mapa" aria-label="Renomear mapa">✎</button>
         </div>
+        <div class="mobile-tools">
         <div class="tool-group">
           <button class="btn primary" id="addDevice"><span>＋</span><span class="label">Equipamento</span></button>
           <button class="btn mint" id="addLink"><span>⌁</span><span class="label">Conexão</span></button>
@@ -374,6 +378,7 @@
           </div>
         </details>
         <button class="btn icon" id="helpBtn" title="Como usar">?</button>
+        </div>
       </nav>
       <div class="account-area">
         <span class="save-state" id="saveState">Aguardando login</span>
@@ -1297,16 +1302,32 @@
       world.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
       $('zoomLabel').textContent = Math.round(scale * 100) + '%';
     }
+    function minimumZoom() { return window.matchMedia('(max-width: 680px)').matches ? .22 : .35; }
     function setZoom(next, anchorX = viewport.clientWidth/2, anchorY = viewport.clientHeight/2) {
-      const old = scale; scale = clamp(next, .35, 1.5);
+      const old = scale; scale = clamp(next, minimumZoom(), 1.5);
       pan.x = anchorX - (anchorX - pan.x) * (scale / old);
       pan.y = anchorY - (anchorY - pan.y) * (scale / old);
       updateTransform();
     }
     function fitView() {
-      const availableW = viewport.clientWidth - 40, availableH = viewport.clientHeight - 40;
-      scale = clamp(Math.min(availableW / WORLD.width, availableH / WORLD.height), .35, 1);
-      pan = { x:(viewport.clientWidth - WORLD.width*scale)/2, y:(viewport.clientHeight - WORLD.height*scale)/2 };
+      const mobile = window.matchMedia('(max-width: 680px)').matches;
+      const padding = mobile ? 16 : 40;
+      const availableW = viewport.clientWidth - padding * 2;
+      const availableH = viewport.clientHeight - padding * 2;
+      const bounds = state.devices.length ? {
+        minX: Math.max(0, Math.min(...state.devices.map(device => device.x)) - 24),
+        minY: Math.max(0, Math.min(...state.devices.map(device => device.y)) - 24),
+        maxX: Math.min(WORLD.width, Math.max(...state.devices.map(device => device.x + 245)) + 24),
+        maxY: Math.min(WORLD.height, Math.max(...state.devices.map(device => device.y + 165)) + 24)
+      } : { minX:0, minY:0, maxX:WORLD.width, maxY:WORLD.height };
+      const contentW = Math.max(1, bounds.maxX - bounds.minX);
+      const contentH = Math.max(1, bounds.maxY - bounds.minY);
+      const fitScale = Math.min(availableW / contentW, availableH / contentH);
+      scale = mobile ? clamp(Math.max(fitScale, .30), minimumZoom(), .62) : clamp(fitScale, minimumZoom(), 1);
+      pan = {
+        x:(viewport.clientWidth - contentW * scale) / 2 - bounds.minX * scale,
+        y:mobile ? 12 - bounds.minY * scale : (viewport.clientHeight - contentH * scale) / 2 - bounds.minY * scale
+      };
       updateTransform();
     }
     viewport.addEventListener('wheel', event => {
