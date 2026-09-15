@@ -333,7 +333,11 @@
     .secret-wrap input { padding-right: 42px; }
     .reveal { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border: 0; background: transparent; cursor: pointer; color: var(--muted); }
     .link-list { display: grid; gap: 10px; }
-    .link-card { border: 1px solid var(--line); border-radius: 12px; padding: 11px; background: rgba(16,31,57,.45); display: grid; gap: 8px; }
+    .link-card { border: 1px solid var(--line); border-radius: 12px; padding: 11px; background: rgba(16,31,57,.45); display: grid; gap: 8px; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease, opacity .16s ease; }
+    .link-card.related { border-color: rgba(89,241,183,.72); background: rgba(89,241,183,.09); box-shadow: 0 0 0 2px rgba(89,241,183,.10), 0 0 22px rgba(89,241,183,.12); }
+    .link-card.related::before { content: 'Ligada ao equipamento selecionado'; color: var(--mint); font-size: 10px; font-weight: 900; letter-spacing: .055em; text-transform: uppercase; }
+    .link-card.selected { border-color: rgba(56,216,255,.85); background: rgba(56,216,255,.10); box-shadow: 0 0 0 2px rgba(56,216,255,.12), 0 0 22px rgba(56,216,255,.14); }
+    .link-card.selected::before { content: 'Conexão selecionada'; color: var(--cyan); font-size: 10px; font-weight: 900; letter-spacing: .055em; text-transform: uppercase; }
     .link-card-title { font-weight: 800; font-size: 13px; color: var(--text); }
     .link-card-meta { color: var(--muted); font-size: 11px; line-height: 1.4; }
     .link-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
@@ -1296,6 +1300,7 @@
           event.preventDefault(); event.stopPropagation();
           selected = { kind:'device', id:device.id };
           renderNodes(); renderLinks();
+          refreshConnectionManagerSelection(true);
         });
         node.addEventListener('dblclick', event => { event.preventDefault(); event.stopPropagation(); openDevice(device.id); });
         head.addEventListener('pointerdown', event => {
@@ -1907,6 +1912,26 @@
       renderNodes(); renderLinks();
     }
 
+    function refreshConnectionManagerSelection(scrollToMatch = false) {
+      if (!sidepanel.classList.contains('open') || $('panelTitle').textContent !== 'Conexões') return;
+      const cards = [...panelContent.querySelectorAll('.link-card[data-link-id]')];
+      if (!cards.length) return;
+      const selectedDeviceId = selected?.kind === 'device' ? selected.id : '';
+      const selectedLinkId = selected?.kind === 'link' ? selected.id : '';
+      let firstMatch = null;
+      for (const card of cards) {
+        const link = state.links.find(item => item.id === card.dataset.linkId);
+        const related = Boolean(link && selectedDeviceId && (link.from === selectedDeviceId || link.to === selectedDeviceId));
+        const active = Boolean(link && selectedLinkId && link.id === selectedLinkId);
+        card.classList.toggle('related', related);
+        card.classList.toggle('selected', active);
+        if (!firstMatch && (related || active)) firstMatch = card;
+      }
+      if (scrollToMatch && firstMatch) {
+        requestAnimationFrame(() => firstMatch.scrollIntoView({ behavior:'smooth', block:'nearest' }));
+      }
+    }
+
     function openLinkManager() {
       selected = null;
       $('panelTitle').textContent = 'Conexões';
@@ -1923,6 +1948,7 @@
           const to = toDevice ? deviceDisplayName(toDevice) : 'Equipamento removido';
           const card = document.createElement('div');
           card.className = 'link-card';
+          card.dataset.linkId = link.id;
           const title = document.createElement('div'); title.className = 'link-card-title'; title.textContent = `${from} → ${to}`;
           const portSummary = link.type === 'cable' && [link.fromPort, link.toPort].some(Boolean) ? ` • ${link.fromPort || 'porta não informada'} → ${link.toPort || 'porta não informada'}` : '';
           const meta = document.createElement('div'); meta.className = 'link-card-meta'; meta.textContent = `${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}${link.label ? ' • ' + link.label : ''}${portSummary}`;
@@ -1934,6 +1960,7 @@
       }
       panelContent.replaceChildren(wrap);
       renderNodes(); renderLinks();
+      refreshConnectionManagerSelection(false);
     }
 
     function linkForm(link) {
