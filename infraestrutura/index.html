@@ -224,6 +224,11 @@
     .empty-state p { line-height: 1.55; margin: 0; }
     .form { display: grid; gap: 13px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-section-title { margin: 3px 0 -3px; color: var(--cyan); font-size: 11px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+    .advanced-fields { border: 1px solid var(--line); border-radius: 12px; background: rgba(16,31,57,.38); overflow: hidden; }
+    .advanced-fields > summary { padding: 12px; cursor: pointer; color: #c7d8eb; font-size: 12px; font-weight: 800; list-style-position: inside; }
+    .advanced-fields[open] > summary { border-bottom: 1px solid var(--line); }
+    .advanced-content { display: grid; gap: 13px; padding: 13px; }
     label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; color: #b8c9df; }
     input, select, textarea {
       width: 100%; color: var(--text); background: rgba(3, 9, 23, .86);
@@ -307,6 +312,8 @@
       .side-head h2 { font-size: 18px; }
       .side-head button { width: 44px; height: 44px; font-size: 28px; border-radius: 10px; background: rgba(255,255,255,.06); }
       .form { gap: 15px; padding-bottom: 4px; }
+      .form-section-title { font-size: 12px; }
+      .advanced-fields > summary { min-height: 48px; display: flex; align-items: center; font-size: 14px; }
       .form-row { grid-template-columns: 1fr; gap: 15px; }
       label, .field-label { font-size: 14px; }
       input, select, textarea { min-height: 48px; font-size: 16px; padding: 12px; }
@@ -432,9 +439,11 @@
         <li><b>Organizar</b> continua fazendo uma organização automática; ela também pode ser desfeita.</li>
         <li><b>PDF organizado</b> prepara uma disposição limpa apenas para exportar e depois devolve os equipamentos às posições anteriores.</li>
         <li><b>Relatório completo</b> cria uma lista com todos os dados de cada equipamento e as conexões cadastradas.</li>
-        <li>Clique no lápis para editar os dados técnicos do equipamento.</li>
+        <li>Clique no lápis para editar a identificação, o local, o IP, o acesso e as observações do equipamento.</li>
+        <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
+        <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
         <li>No celular, use <b>Inventário</b> para abrir uma lista e lançar os dados com campos maiores.</li>
-        <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. Para editar ou excluir, clique na linha ou use <b>Conexões</b> no topo.</li>
+        <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
         <li>Use <b>Salvar HTML</b> para baixar uma cópia sem senhas, com equipamentos, conexões e posições.</li>
         <li>Use <b>Backup</b> para criar também uma cópia dos dados em formato JSON.</li>
@@ -466,6 +475,7 @@
       inverter: { label: 'Inversor', icon: 'ϟ', color: '#ffb44a' },
       other: { label: 'Outro', icon: '◆', color: '#38d8ff' }
     };
+    const IP_MODE_LABELS = { dhcp:'DHCP automático', reservation:'Reserva DHCP', static:'IP fixo no equipamento' };
 
     const DEFAULT_STATE = {
       version: 4,
@@ -575,11 +585,14 @@
         return {
           id: String(raw.id || uid('device')),
           name: String(raw.name || `equipamento-${index + 1}`).trim(),
+          displayName: String(raw.displayName || ''),
           type: TYPE_INFO[raw.type] ? raw.type : 'other',
           mode: String(raw.mode || ''), brand: String(raw.brand || ''), model: String(raw.model || ''),
           mac: formatMac(raw.mac), location: String(raw.location || ''), vlan: String(raw.vlan || ''),
           firmware: String(raw.firmware || ''), wanIp: String(raw.wanIp || ''), lan: String(raw.lan || ''),
-          username: String(raw.username || ''), notes: String(raw.notes || ''),
+          ipMode: ['dhcp','reservation','static'].includes(raw.ipMode) ? raw.ipMode
+            : (/dhcp/i.test(String(raw.lan || '')) ? 'dhcp' : (/fixo|est[aá]tico/i.test(String(raw.lan || '')) ? 'static' : '')),
+          username: String(raw.username || ''), notes: String(raw.notes || ''), lastMaintenance: String(raw.lastMaintenance || ''),
           x: Number.isFinite(Number(raw.x)) ? Number(raw.x) : 620,
           y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : 430
         };
@@ -587,7 +600,7 @@
       source.links = source.links.map(raw => ({
         id: String(raw.id || uid('link')), from: String(raw.from || ''), to: String(raw.to || ''),
         fromPort: String(raw.fromPort || ''), toPort: String(raw.toPort || ''),
-        type: raw.type === 'cable' ? 'cable' : 'wireless', label: String(raw.label || ''),
+        type: raw.type === 'cable' ? 'cable' : 'wireless', label: String(raw.label || ''), notes: String(raw.notes || ''),
         color: /^#[0-9a-f]{6}$/i.test(raw.color || '') ? raw.color : '#38d8ff'
       })).filter(link => source.devices.some(d => d.id === link.from) && source.devices.some(d => d.id === link.to));
       for (const [deviceId, port] of legacyPorts) {
@@ -645,17 +658,18 @@
         mode3d: source.mode3d !== false,
         updatedAt: String(source.updatedAt || new Date().toISOString()),
         devices: source.devices.map(device => ({
-          id:String(device.id), name:String(device.name || ''), type:TYPE_INFO[device.type] ? device.type : 'other',
+          id:String(device.id), name:String(device.name || ''), displayName:String(device.displayName || ''), type:TYPE_INFO[device.type] ? device.type : 'other',
           mode:String(device.mode || ''), brand:String(device.brand || ''), model:String(device.model || ''),
           mac:formatMac(device.mac), location:String(device.location || ''), vlan:String(device.vlan || ''),
           firmware:String(device.firmware || ''), wanIp:String(device.wanIp || ''), lan:String(device.lan || ''),
-          username:String(device.username || ''), notes:String(device.notes || ''),
+          ipMode:String(device.ipMode || ''), username:String(device.username || ''), notes:String(device.notes || ''),
+          lastMaintenance:String(device.lastMaintenance || ''),
           x:Number(device.x) || 0, y:Number(device.y) || 0
         })),
         links: source.links.map(link => ({
           id:String(link.id), from:String(link.from), to:String(link.to),
           fromPort:String(link.fromPort || ''), toPort:String(link.toPort || ''),
-          type:link.type === 'cable' ? 'cable' : 'wireless', label:String(link.label || ''),
+          type:link.type === 'cable' ? 'cable' : 'wireless', label:String(link.label || ''), notes:String(link.notes || ''),
           color:/^#[0-9a-f]{6}$/i.test(link.color || '') ? link.color : '#38d8ff'
         }))
       };
@@ -836,8 +850,9 @@
     function uid(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
     function escapeText(v) { return String(v ?? ''); }
     function infoFor(type) { return TYPE_INFO[type] || TYPE_INFO.other; }
+    function deviceDisplayName(device) { return String(device.displayName || device.name || 'Sem nome').trim(); }
     function deviceOptionLabel(device) {
-      return [device.name || 'Sem nome', device.location, device.lan]
+      return [deviceDisplayName(device), device.location, device.lan]
         .map(value => String(value || '').trim())
         .filter(Boolean)
         .join(' — ');
@@ -917,14 +932,14 @@
         icon.className = 'node-icon';
         icon.textContent = info.icon;
         const title = document.createElement('div'); title.className = 'node-title';
-        const strong = document.createElement('strong'); strong.textContent = device.name || 'Sem nome';
-        const type = document.createElement('span'); type.textContent = info.label;
+        const strong = document.createElement('strong'); strong.textContent = deviceDisplayName(device);
+        const type = document.createElement('span'); type.textContent = `${info.label}${device.displayName && device.name ? ' · ' + device.name : ''}`;
         title.append(strong, type);
         const edit = document.createElement('button'); edit.className = 'node-edit'; edit.type = 'button'; edit.title = 'Editar equipamento'; edit.textContent = '✎';
         head.append(icon, title, edit);
 
         const body = document.createElement('div'); body.className = 'node-body';
-        const fields = [['Modo', device.mode], ['Local', device.location], ['LAN', device.lan], ['VLAN', device.vlan]];
+        const fields = [['Modo', device.mode], ['Local', device.location], ['IP', device.lan]];
         for (const [label, value] of fields) if (value) {
           const row = document.createElement('div'); row.className = 'field-line';
           const b = document.createElement('b'); b.textContent = label;
@@ -1034,33 +1049,43 @@
     function deviceForm(device) {
       const form = document.createElement('form'); form.className = 'form';
       form.innerHTML = `
-        <label>Hostname / nome do equipamento<input name="name" required maxlength="60" placeholder="Ex.: router-garagem"></label>
-        <label>Localização física<input name="location" maxlength="100" placeholder="Ex.: Rack 1, Quadro externo, Poste"></label>
+        <div class="form-section-title">Identificação</div>
+        <label>Identificação amigável<input name="displayName" maxlength="80" placeholder="Ex.: Câmera Fundos ou Roteador Quarto"></label>
         <div class="form-row">
+          <label>Hostname<input name="name" required maxlength="60" placeholder="Ex.: cam-fundos"></label>
           <label>Tipo<select name="type">${Object.entries(TYPE_INFO).map(([v,i]) => `<option value="${v}">${i.label}</option>`).join('')}</select></label>
-          <label>Modo<input name="mode" maxlength="50"></label>
         </div>
+        <label>Localização<input name="location" maxlength="100" placeholder="Ex.: Fundos da casa, Sala, Painel TV"></label>
+        <div class="form-section-title">Configuração para manutenção</div>
         <div class="form-row">
-          <label>Marca<input name="brand" maxlength="60" placeholder="Ex.: TP-Link"></label>
-          <label>Modelo<input name="model" maxlength="80" placeholder="Ex.: Archer C6"></label>
+          <label>IP de acesso<input name="lan" maxlength="100" placeholder="Ex.: 192.168.1.3"></label>
+          <label>Tipo de IP<select name="ipMode"><option value="">Não informado</option><option value="dhcp">DHCP automático</option><option value="reservation">Reserva DHCP</option><option value="static">IP fixo no equipamento</option></select></label>
         </div>
-        <div class="form-row">
-          <label>Endereço MAC<input name="mac" maxlength="17" inputmode="text" autocomplete="off" placeholder="00:00:00:00:00:00" pattern="([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"></label>
-          <label>LAN / IP<input name="lan" maxlength="100" placeholder="Ex.: 192.168.0.10"></label>
-        </div>
-        <div class="form-row">
-          <label>IP de WAN <span class="optional">(opcional)</span><input name="wanIp" maxlength="100" placeholder="Ex.: DHCP ou 200.10.10.2"></label>
-          <label>VLAN <span class="optional">(opcional)</span><input name="vlan" maxlength="40" placeholder="Ex.: 20 - Câmeras"></label>
-        </div>
-        <label>Versão de firmware <span class="optional">(opcional)</span><input name="firmware" maxlength="100" placeholder="Ex.: 1.3.6 Build 2026"></label>
+        <label>Modo / configuração<input name="mode" maxlength="80" placeholder="Ex.: AP, Roteador, WISP, Wi‑Fi ou Cabeada"></label>
         <div class="form-row">
           <label>Usuário de acesso<input name="username" autocomplete="off" maxlength="100" placeholder="Ex.: admin"></label>
           <label>Senha<div class="secret-wrap"><input name="password" type="password" autocomplete="off" maxlength="120"><button class="reveal" type="button" title="Mostrar senha">◉</button></div></label>
         </div>
-        <label>Observações<textarea name="notes" maxlength="300"></textarea></label>
+        <label>Última manutenção<input name="lastMaintenance" type="date"></label>
+        <label>Observações para manutenção<textarea name="notes" maxlength="500" placeholder="Ex.: fonte trocada, reiniciar após queda de energia, acesso pelo navegador..."></textarea></label>
+        <details class="advanced-fields">
+          <summary>Informações avançadas (opcional)</summary>
+          <div class="advanced-content">
+            <div class="form-row">
+              <label>Marca<input name="brand" maxlength="60" placeholder="Ex.: TP-Link"></label>
+              <label>Modelo<input name="model" maxlength="80" placeholder="Ex.: Archer C6"></label>
+            </div>
+            <label>Endereço MAC<input name="mac" maxlength="17" inputmode="text" autocomplete="off" placeholder="00:00:00:00:00:00" pattern="([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"></label>
+            <div class="form-row">
+              <label>IP de WAN<input name="wanIp" maxlength="100" placeholder="Ex.: DHCP ou 200.10.10.2"></label>
+              <label>VLAN<input name="vlan" maxlength="40" placeholder="Ex.: 20 - Câmeras"></label>
+            </div>
+            <label>Versão de firmware<input name="firmware" maxlength="100" placeholder="Ex.: 1.3.6 Build 2026"></label>
+          </div>
+        </details>
         <div class="hint"><b>Privacidade:</b> a senha fica somente neste navegador. Os demais dados sincronizam com sua conta Google.</div>
         <div class="form-actions"><button class="btn danger deleteDevice" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
-      const editableKeys = ['name','location','type','mode','brand','model','mac','lan','wanIp','vlan','firmware','username','notes'];
+      const editableKeys = ['displayName','name','location','type','lan','ipMode','mode','username','lastMaintenance','notes','brand','model','mac','wanIp','vlan','firmware'];
       for (const key of editableKeys) form.elements[key].value = device[key] || '';
       form.elements.password.value = getLocalPassword(device.id);
       const validateMacInput = () => {
@@ -1073,6 +1098,7 @@
         renderNodes();
       };
       for (const key of editableKeys) {
+        if (key === 'mac') continue;
         form.elements[key].addEventListener('input', saveTypedFields);
         form.elements[key].addEventListener('change', saveTypedFields);
       }
@@ -1083,7 +1109,7 @@
       });
       form.querySelector('.reveal').onclick = () => { const input = form.elements.password; input.type = input.type === 'password' ? 'text' : 'password'; };
       form.querySelector('.deleteDevice').onclick = () => {
-        if (!confirm(`Excluir “${device.name}” e suas conexões?`)) return;
+        if (!confirm(`Excluir “${deviceDisplayName(device)}” e suas conexões?`)) return;
         state.devices = state.devices.filter(d => d.id !== device.id);
         state.links = state.links.filter(l => l.from !== device.id && l.to !== device.id);
         setLocalPassword(device.id, '');
@@ -1112,8 +1138,10 @@
     function deleteLinkById(id, ask = true) {
       const link = state.links.find(l => l.id === id);
       if (!link) return;
-      const from = state.devices.find(d => d.id === link.from)?.name || 'equipamento';
-      const to = state.devices.find(d => d.id === link.to)?.name || 'equipamento';
+      const fromDevice = state.devices.find(d => d.id === link.from);
+      const toDevice = state.devices.find(d => d.id === link.to);
+      const from = fromDevice ? deviceDisplayName(fromDevice) : 'equipamento';
+      const to = toDevice ? deviceDisplayName(toDevice) : 'equipamento';
       if (ask && !confirm(`Excluir a conexão entre “${from}” e “${to}”?`)) return;
       state.links = state.links.filter(l => l.id !== id);
       if (selected?.kind === 'link' && selected.id === id) closePanel();
@@ -1137,9 +1165,9 @@
         const photo = document.createElement('div'); photo.className = 'device-list-photo';
         photo.textContent = info.icon;
         const text = document.createElement('div'); text.className = 'device-list-info';
-        const name = document.createElement('strong'); name.textContent = device.name || 'Sem nome';
+        const name = document.createElement('strong'); name.textContent = deviceDisplayName(device);
         const details = document.createElement('span');
-        details.textContent = [info.label, device.brand, device.model].filter(Boolean).join(' · ') || 'Dados ainda não preenchidos';
+        details.textContent = [device.displayName ? device.name : '', info.label, device.location, device.lan].filter(Boolean).join(' · ') || 'Dados ainda não preenchidos';
         text.append(name, details);
         const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn'; editBtn.textContent = 'Editar dados'; editBtn.onclick = () => openDevice(device.id);
         card.append(photo, text, editBtn); wrap.appendChild(card);
@@ -1158,12 +1186,14 @@
         wrap.innerHTML = '<div class="empty-state" style="min-height:180px"><div><span class="big">⌁</span><p>Nenhuma conexão cadastrada.</p></div></div>';
       } else {
         for (const link of state.links) {
-          const from = state.devices.find(d => d.id === link.from)?.name || 'Equipamento removido';
-          const to = state.devices.find(d => d.id === link.to)?.name || 'Equipamento removido';
+          const fromDevice = state.devices.find(d => d.id === link.from);
+          const toDevice = state.devices.find(d => d.id === link.to);
+          const from = fromDevice ? deviceDisplayName(fromDevice) : 'Equipamento removido';
+          const to = toDevice ? deviceDisplayName(toDevice) : 'Equipamento removido';
           const card = document.createElement('div');
           card.className = 'link-card';
           const title = document.createElement('div'); title.className = 'link-card-title'; title.textContent = `${from} → ${to}`;
-          const portSummary = [link.fromPort, link.toPort].some(Boolean) ? ` • ${link.fromPort || 'porta não informada'} → ${link.toPort || 'porta não informada'}` : '';
+          const portSummary = link.type === 'cable' && [link.fromPort, link.toPort].some(Boolean) ? ` • ${link.fromPort || 'porta não informada'} → ${link.toPort || 'porta não informada'}` : '';
           const meta = document.createElement('div'); meta.className = 'link-card-meta'; meta.textContent = `${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}${link.label ? ' • ' + link.label : ''}${portSummary}`;
           const actions = document.createElement('div'); actions.className = 'link-card-actions';
           const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn'; editBtn.textContent = 'Editar'; editBtn.onclick = () => openLink(link.id);
@@ -1182,23 +1212,33 @@
         <label>De<select name="from">${options}</select></label>
         <label>Para<select name="to">${options}</select></label>
         <div class="form-row">
-          <label class="fromPortLabel">Porta de saída<input name="fromPort" maxlength="80" placeholder="Ex.: LAN 4, SFP1, Rádio 5 GHz"></label>
-          <label class="toPortLabel">Porta de entrada<input name="toPort" maxlength="80" placeholder="Ex.: WAN, LAN 1, PoE"></label>
-        </div>
-        <div class="form-row">
           <label>Tipo<select name="type"><option value="wireless">WiFi / rádio</option><option value="cable">Cabo</option></select></label>
           <label>Cor<input name="color" type="color"></label>
         </div>
-        <label>Rótulo<input name="label" maxlength="60" placeholder="Ex.: WiFi 5 GHz"></label>
-        <div class="hint"><b>WiFi / rádio</b> fica pontilhado. <b>Cabo</b> fica contínuo.</div>
+        <div class="form-row portFields">
+          <label><span class="fromPortLabel">Porta de saída</span><input name="fromPort" maxlength="80" placeholder="Ex.: LAN 4 ou SFP1"></label>
+          <label><span class="toPortLabel">Porta de entrada</span><input name="toPort" maxlength="80" placeholder="Ex.: WAN, LAN 1 ou PoE"></label>
+        </div>
+        <label><span class="linkLabelText">Rede / frequência</span><input name="label" maxlength="60" placeholder="Ex.: Rodrigo 5 GHz"></label>
+        <label>Observações da conexão<textarea name="notes" maxlength="300" placeholder="Ex.: cabo passa pelo forro; enlace precisa de visada..."></textarea></label>
+        <div class="hint connectionHint"><b>WiFi / rádio</b> fica pontilhado. Informe o nome da rede ou frequência.</div>
         <div class="form-actions"><button class="btn danger deleteLink" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
-      const linkKeys = ['from','to','fromPort','toPort','type','color','label'];
+      const linkKeys = ['from','to','fromPort','toPort','type','color','label','notes'];
       for (const key of linkKeys) form.elements[key].value = link[key] || (key === 'color' ? '#38d8ff' : '');
       const updatePortLabels = () => {
-        const fromName = state.devices.find(device => device.id === form.elements.from.value)?.name || 'origem';
-        const toName = state.devices.find(device => device.id === form.elements.to.value)?.name || 'destino';
-        form.querySelector('.fromPortLabel').firstChild.textContent = `Porta em ${fromName}`;
-        form.querySelector('.toPortLabel').firstChild.textContent = `Porta em ${toName}`;
+        const fromDevice = state.devices.find(device => device.id === form.elements.from.value);
+        const toDevice = state.devices.find(device => device.id === form.elements.to.value);
+        const fromName = fromDevice ? deviceDisplayName(fromDevice) : 'origem';
+        const toName = toDevice ? deviceDisplayName(toDevice) : 'destino';
+        form.querySelector('.fromPortLabel').textContent = `Porta em ${fromName}`;
+        form.querySelector('.toPortLabel').textContent = `Porta em ${toName}`;
+        const cable = form.elements.type.value === 'cable';
+        form.querySelector('.portFields').hidden = !cable;
+        form.querySelector('.linkLabelText').textContent = cable ? 'Identificação do cabo (opcional)' : 'Rede / frequência';
+        form.elements.label.placeholder = cable ? 'Ex.: Cabo azul do forro' : 'Ex.: Rodrigo 5 GHz';
+        form.querySelector('.connectionHint').innerHTML = cable
+          ? '<b>Cabo</b> fica contínuo. Informe as portas quando souber.'
+          : '<b>WiFi / rádio</b> fica pontilhado. Informe o nome da rede ou frequência.';
       };
       const saveLinkFields = () => {
         const from = form.elements.from.value;
@@ -1232,13 +1272,13 @@
 
     function addDevice() {
       const id = uid('device');
-      state.devices.push({ id, name:'Novo equipamento', type:'router', mode:'', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'', username:'', notes:'', x:620, y:430 });
+      state.devices.push({ id, name:'novo-equipamento', displayName:'Novo equipamento', type:'router', mode:'', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'', ipMode:'', username:'', notes:'', lastMaintenance:'', x:620, y:430 });
       render(); openDevice(id, true); saveState();
     }
     function addLink() {
       if (state.devices.length < 2) return toast('Adicione pelo menos dois equipamentos');
       const id = uid('link');
-      state.links.push({ id, from:state.devices[0].id, to:state.devices[1].id, fromPort:'', toPort:'', type:'wireless', label:'', color:'#38d8ff' });
+      state.links.push({ id, from:state.devices[0].id, to:state.devices[1].id, fromPort:'', toPort:'', type:'wireless', label:'', notes:'', color:'#38d8ff' });
       render(); openLink(id, true); saveState();
     }
 
@@ -1376,36 +1416,42 @@
         const info = infoFor(device.type);
         const image = `<div class="device-photo placeholder">${escapeHtml(info.icon)}</div>`;
         const rows = [
+          ['Identificação amigável', device.displayName],
+          ['Hostname', device.name],
           ['Tipo', info.label],
+          ['Localização física', device.location],
+          ['IP de acesso', device.lan],
+          ['Tipo de IP', IP_MODE_LABELS[device.ipMode] || ''],
+          ['Modo / configuração', device.mode],
+          ['Usuário de acesso', device.username],
+          ['Última manutenção', device.lastMaintenance],
+          ['Observações', device.notes],
           ['Marca', device.brand],
           ['Modelo', device.model],
-          ['Modo', device.mode],
-          ['Localização física', device.location],
           ['Endereço MAC', device.mac],
-          ['LAN / IP', device.lan],
           ['IP de WAN', device.wanIp],
           ['VLAN', device.vlan],
           ['Versão de firmware', device.firmware],
-          ['Usuário de acesso', device.username],
-          ['Observações', device.notes],
           ['Identificação interna', device.id],
           ['Posição no mapa', `X ${Math.round(Number(device.x) || 0)} · Y ${Math.round(Number(device.y) || 0)}`]
         ].map(([label, value]) => `<div class="data-row"><dt>${escapeHtml(label)}</dt><dd>${shown(value).replace(/\n/g, '<br>')}</dd></div>`).join('');
         return `<article class="device-card">
-          <header>${image}<div><span class="number">Equipamento ${index + 1}</span><h2>${shown(device.name || 'Sem nome')}</h2><p>${escapeHtml(info.label)}</p></div></header>
+          <header>${image}<div><span class="number">Equipamento ${index + 1}</span><h2>${shown(deviceDisplayName(device))}</h2><p>${escapeHtml(info.label)}${device.displayName && device.name ? ' · ' + shown(device.name) : ''}</p></div></header>
           <dl>${rows}</dl>
         </article>`;
       }).join('');
       const connectionRows = state.links.map((link, index) => {
-        const from = state.devices.find(device => device.id === link.from)?.name || 'Equipamento removido';
-        const to = state.devices.find(device => device.id === link.to)?.name || 'Equipamento removido';
+        const fromDevice = state.devices.find(device => device.id === link.from);
+        const toDevice = state.devices.find(device => device.id === link.to);
+        const from = fromDevice ? deviceDisplayName(fromDevice) : 'Equipamento removido';
+        const to = toDevice ? deviceDisplayName(toDevice) : 'Equipamento removido';
         const safeColor = /^#[0-9a-f]{6}$/i.test(link.color || '') ? link.color : '#38d8ff';
-        return `<tr><td>${index + 1}</td><td>${shown(from)}</td><td>${shown(link.fromPort)}</td><td>${shown(to)}</td><td>${shown(link.toPort)}</td><td>${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}</td><td>${shown(link.label)}</td><td><span class="color" style="background:${safeColor}"></span>${shown(safeColor)}</td></tr>`;
-      }).join('') || '<tr><td colspan="8">Nenhuma conexão cadastrada.</td></tr>';
+        return `<tr><td>${index + 1}</td><td>${shown(from)}</td><td>${shown(link.fromPort)}</td><td>${shown(to)}</td><td>${shown(link.toPort)}</td><td>${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}</td><td>${shown(link.label)}</td><td>${shown(link.notes)}</td><td><span class="color" style="background:${safeColor}"></span>${shown(safeColor)}</td></tr>`;
+      }).join('') || '<tr><td colspan="9">Nenhuma conexão cadastrada.</td></tr>';
       const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle:'long', timeStyle:'short' }).format(new Date());
       const reportHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório completo da infraestrutura de rede</title><style>
         *{box-sizing:border-box}body{margin:0;background:#eef3f8;color:#132238;font-family:Arial,sans-serif;font-size:14px}.actions{position:sticky;top:0;display:flex;justify-content:flex-end;gap:10px;padding:12px 5%;background:rgba(238,243,248,.94);border-bottom:1px solid #ced9e6}.actions button{padding:10px 16px;border:0;border-radius:9px;background:#1267d6;color:#fff;font-weight:700;cursor:pointer}.actions .secondary{background:#50627a}.report{max-width:980px;margin:28px auto;padding:0 22px 50px}.report-head{padding:26px 28px;background:#071a33;color:#fff;border-radius:16px;margin-bottom:18px}.report-head h1{margin:0 0 8px;font-size:25px}.report-head p{margin:0;color:#b9cde5}.warning{margin-top:16px;padding:10px 12px;background:#fff2cc;color:#654900;border-radius:8px;font-weight:700}.device-card{background:#fff;border:1px solid #cfdae7;border-radius:14px;margin:0 0 16px;overflow:hidden;break-inside:avoid;box-shadow:0 4px 16px rgba(18,42,72,.07)}.device-card header{display:grid;grid-template-columns:76px 1fr;gap:16px;align-items:center;padding:16px 18px;background:#f7faff;border-bottom:1px solid #dde6f0}.device-photo{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid #c6d5e6}.device-photo.placeholder{display:grid;place-items:center;background:#102949;color:#59dfff;font-size:30px}.number{display:block;color:#53708f;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.device-card h2{margin:4px 0 3px;font-size:20px}.device-card header p{margin:0;color:#1267d6;font-weight:700}.device-card dl{margin:0;display:grid;grid-template-columns:1fr 1fr}.data-row{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:10px 16px;border-bottom:1px solid #e8eef5;min-width:0}.data-row:nth-child(odd){border-right:1px solid #e8eef5}.data-row dt{color:#5b6f86;font-weight:700}.data-row dd{margin:0;overflow-wrap:anywhere}.connections{background:#fff;border:1px solid #cfdae7;border-radius:14px;padding:20px;break-before:page}.connections h2{margin:0 0 14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px;border:1px solid #dce5ef;text-align:left;vertical-align:top}th{background:#edf4fb}.color{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.footer{color:#687d95;text-align:center;margin-top:20px;font-size:11px}@media(max-width:700px){.device-card dl{grid-template-columns:1fr}.data-row:nth-child(odd){border-right:0}.actions{padding:10px}.report{padding:0 10px 30px}.report-head{border-radius:10px}}@media print{body{background:#fff}.actions{display:none}.report{max-width:none;margin:0;padding:0}.report-head{border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.device-card{box-shadow:none}.connections{break-before:page}.warning,.device-photo.placeholder,th,.color{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@page{size:A4 portrait;margin:12mm}
-      </style></head><body><div class="actions"><button class="secondary" onclick="window.close()">Fechar</button><button onclick="window.print()">Imprimir / Salvar PDF</button></div><main class="report"><section class="report-head"><h1>${shown(state.mapName)}</h1><p>${state.devices.length} equipamentos · ${state.links.length} conexões · Gerado em ${escapeHtml(generatedAt)}</p><div class="warning">Por segurança, as senhas locais não são incluídas neste relatório.</div></section>${deviceCards}<section class="connections"><h2>Conexões cadastradas</h2><table><thead><tr><th>#</th><th>De</th><th>Porta de saída</th><th>Para</th><th>Porta de entrada</th><th>Tipo</th><th>Rótulo</th><th>Cor</th></tr></thead><tbody>${connectionRows}</tbody></table></section><p class="footer">Mapa de Rede — relatório gerado pelo editor portátil</p></main></body></html>`;
+      </style></head><body><div class="actions"><button class="secondary" onclick="window.close()">Fechar</button><button onclick="window.print()">Imprimir / Salvar PDF</button></div><main class="report"><section class="report-head"><h1>${shown(state.mapName)}</h1><p>${state.devices.length} equipamentos · ${state.links.length} conexões · Gerado em ${escapeHtml(generatedAt)}</p><div class="warning">Por segurança, as senhas locais não são incluídas neste relatório.</div></section>${deviceCards}<section class="connections"><h2>Conexões cadastradas</h2><table><thead><tr><th>#</th><th>De</th><th>Porta de saída</th><th>Para</th><th>Porta de entrada</th><th>Tipo</th><th>Rede/cabo</th><th>Observações</th><th>Cor</th></tr></thead><tbody>${connectionRows}</tbody></table></section><p class="footer">Mapa de Rede — relatório gerado pelo editor portátil</p></main></body></html>`;
       report.document.open();
       report.document.write(reportHtml);
       report.document.close();
