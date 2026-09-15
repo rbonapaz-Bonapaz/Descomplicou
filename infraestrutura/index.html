@@ -65,6 +65,7 @@
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
     .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
     .mobile-main-menu, .mobile-bottom-tools { display: none; }
+    .mobile-menu-backdrop { display: none; }
     .tool-group { display: flex; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
     .tool-group:last-child { border-right: 0; }
     .btn {
@@ -413,6 +414,7 @@
       .mobile-bottom-tools > .btn .label, .mobile-main-menu > summary .label { display: inline; font-size: 10px; font-weight: 800; line-height: 1.1; }
       .mobile-main-menu { display: block; min-width: 0; }
       .mobile-main-menu > summary::after { display: none; }
+      .mobile-bottom-tools:has(.mobile-main-menu[open]) { z-index: 120; }
 
       .zoom-controls {
         left: auto; right: 10px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 44;
@@ -426,7 +428,7 @@
         width: auto; max-height: calc(100dvh - 115px); overflow: auto; border-radius: 17px;
       }
       .tool-menu-panel .btn { min-height: 48px; }
-      .mobile-main-menu[open]::before { content: ''; position: fixed; inset: 0; z-index: 100; background: rgba(2,5,14,.72); backdrop-filter: blur(4px); }
+      .mobile-main-menu[open] .mobile-menu-backdrop { display: block; position: fixed; inset: 0; z-index: 100; padding: 0; border: 0; background: rgba(2,5,14,.72); backdrop-filter: blur(4px); }
       .mobile-main-menu .mobile-drawer {
         position: fixed; inset: 0 auto 0 0; z-index: 101; width: min(350px, 90vw); height: 100dvh; max-height: none;
         display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden;
@@ -583,6 +585,7 @@
         <button class="btn" type="button" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
         <details class="tool-menu mobile-main-menu" id="mobileMainMenu">
           <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
+          <button class="mobile-menu-backdrop" id="mobileMenuBackdrop" type="button" aria-label="Fechar menu"></button>
           <div class="tool-menu-panel mobile-drawer">
             <div class="mobile-menu-head"><strong>Ferramentas</strong><button class="btn" id="closeMobileMenu" type="button" aria-label="Fechar menu">×</button></div>
             <div class="mobile-menu-scroll">
@@ -2096,6 +2099,9 @@
       if (!section.open) return;
       mobileSections.forEach(other => { if (other !== section) other.open = false; });
     }));
+    const closeMobileMainMenu = () => $('mobileMainMenu').removeAttribute('open');
+    $('closeMobileMenu').onclick = closeMobileMainMenu;
+    $('mobileMenuBackdrop').onclick = closeMobileMainMenu;
     $('loginGoogleBtn').onclick = signInGoogle;
     $('localModeBtn').onclick = () => {
       localOnlyMode = true; updateAuthUi(authUser); renderMapSwitcher();
@@ -2144,7 +2150,10 @@
     });
     window.addEventListener('pagehide', () => persistNow());
     window.addEventListener('keydown', event => {
-      if (event.key === 'Escape') closePanel();
+      if (event.key === 'Escape') {
+        if ($('mobileMainMenu').open) closeMobileMainMenu();
+        else closePanel();
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); exportBackup(); }
       const tag = event.target?.tagName;
       const editingText = ['INPUT','TEXTAREA','SELECT'].includes(tag) || event.target?.isContentEditable;
