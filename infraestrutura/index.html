@@ -41,17 +41,19 @@
 
     .app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
     .topbar {
-      min-height: 70px;
-      display: flex;
+      position: relative;
+      min-height: 68px;
+      display: grid;
+      grid-template-columns: minmax(190px, auto) minmax(0, 1fr) auto;
       align-items: center;
-      gap: 12px;
-      padding: 12px 18px;
+      gap: 16px;
+      padding: 10px 16px;
       background: rgba(5, 8, 23, .82);
       backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--line);
       z-index: 50;
     }
-    .brand { display: flex; align-items: center; gap: 11px; min-width: 235px; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .brand-mark {
       width: 42px; height: 42px; display: grid; place-items: center;
       border-radius: 13px; font-size: 21px;
@@ -61,7 +63,7 @@
     }
     .brand h1 { font-size: 16px; line-height: 1.15; margin: 0; letter-spacing: .01em; }
     .brand p { font-size: 12px; margin: 4px 0 0; color: var(--muted); }
-    .toolbar { display: flex; gap: 8px; flex: 1; align-items: center; flex-wrap: wrap; }
+    .toolbar { display: flex; gap: 8px; min-width: 0; align-items: center; flex-wrap: nowrap; }
     .tool-group { display: flex; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
     .tool-group:last-child { border-right: 0; }
     .btn {
@@ -78,10 +80,55 @@
     .btn.mint { color: #051912; font-weight: 750; background: linear-gradient(135deg, var(--mint), #54dce4); border-color: transparent; }
     .btn.icon { width: 40px; padding: 0; }
     .btn.active { border-color: var(--mint); box-shadow: 0 0 0 2px rgba(89,241,183,.12) inset; }
-    .save-state { margin-left: auto; color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 7px; }
+    .save-state { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
     .save-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 10px var(--mint); }
+    .account-area { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+    .auth-btn { max-width: 190px; }
+    .auth-avatar {
+      width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+      background: rgba(255,255,255,.1); color: #fff; font-size: 11px; font-weight: 800;
+      object-fit: cover;
+    }
+    .map-switcher { display: flex; align-items: center; gap: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
+    .map-switcher select {
+      width: min(180px, 19vw); min-height: 40px; padding: 0 30px 0 11px;
+      background: rgba(20, 34, 67, .72); border-radius: 11px; cursor: pointer;
+    }
 
-    .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr) 330px; }
+    .auth-gate {
+      position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; padding: 20px;
+      background: radial-gradient(circle at 50% 24%, rgba(56,216,255,.16), transparent 38%), rgba(3,6,18,.96);
+      backdrop-filter: blur(20px);
+    }
+    .auth-gate[hidden] { display: none; }
+    .auth-card {
+      width: min(440px, 100%); padding: 30px; border: 1px solid rgba(128,166,220,.28);
+      border-radius: 22px; background: linear-gradient(155deg, rgba(20,34,66,.98), rgba(8,16,34,.98));
+      box-shadow: var(--shadow); text-align: center;
+    }
+    .auth-card .brand-mark { margin: 0 auto 16px; width: 56px; height: 56px; font-size: 27px; }
+    .auth-card h2 { margin: 0 0 8px; font-size: 24px; }
+    .auth-card p { margin: 0 0 20px; color: var(--muted); line-height: 1.55; }
+    .auth-card .btn { width: 100%; min-height: 48px; margin-top: 8px; }
+    .auth-error { min-height: 20px; margin-top: 12px; color: #ff93a4; font-size: 12px; }
+
+    .tool-menu { position: relative; }
+    .tool-menu > summary { list-style: none; }
+    .tool-menu > summary::-webkit-details-marker { display: none; }
+    .tool-menu > summary::after { content: '⌄'; margin-left: 2px; color: var(--muted); transition: transform .18s ease; }
+    .tool-menu[open] > summary { border-color: rgba(56,216,255,.52); background: rgba(31, 51, 92, .94); }
+    .tool-menu[open] > summary::after { transform: rotate(180deg); }
+    .tool-menu-panel {
+      position: absolute; top: calc(100% + 10px); right: 0; width: 270px;
+      display: grid; gap: 6px; padding: 10px; z-index: 100;
+      border: 1px solid rgba(128, 166, 220, .28); border-radius: 14px;
+      background: rgba(8, 14, 31, .98); box-shadow: var(--shadow); backdrop-filter: blur(18px);
+    }
+    .tool-menu-panel .btn { width: 100%; justify-content: flex-start; }
+    .menu-title { padding: 5px 8px 2px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .menu-divider { height: 1px; margin: 3px 2px; background: var(--line); }
+
+    .workspace { min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr); }
     .viewport { position: relative; min-width: 0; overflow: hidden; cursor: grab; }
     .viewport.panning { cursor: grabbing; }
     .world {
@@ -148,13 +195,6 @@
       border: 1px solid color-mix(in srgb, var(--node-color) 52%, transparent);
       overflow: hidden;
     }
-    .node-icon img {
-      width: 100%; height: 100%; object-fit: cover;
-      object-position: var(--image-pos-x, 50%) var(--image-pos-y, 50%);
-      opacity: var(--image-opacity, .72);
-      transition: opacity .2s ease, transform .2s ease;
-    }
-    .node:hover .node-icon img { opacity: min(1, calc(var(--image-opacity, .72) + .12)); transform: scale(1.04); }
     .node-title { min-width: 0; }
     .node-title strong { display: -webkit-box; font-size: 14px; line-height: 1.18; overflow: hidden; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
     .node-title span { display: block; margin-top: 3px; color: var(--node-color); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -169,10 +209,12 @@
     .port-right { right: -6px; top: 50%; }
 
     .sidepanel {
-      min-width: 0; height: 100%; border-left: 1px solid var(--line);
+      position: absolute; top: 0; right: 0; width: min(380px, 94vw); min-width: 0; height: 100%; border-left: 1px solid var(--line);
       background: rgba(8, 14, 31, .88); backdrop-filter: blur(18px);
       padding: 18px; overflow: auto; z-index: 40;
+      transform: translateX(102%); transition: transform .22s ease; box-shadow: var(--shadow);
     }
+    .sidepanel.open { transform: translateX(0); }
     .side-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
     .side-head h2 { font-size: 16px; margin: 0; }
     .side-head button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 20px; }
@@ -189,20 +231,8 @@
     }
     input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(56,216,255,.09); }
     textarea { min-height: 70px; resize: vertical; }
-    .image-field { display: grid; gap: 6px; }
     .field-label { font-size: 12px; font-weight: 700; color: #b8c9df; }
-    .image-box { position: relative; height: 132px; border: 1px dashed rgba(122,161,213,.34); border-radius: 13px; display: grid; place-items: center; overflow: hidden; background: rgba(3,9,23,.55); }
-    .image-box img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
-    .image-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .image-box.has-image input { pointer-events: none; }
-    .image-box.has-image img { cursor: grab; touch-action: none; }
-    .image-box.has-image img.dragging { cursor: grabbing; }
-    .image-box span { color: var(--muted); font-size: 12px; text-align: center; padding: 12px; }
-    .image-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .position-controls { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(16,31,57,.35); }
-    .position-row { display: grid; grid-template-columns: 70px minmax(0,1fr) 42px; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
-    .position-row input { padding: 0; accent-color: var(--cyan); }
-    .position-value { color: var(--cyan); text-align: right; font-variant-numeric: tabular-nums; }
+    .optional { color: var(--muted); font-weight: 500; }
     .form-actions { display: flex; gap: 8px; padding-top: 6px; }
     .form-actions .btn { flex: 1; }
     .danger { border-color: rgba(255,96,120,.35); color: #ff9cab; }
@@ -210,9 +240,6 @@
     .secret-wrap { position: relative; }
     .secret-wrap input { padding-right: 42px; }
     .reveal { position: absolute; right: 4px; top: 4px; width: 34px; height: 34px; border: 0; background: transparent; cursor: pointer; color: var(--muted); }
-    .opacity-control { display: grid; grid-template-columns: minmax(0,1fr) 48px; align-items: center; gap: 10px; }
-    .opacity-control input { padding: 0; accent-color: var(--cyan); }
-    .opacity-value { color: var(--cyan); text-align: right; font-variant-numeric: tabular-nums; }
     .link-list { display: grid; gap: 10px; }
     .link-card { border: 1px solid var(--line); border-radius: 12px; padding: 11px; background: rgba(16,31,57,.45); display: grid; gap: 8px; }
     .link-card-title { font-weight: 800; font-size: 13px; color: var(--text); }
@@ -241,20 +268,23 @@
     .dialog-inner ol { padding-left: 22px; }
     .dialog-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 
+    @media (max-width: 1180px) {
+      .save-state { display: none; }
+      .topbar { grid-template-columns: minmax(165px, auto) minmax(0, 1fr) auto; gap: 12px; }
+      .auth-btn .label { display: none; }
+      .auth-btn { width: 42px; padding: 0; }
+    }
+
     @media (max-width: 980px) {
       .brand { min-width: auto; }
       .brand p { display: none; }
-      .workspace { grid-template-columns: 1fr; }
-      .sidepanel { position: absolute; top: 0; right: 0; width: min(360px, 92vw); transform: translateX(101%); transition: .2s ease; box-shadow: var(--shadow); }
-      .sidepanel.open { transform: translateX(0); }
-      .save-state { display: none; }
       .btn .label { display: none; }
       .btn { padding: 0 11px; }
     }
 
     @media (max-width: 680px) {
       .app { grid-template-rows: auto minmax(0,1fr); }
-      .topbar { min-height: 0; padding: 8px 10px; display: grid; gap: 8px; align-items: stretch; }
+      .topbar { min-height: 0; padding: 8px 10px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: stretch; }
       .brand { min-width: 0; }
       .brand-mark { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
       .brand h1 { font-size: 15px; }
@@ -263,6 +293,10 @@
       .toolbar > .btn { flex: 0 0 auto; }
       .toolbar .btn { min-height: 44px; padding: 0 12px; }
       .toolbar .btn .label { display: inline; }
+      .account-area { position: absolute; top: 8px; right: 10px; }
+      .auth-btn { width: 40px; min-height: 40px; }
+      .map-switcher select { width: 170px; font-size: 14px; }
+      .tool-menu-panel { position: fixed; top: 108px; left: 10px; right: 10px; width: auto; max-height: calc(100vh - 120px); overflow: auto; }
       .viewport { min-height: 0; }
       .sidepanel { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 14px max(14px, env(safe-area-inset-bottom)); transform: translateX(101%); border-left: 0; }
       .sidepanel.open { transform: translateX(0); }
@@ -275,9 +309,6 @@
       input, select, textarea { min-height: 48px; font-size: 16px; padding: 12px; }
       textarea { min-height: 100px; }
       .secret-wrap .reveal { width: 42px; height: 40px; }
-      .image-box { height: 190px; }
-      .image-actions { grid-template-columns: 1fr; }
-      .position-row { grid-template-columns: 82px minmax(0,1fr) 45px; font-size: 12px; }
       .form-actions { position: sticky; bottom: 0; z-index: 4; margin: 4px -14px 0; padding: 12px 14px max(12px, env(safe-area-inset-bottom)); background: rgba(8,14,31,.98); border-top: 1px solid var(--line); }
       .form-actions .btn { min-height: 48px; }
       .link-card-actions { grid-template-columns: 1fr; }
@@ -305,30 +336,49 @@
         <div><h1>Mapa de Rede</h1><p>Editor portátil • salvamento automático</p></div>
       </div>
       <nav class="toolbar" aria-label="Ferramentas">
+        <div class="map-switcher">
+          <select id="mapSelect" aria-label="Mapa atual" title="Selecionar mapa"></select>
+          <button class="btn icon" id="newMapBtn" title="Criar novo mapa" aria-label="Criar novo mapa">＋</button>
+          <button class="btn icon" id="renameMapBtn" title="Renomear mapa" aria-label="Renomear mapa">✎</button>
+        </div>
         <div class="tool-group">
           <button class="btn primary" id="addDevice"><span>＋</span><span class="label">Equipamento</span></button>
-          <button class="btn" id="manageDevices" title="Listar e editar equipamentos"><span>☷</span><span class="label">Equipamentos</span></button>
           <button class="btn mint" id="addLink"><span>⌁</span><span class="label">Conexão</span></button>
+        </div>
+        <div class="tool-group">
+          <button class="btn" id="manageDevices" title="Listar e editar equipamentos"><span>☷</span><span class="label">Inventário</span></button>
           <button class="btn" id="manageLinks" title="Ver, editar ou excluir conexões"><span>☷</span><span class="label">Conexões</span></button>
         </div>
         <div class="tool-group">
           <button class="btn" id="undoBtn" title="Desfazer último movimento" disabled><span>↶</span><span class="label">Desfazer</span></button>
           <button class="btn" id="autoLayout" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar</span></button>
-          <button class="btn" id="saveLayout" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar padrão</span></button>
-          <button class="btn" id="restoreLayout" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Padrão</span></button>
           <button class="btn active" id="toggle3d" title="Alternar profundidade visual"><span>◈</span><span class="label">3D</span></button>
         </div>
-        <div class="tool-group">
-          <button class="btn primary" id="downloadHtmlBtn" title="Baixar este mapa com todos os dados dentro"><span>⬇</span><span class="label">Salvar HTML</span></button>
-          <button class="btn" id="exportBtn" title="Baixar backup"><span>⇩</span><span class="label">Backup</span></button>
-          <button class="btn" id="importBtn" title="Abrir backup"><span>⇧</span><span class="label">Restaurar</span></button>
-          <button class="btn" id="printBtn" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">PDF organizado</span></button>
-          <button class="btn" id="completeReportBtn" title="Exportar todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Relatório completo</span></button>
-          <input id="importFile" type="file" accept="application/json,.json" hidden>
-        </div>
+        <details class="tool-menu" id="fileMenu">
+          <summary class="btn" title="Salvar, restaurar e exportar"><span>⇩</span><span class="label">Salvar e exportar</span></summary>
+          <div class="tool-menu-panel">
+            <div class="menu-title">Posições do mapa</div>
+            <button class="btn" id="saveLayout" title="Salvar as posições atuais como novo padrão"><span>★</span><span class="label">Salvar posições como padrão</span></button>
+            <button class="btn" id="restoreLayout" title="Voltar às posições salvas como padrão" disabled><span>↺</span><span class="label">Restaurar posições padrão</span></button>
+            <div class="menu-divider"></div>
+            <div class="menu-title">Mapa atual</div>
+            <button class="btn danger" id="deleteMapBtn" title="Excluir o mapa atual"><span>⌫</span><span class="label">Excluir mapa atual</span></button>
+            <div class="menu-divider"></div>
+            <div class="menu-title">Arquivos e relatórios</div>
+            <button class="btn primary" id="downloadHtmlBtn" title="Baixar este mapa com todos os dados dentro"><span>⬇</span><span class="label">Salvar mapa em HTML</span></button>
+            <button class="btn" id="exportBtn" title="Baixar backup"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
+            <button class="btn" id="importBtn" title="Abrir backup"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
+            <button class="btn" id="printBtn" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar PDF organizado</span></button>
+            <button class="btn" id="completeReportBtn" title="Exportar todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Abrir relatório completo</span></button>
+            <input id="importFile" type="file" accept="application/json,.json" hidden>
+          </div>
+        </details>
         <button class="btn icon" id="helpBtn" title="Como usar">?</button>
-        <span class="save-state" id="saveState">Salvo neste navegador</span>
       </nav>
+      <div class="account-area">
+        <span class="save-state" id="saveState">Aguardando login</span>
+        <button class="btn auth-btn" id="authBtn" title="Conta Google"><span class="auth-avatar" id="authAvatar">G</span><span class="label" id="authLabel">Entrar</span></button>
+      </div>
     </header>
 
     <main class="workspace">
@@ -354,6 +404,17 @@
     </main>
   </div>
 
+  <div class="auth-gate" id="authGate">
+    <section class="auth-card" aria-labelledby="authTitle">
+      <div class="brand-mark">⌁</div>
+      <h2 id="authTitle">Mapa de Rede 3D</h2>
+      <p>Entre com sua conta Google para acessar e sincronizar seus mapas entre computador e celular.</p>
+      <button class="btn primary" id="loginGoogleBtn"><span>G</span><span>Entrar com Google</span></button>
+      <button class="btn" id="localModeBtn">Usar somente neste dispositivo</button>
+      <div class="auth-error" id="authError" role="alert"></div>
+    </section>
+  </div>
+
   <div class="toast" id="toast" role="status"></div>
 
   <dialog id="helpDialog">
@@ -366,22 +427,29 @@
         <li><b>Organizar</b> continua fazendo uma organização automática; ela também pode ser desfeita.</li>
         <li><b>PDF organizado</b> prepara uma disposição limpa apenas para exportar e depois devolve os equipamentos às posições anteriores.</li>
         <li><b>Relatório completo</b> cria uma lista com todos os dados de cada equipamento e as conexões cadastradas.</li>
-        <li>Clique no lápis para editar dados ou inserir uma foto.</li>
-        <li>No celular, use <b>Equipamentos</b> para abrir uma lista e lançar os dados com campos maiores.</li>
+        <li>Clique no lápis para editar os dados técnicos do equipamento.</li>
+        <li>No celular, use <b>Inventário</b> para abrir uma lista e lançar os dados com campos maiores.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. Para editar ou excluir, clique na linha ou use <b>Conexões</b> no topo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
-        <li>Use <b>Salvar HTML</b> para baixar uma cópia completa que já leva equipamentos, fotos, conexões e posições dentro do próprio arquivo.</li>
+        <li>Use <b>Salvar HTML</b> para baixar uma cópia sem senhas, com equipamentos, conexões e posições.</li>
         <li>Use <b>Backup</b> para criar também uma cópia dos dados em formato JSON.</li>
       </ol>
-      <p><b>Privacidade:</b> usuário e senha não aparecem no diagrama, mas ficam gravados sem criptografia no HTML completo e no backup. Mantenha esses arquivos protegidos.</p>
+      <p><b>Privacidade:</b> a senha de cada equipamento fica somente neste navegador e não é enviada ao Firestore, HTML, backup ou relatório.</p>
       <div class="dialog-actions"><button class="btn primary" id="closeHelp">Entendi</button></div>
     </div>
   </dialog>
 
+  <script src="/__/firebase/8.10.1/firebase-app.js"></script>
+  <script src="/__/firebase/8.10.1/firebase-auth.js"></script>
+  <script src="/__/firebase/8.10.1/firebase-firestore.js"></script>
+  <script src="/__/firebase/init.js"></script>
   <script>
     'use strict';
 
-    const STORAGE_KEY = 'mapa-rede-3d-v2';
+    const STORAGE_KEY = 'mapa-rede-3d-v4';
+    const LEGACY_STORAGE_KEY = 'mapa-rede-3d-v2';
+    const SECRET_STORAGE_KEY = 'mapa-rede-3d-secrets-v1';
+    const LOCAL_MAPS_KEY = 'mapa-rede-3d-local-maps-v1';
     /* EMBEDDED_STATE_START */ const EMBEDDED_STATE = null; /* EMBEDDED_STATE_END */
     const WORLD = { width: 1500, height: 980 };
     const TYPE_INFO = {
@@ -395,32 +463,43 @@
     };
 
     const DEFAULT_STATE = {
-      version: 2,
+      version: 4,
+      mapName: 'Mapa principal',
       mode3d: true,
       devices: [
-        { id:'link_rodrigo', name:'Link_Rodrigo', type:'antenna', mode:'AP', wan:'DHCP', lan:'192.168.0.2 (fixo)', password:'', notes:'', x:150, y:75, image:'' },
-        { id:'link_joao', name:'Link_Joao', type:'antenna', mode:'Estação', wan:'DHCP', lan:'192.168.0.3 (fixo)', password:'', notes:'IP configurar: 192.168.1.20', x:1080, y:65, image:'' },
-        { id:'fibra_brphonia', name:'Fibra BrPhonia', type:'gateway', mode:'Roteador', wan:'PPPoE', lan:'192.168.0.1', password:'', notes:'Rodrigo (2e5G)', x:620, y:350, image:'' },
-        { id:'rodrigo', name:'Rodrigo', type:'router', mode:'Roteador Wireless', wan:'DHCP', lan:'192.168.0.7', password:'', notes:'', x:175, y:390, image:'' },
-        { id:'joao_wifi', name:'Joao/Joao-5G', type:'router', mode:'AP', wan:'DHCP', lan:'192.168.1.1', password:'', notes:'', x:1085, y:315, image:'' },
-        { id:'garagem', name:'Garagem/Garagem-5G', type:'router', mode:'WISP', wan:'DHCP', lan:'192.168.7.1', password:'', notes:'', x:120, y:705, image:'' },
-        { id:'inversor', name:'Inversor', type:'inverter', mode:'WiFi', wan:'', lan:'DHCP 192.168.0.1', password:'', notes:'', x:470, y:745, image:'' },
-        { id:'dvr', name:'DVR', type:'dvr', mode:'LAN', wan:'', lan:'DHCP 192.168.0.1', password:'', notes:'', x:735, y:745, image:'' },
-        { id:'camera', name:'Câmera', type:'camera', mode:'WiFi', wan:'', lan:'DHCP 192.168.0.1', password:'', notes:'', x:1000, y:745, image:'' }
+        { id:'link_rodrigo', name:'Link_Rodrigo', type:'antenna', mode:'AP', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.0.2 (fixo)', username:'', notes:'', x:150, y:75 },
+        { id:'link_joao', name:'Link_Joao', type:'antenna', mode:'Estação', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.0.3 (fixo)', username:'', notes:'IP configurar: 192.168.1.20', x:1080, y:65 },
+        { id:'fibra_brphonia', name:'Fibra BrPhonia', type:'gateway', mode:'Roteador', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.0.1', username:'', notes:'Rodrigo (2e5G)', x:620, y:350 },
+        { id:'rodrigo', name:'Rodrigo', type:'router', mode:'Roteador Wireless', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.0.7', username:'', notes:'', x:175, y:390 },
+        { id:'joao_wifi', name:'Joao/Joao-5G', type:'router', mode:'AP', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.1.1', username:'', notes:'', x:1085, y:315 },
+        { id:'garagem', name:'Garagem/Garagem-5G', type:'router', mode:'WISP', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'192.168.7.1', username:'', notes:'', x:120, y:705 },
+        { id:'inversor', name:'Inversor', type:'inverter', mode:'WiFi', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'DHCP 192.168.0.1', username:'', notes:'', x:470, y:745 },
+        { id:'dvr', name:'DVR', type:'dvr', mode:'LAN', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'DHCP 192.168.0.1', username:'', notes:'', x:735, y:745 },
+        { id:'camera', name:'Câmera', type:'camera', mode:'WiFi', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'DHCP 192.168.0.1', username:'', notes:'', x:1000, y:745 }
       ],
       links: [
-        { id:'lnk_ptp', from:'link_rodrigo', to:'link_joao', type:'wireless', label:'Enlace 5 GHz', color:'#38d8ff' },
-        { id:'lnk_fibra_antena', from:'fibra_brphonia', to:'link_rodrigo', type:'cable', label:'', color:'#4d84ff' },
-        { id:'lnk_joao', from:'link_joao', to:'joao_wifi', type:'cable', label:'', color:'#4d84ff' },
-        { id:'lnk_fibra_rodrigo', from:'fibra_brphonia', to:'rodrigo', type:'cable', label:'', color:'#4d84ff' },
-        { id:'lnk_rodrigo_garagem', from:'rodrigo', to:'garagem', type:'wireless', label:'WiFi 5 GHz', color:'#38d8ff' },
-        { id:'lnk_dvr', from:'fibra_brphonia', to:'dvr', type:'cable', label:'', color:'#ff6078' },
-        { id:'lnk_camera', from:'fibra_brphonia', to:'camera', type:'wireless', label:'WiFi', color:'#966bff' },
-        { id:'lnk_inversor', from:'fibra_brphonia', to:'inversor', type:'wireless', label:'WiFi', color:'#59f1b7' }
+        { id:'lnk_ptp', from:'link_rodrigo', to:'link_joao', fromPort:'Rádio 5 GHz', toPort:'Rádio 5 GHz', type:'wireless', label:'Enlace 5 GHz', color:'#38d8ff' },
+        { id:'lnk_fibra_antena', from:'fibra_brphonia', to:'link_rodrigo', fromPort:'LAN', toPort:'LAN/PoE', type:'cable', label:'', color:'#4d84ff' },
+        { id:'lnk_joao', from:'link_joao', to:'joao_wifi', fromPort:'LAN/PoE', toPort:'WAN', type:'cable', label:'', color:'#4d84ff' },
+        { id:'lnk_fibra_rodrigo', from:'fibra_brphonia', to:'rodrigo', fromPort:'LAN', toPort:'WAN', type:'cable', label:'', color:'#4d84ff' },
+        { id:'lnk_rodrigo_garagem', from:'rodrigo', to:'garagem', fromPort:'Rádio 5 GHz', toPort:'Rádio 5 GHz', type:'wireless', label:'WiFi 5 GHz', color:'#38d8ff' },
+        { id:'lnk_dvr', from:'fibra_brphonia', to:'dvr', fromPort:'LAN', toPort:'LAN', type:'cable', label:'', color:'#ff6078' },
+        { id:'lnk_camera', from:'fibra_brphonia', to:'camera', fromPort:'WiFi', toPort:'WiFi', type:'wireless', label:'WiFi', color:'#966bff' },
+        { id:'lnk_inversor', from:'fibra_brphonia', to:'inversor', fromPort:'WiFi', toPort:'WiFi', type:'wireless', label:'WiFi', color:'#59f1b7' }
       ]
     };
 
-    let state = loadState();
+    let authUser = null;
+    let auth = null;
+    let db = null;
+    let localOnlyMode = false;
+    let cloudUnsubscribe = null;
+    let cloudSaveTimer = null;
+    let cloudReady = false;
+    let lastCloudWriteAt = '';
+    let mapsMeta = loadLocalMaps();
+    let currentMapId = localStorage.getItem('mapa-rede-3d-active-map') || mapsMeta[0]?.id || 'principal';
+    let state = loadState(currentMapId);
     let selected = null;
     let scale = .75;
     let pan = { x: 30, y: 24 };
@@ -440,27 +519,104 @@
     const panelContent = $('panelContent');
 
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
-    function loadState() {
+    function validState(value) { return value && Array.isArray(value.devices) && Array.isArray(value.links); }
+    function localStateKey(mapId = currentMapId) { return `${STORAGE_KEY}:${mapId}`; }
+    function secretScope() { return authUser?.uid || 'local'; }
+    function loadSecretVault() {
+      try { return JSON.parse(localStorage.getItem(SECRET_STORAGE_KEY)) || {}; }
+      catch { return {}; }
+    }
+    function getLocalPassword(deviceId) {
+      const vault = loadSecretVault();
+      return vault[secretScope()]?.[currentMapId]?.[deviceId] || vault.local?.[currentMapId]?.[deviceId] || '';
+    }
+    function setLocalPassword(deviceId, password) {
+      const vault = loadSecretVault();
+      const scope = secretScope();
+      vault[scope] ||= {};
+      vault[scope][currentMapId] ||= {};
+      if (password) vault[scope][currentMapId][deviceId] = password;
+      else delete vault[scope][currentMapId][deviceId];
+      localStorage.setItem(SECRET_STORAGE_KEY, JSON.stringify(vault));
+    }
+    function deleteLocalPasswordsForMap(mapId) {
+      const vault = loadSecretVault();
+      for (const scope of Object.keys(vault)) if (vault[scope]?.[mapId]) delete vault[scope][mapId];
+      localStorage.setItem(SECRET_STORAGE_KEY, JSON.stringify(vault));
+    }
+    function loadLocalMaps() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOCAL_MAPS_KEY));
+        if (Array.isArray(saved) && saved.length) return saved;
+      } catch {}
+      return [{ id:'principal', name:'Mapa principal' }];
+    }
+    function saveLocalMaps() { localStorage.setItem(LOCAL_MAPS_KEY, JSON.stringify(mapsMeta)); }
+    function formatMac(value) {
+      const hex = String(value || '').toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12);
+      return (hex.match(/.{1,2}/g) || []).join(':');
+    }
+    function validMac(value) { return !value || /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(value); }
+    function looksLikePort(value) {
+      const text = String(value || '').trim();
+      return Boolean(text) && !/^(dhcp|pppoe|est[aá]tico|fixo)$/i.test(text) && !/^\d{1,3}(\.\d{1,3}){3}/.test(text);
+    }
+    function migrateState(input, mapName = '') {
+      const source = validState(input) ? clone(input) : clone(DEFAULT_STATE);
+      const legacyPorts = new Map();
+      source.devices = source.devices.map((raw, index) => {
+        if (raw.password) setLocalPassword(raw.id, String(raw.password));
+        if (looksLikePort(raw.wan)) legacyPorts.set(raw.id, String(raw.wan).trim());
+        return {
+          id: String(raw.id || uid('device')),
+          name: String(raw.name || `equipamento-${index + 1}`).trim(),
+          type: TYPE_INFO[raw.type] ? raw.type : 'other',
+          mode: String(raw.mode || ''), brand: String(raw.brand || ''), model: String(raw.model || ''),
+          mac: formatMac(raw.mac), location: String(raw.location || ''), vlan: String(raw.vlan || ''),
+          firmware: String(raw.firmware || ''), wanIp: String(raw.wanIp || ''), lan: String(raw.lan || ''),
+          username: String(raw.username || ''), notes: String(raw.notes || ''),
+          x: Number.isFinite(Number(raw.x)) ? Number(raw.x) : 620,
+          y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : 430
+        };
+      });
+      source.links = source.links.map(raw => ({
+        id: String(raw.id || uid('link')), from: String(raw.from || ''), to: String(raw.to || ''),
+        fromPort: String(raw.fromPort || ''), toPort: String(raw.toPort || ''),
+        type: raw.type === 'cable' ? 'cable' : 'wireless', label: String(raw.label || ''),
+        color: /^#[0-9a-f]{6}$/i.test(raw.color || '') ? raw.color : '#38d8ff'
+      })).filter(link => source.devices.some(d => d.id === link.from) && source.devices.some(d => d.id === link.to));
+      for (const [deviceId, port] of legacyPorts) {
+        const attached = source.links.filter(link => link.from === deviceId || link.to === deviceId);
+        if (attached.length !== 1) continue;
+        if (attached[0].from === deviceId && !attached[0].fromPort) attached[0].fromPort = port;
+        if (attached[0].to === deviceId && !attached[0].toPort) attached[0].toPort = port;
+      }
+      source.version = 4;
+      source.mapName = String(mapName || source.mapName || 'Mapa sem nome');
+      source.mode3d = source.mode3d !== false;
+      return source;
+    }
+    function loadState(mapId = currentMapId) {
       let saved = null;
       try {
-        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        saved = JSON.parse(localStorage.getItem(localStateKey(mapId)));
+        if (!saved && mapId === 'principal') saved = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
       } catch (error) { console.warn('Não foi possível ler o salvamento local.', error); }
-      const valid = value => value && Array.isArray(value.devices) && Array.isArray(value.links);
-      const embedded = valid(EMBEDDED_STATE) ? EMBEDDED_STATE : null;
-      if (valid(saved) && embedded) {
+      const embedded = validState(EMBEDDED_STATE) ? EMBEDDED_STATE : null;
+      let chosen;
+      if (validState(saved) && embedded) {
         const savedTime = Date.parse(saved.updatedAt || '') || 0;
         const embeddedTime = Date.parse(embedded.updatedAt || '') || 0;
-        return clone(savedTime >= embeddedTime ? saved : embedded);
-      }
-      if (valid(saved)) return saved;
-      if (embedded) return clone(embedded);
-      return clone(DEFAULT_STATE);
+        chosen = savedTime >= embeddedTime ? saved : embedded;
+      } else chosen = validState(saved) ? saved : (embedded || DEFAULT_STATE);
+      const metaName = mapsMeta.find(map => map.id === mapId)?.name;
+      return migrateState(chosen, metaName);
     }
-    function persistNow(message = 'Salvo neste navegador') {
+    function persistNow(message = authUser ? 'Salvo localmente e na nuvem' : 'Salvo neste navegador') {
       clearTimeout(saveTimer);
       state.updatedAt = new Date().toISOString();
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(localStateKey(), JSON.stringify(state));
         $('saveState').textContent = message;
         return true;
       } catch (error) {
@@ -469,11 +625,208 @@
         return false;
       }
     }
-    function saveState(message = 'Salvo neste navegador') {
+    function saveState(message = authUser ? 'Salvando na nuvem…' : 'Salvo neste navegador') {
       clearTimeout(saveTimer);
       state.updatedAt = new Date().toISOString();
       $('saveState').textContent = 'Salvando…';
       saveTimer = setTimeout(() => persistNow(message), 120);
+      scheduleCloudSave();
+    }
+
+    function sanitizedState(source = state) {
+      const clean = {
+        version: 4,
+        mapName: String(source.mapName || 'Mapa sem nome'),
+        mode3d: source.mode3d !== false,
+        updatedAt: String(source.updatedAt || new Date().toISOString()),
+        devices: source.devices.map(device => ({
+          id:String(device.id), name:String(device.name || ''), type:TYPE_INFO[device.type] ? device.type : 'other',
+          mode:String(device.mode || ''), brand:String(device.brand || ''), model:String(device.model || ''),
+          mac:formatMac(device.mac), location:String(device.location || ''), vlan:String(device.vlan || ''),
+          firmware:String(device.firmware || ''), wanIp:String(device.wanIp || ''), lan:String(device.lan || ''),
+          username:String(device.username || ''), notes:String(device.notes || ''),
+          x:Number(device.x) || 0, y:Number(device.y) || 0
+        })),
+        links: source.links.map(link => ({
+          id:String(link.id), from:String(link.from), to:String(link.to),
+          fromPort:String(link.fromPort || ''), toPort:String(link.toPort || ''),
+          type:link.type === 'cable' ? 'cable' : 'wireless', label:String(link.label || ''),
+          color:/^#[0-9a-f]{6}$/i.test(link.color || '') ? link.color : '#38d8ff'
+        }))
+      };
+      if (source.layoutPreset && Object.keys(source.layoutPreset).length) clean.layoutPreset = clone(source.layoutPreset);
+      return clean;
+    }
+    function mapCollection() {
+      if (!db || !authUser) return null;
+      return db.collection('users').doc(authUser.uid).collection('maps');
+    }
+    function renderMapSwitcher() {
+      const select = $('mapSelect');
+      select.replaceChildren(...mapsMeta.map(map => {
+        const option = document.createElement('option');
+        option.value = map.id; option.textContent = map.name;
+        return option;
+      }));
+      select.value = currentMapId;
+      $('deleteMapBtn').disabled = mapsMeta.length <= 1;
+    }
+    function scheduleCloudSave() {
+      if (!authUser || !cloudReady || localOnlyMode) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(saveCloudNow, 850);
+    }
+    async function saveCloudNow() {
+      const collection = mapCollection();
+      if (!collection || !cloudReady) return;
+      clearTimeout(cloudSaveTimer);
+      const payload = sanitizedState();
+      payload.name = payload.mapName;
+      payload.clientUpdatedAt = new Date().toISOString();
+      payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      lastCloudWriteAt = payload.clientUpdatedAt;
+      $('saveState').textContent = 'Salvando na nuvem…';
+      try {
+        await collection.doc(currentMapId).set(payload, { merge:false });
+        const meta = mapsMeta.find(map => map.id === currentMapId);
+        if (meta) meta.name = payload.mapName;
+        saveLocalMaps(); renderMapSwitcher();
+        $('saveState').textContent = 'Salvo neste navegador e na nuvem';
+      } catch (error) {
+        console.error(error);
+        $('saveState').textContent = 'Salvo localmente; falha na nuvem';
+        toast('Não foi possível sincronizar com o Firestore');
+      }
+    }
+    function stopCloudListener() {
+      if (cloudUnsubscribe) cloudUnsubscribe();
+      cloudUnsubscribe = null;
+    }
+    function applyMap(nextState, mapId, mapName) {
+      currentMapId = mapId;
+      localStorage.setItem('mapa-rede-3d-active-map', currentMapId);
+      state = migrateState(nextState, mapName);
+      undoStack = []; selected = null;
+      persistNow(authUser ? 'Mapa carregado da nuvem' : 'Mapa carregado');
+      closePanel(); render(); renderMapSwitcher(); updateLayoutButtons(); requestAnimationFrame(fitView);
+    }
+    function watchCurrentMap() {
+      stopCloudListener();
+      const collection = mapCollection();
+      if (!collection) return;
+      cloudUnsubscribe = collection.doc(currentMapId).onSnapshot(snapshot => {
+        if (!snapshot.exists) return;
+        const data = snapshot.data();
+        if (data.clientUpdatedAt && data.clientUpdatedAt === lastCloudWriteAt) return;
+        const incomingTime = Date.parse(data.clientUpdatedAt || '') || 0;
+        const localTime = Date.parse(state.updatedAt || '') || 0;
+        if (incomingTime && incomingTime < localTime) return;
+        applyMap(data, currentMapId, data.name || data.mapName);
+      }, error => {
+        console.error(error);
+        $('saveState').textContent = 'Sem sincronização com a nuvem';
+      });
+    }
+    async function loadCloudMaps() {
+      const collection = mapCollection();
+      if (!collection) return;
+      $('saveState').textContent = 'Carregando seus mapas…';
+      const snapshot = await collection.get();
+      if (snapshot.empty) {
+        state.mapName = state.mapName || 'Mapa principal';
+        mapsMeta = [{ id:currentMapId, name:state.mapName }];
+        cloudReady = true;
+        await saveCloudNow();
+      } else {
+        mapsMeta = snapshot.docs.map(doc => ({ id:doc.id, name:doc.data().name || doc.data().mapName || 'Mapa sem nome' }))
+          .sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
+        if (!mapsMeta.some(map => map.id === currentMapId)) currentMapId = mapsMeta[0].id;
+        const doc = await collection.doc(currentMapId).get();
+        applyMap(doc.data(), currentMapId, mapsMeta.find(map => map.id === currentMapId)?.name);
+        cloudReady = true;
+      }
+      saveLocalMaps(); renderMapSwitcher(); watchCurrentMap();
+      $('saveState').textContent = 'Salvo neste navegador e na nuvem';
+    }
+    async function switchMap(mapId) {
+      if (!mapId || mapId === currentMapId) return;
+      persistNow(); stopCloudListener(); clearTimeout(cloudSaveTimer);
+      if (authUser && cloudReady) {
+        const doc = await mapCollection().doc(mapId).get();
+        if (doc.exists) applyMap(doc.data(), mapId, doc.data().name || doc.data().mapName);
+      } else applyMap(loadState(mapId), mapId, mapsMeta.find(map => map.id === mapId)?.name);
+      if (authUser && cloudReady) watchCurrentMap();
+    }
+    async function createMap() {
+      const name = prompt('Nome do novo mapa:', 'Novo mapa')?.trim();
+      if (!name) return;
+      persistNow(); stopCloudListener();
+      const mapId = uid('map');
+      mapsMeta.push({ id:mapId, name }); saveLocalMaps();
+      const blank = { version:4, mapName:name, mode3d:true, devices:[], links:[] };
+      applyMap(blank, mapId, name);
+      if (authUser && cloudReady) await saveCloudNow();
+      if (authUser && cloudReady) watchCurrentMap();
+      toast(`Mapa “${name}” criado`);
+    }
+    async function renameMap() {
+      const current = mapsMeta.find(map => map.id === currentMapId);
+      const name = prompt('Novo nome do mapa:', current?.name || state.mapName)?.trim();
+      if (!name) return;
+      state.mapName = name;
+      if (current) current.name = name;
+      saveLocalMaps(); renderMapSwitcher(); saveState();
+      if (authUser && cloudReady) await saveCloudNow();
+      toast('Mapa renomeado');
+    }
+    async function deleteMap() {
+      if (mapsMeta.length <= 1) return toast('Mantenha pelo menos um mapa');
+      const current = mapsMeta.find(map => map.id === currentMapId);
+      if (!confirm(`Excluir o mapa “${current?.name || state.mapName}”? Essa ação não pode ser desfeita.`)) return;
+      stopCloudListener(); clearTimeout(cloudSaveTimer);
+      if (authUser && cloudReady) await mapCollection().doc(currentMapId).delete();
+      localStorage.removeItem(localStateKey(currentMapId)); deleteLocalPasswordsForMap(currentMapId);
+      mapsMeta = mapsMeta.filter(map => map.id !== currentMapId); saveLocalMaps();
+      const nextId = mapsMeta[0].id;
+      if (authUser && cloudReady) {
+        const doc = await mapCollection().doc(nextId).get();
+        applyMap(doc.data(), nextId, mapsMeta[0].name); watchCurrentMap();
+      } else applyMap(loadState(nextId), nextId, mapsMeta[0].name);
+      toast('Mapa excluído');
+    }
+    function updateAuthUi(user) {
+      $('authGate').hidden = Boolean(user) || localOnlyMode;
+      $('authLabel').textContent = user ? (user.displayName?.split(' ')[0] || 'Conta') : 'Entrar';
+      $('authAvatar').textContent = user ? (user.displayName?.[0] || user.email?.[0] || 'G').toUpperCase() : 'G';
+      $('authBtn').title = user ? `${user.email || 'Conta Google'} — clique para sair` : 'Entrar com Google';
+    }
+    async function signInGoogle() {
+      if (!auth) return toast('Abra pelo Firebase Hosting para entrar com Google');
+      $('authError').textContent = '';
+      try {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      } catch (error) {
+        if (['auth/popup-blocked','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(error.code)) {
+          await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+        } else {
+          console.error(error); $('authError').textContent = 'Não foi possível entrar. Confira se o provedor Google está ativado no Firebase.';
+        }
+      }
+    }
+    function initFirebase() {
+      if (!window.firebase?.apps?.length) {
+        $('authError').textContent = 'Login indisponível fora do Firebase Hosting. Você ainda pode usar o modo local.';
+        updateAuthUi(null); return;
+      }
+      auth = firebase.auth(); db = firebase.firestore();
+      auth.onAuthStateChanged(async user => {
+        authUser = user || null; cloudReady = false; stopCloudListener(); updateAuthUi(authUser);
+        if (authUser) {
+          try { await loadCloudMaps(); }
+          catch (error) { console.error(error); $('saveState').textContent = 'Falha ao carregar a nuvem'; toast('Confira o Firestore e suas regras de acesso'); }
+        } else if (!localOnlyMode) $('saveState').textContent = 'Aguardando login';
+      });
     }
     function uid(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
     function escapeText(v) { return String(v ?? ''); }
@@ -546,18 +899,12 @@
         node.style.left = device.x + 'px';
         node.style.top = device.y + 'px';
         node.style.setProperty('--node-color', info.color);
-        node.style.setProperty('--image-opacity', device.imageOpacity ?? .72);
-        node.style.setProperty('--image-pos-x', (device.imagePosX ?? 50) + '%');
-        node.style.setProperty('--image-pos-y', (device.imagePosY ?? 50) + '%');
 
         const head = document.createElement('div');
         head.className = 'node-head';
         const icon = document.createElement('div');
         icon.className = 'node-icon';
-        if (device.image) {
-          const img = document.createElement('img'); img.src = device.image; img.alt = '';
-          icon.appendChild(img);
-        } else icon.textContent = info.icon;
+        icon.textContent = info.icon;
         const title = document.createElement('div'); title.className = 'node-title';
         const strong = document.createElement('strong'); strong.textContent = device.name || 'Sem nome';
         const type = document.createElement('span'); type.textContent = info.label;
@@ -566,7 +913,7 @@
         head.append(icon, title, edit);
 
         const body = document.createElement('div'); body.className = 'node-body';
-        const fields = [['Modo', device.mode], ['Porta', device.wan], ['LAN', device.lan]];
+        const fields = [['Modo', device.mode], ['Local', device.location], ['LAN', device.lan], ['VLAN', device.vlan]];
         for (const [label, value] of fields) if (value) {
           const row = document.createElement('div'); row.className = 'field-line';
           const b = document.createElement('b'); b.textContent = label;
@@ -676,7 +1023,8 @@
     function deviceForm(device) {
       const form = document.createElement('form'); form.className = 'form';
       form.innerHTML = `
-        <label>Nome<input name="name" required maxlength="60"></label>
+        <label>Hostname / nome do equipamento<input name="name" required maxlength="60" placeholder="Ex.: router-garagem"></label>
+        <label>Localização física<input name="location" maxlength="100" placeholder="Ex.: Rack 1, Quadro externo, Poste"></label>
         <div class="form-row">
           <label>Tipo<select name="type">${Object.entries(TYPE_INFO).map(([v,i]) => `<option value="${v}">${i.label}</option>`).join('')}</select></label>
           <label>Modo<input name="mode" maxlength="50"></label>
@@ -685,58 +1033,29 @@
           <label>Marca<input name="brand" maxlength="60" placeholder="Ex.: TP-Link"></label>
           <label>Modelo<input name="model" maxlength="80" placeholder="Ex.: Archer C6"></label>
         </div>
-        <div class="form-row"><label>Porta de conexão<input name="wan" maxlength="80" placeholder="Ex.: WAN, LAN 4, PoE"></label><label>LAN / IP<input name="lan" maxlength="100"></label></div>
+        <div class="form-row">
+          <label>Endereço MAC<input name="mac" maxlength="17" inputmode="text" autocomplete="off" placeholder="00:00:00:00:00:00" pattern="([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"></label>
+          <label>LAN / IP<input name="lan" maxlength="100" placeholder="Ex.: 192.168.0.10"></label>
+        </div>
+        <div class="form-row">
+          <label>IP de WAN <span class="optional">(opcional)</span><input name="wanIp" maxlength="100" placeholder="Ex.: DHCP ou 200.10.10.2"></label>
+          <label>VLAN <span class="optional">(opcional)</span><input name="vlan" maxlength="40" placeholder="Ex.: 20 - Câmeras"></label>
+        </div>
+        <label>Versão de firmware <span class="optional">(opcional)</span><input name="firmware" maxlength="100" placeholder="Ex.: 1.3.6 Build 2026"></label>
         <div class="form-row">
           <label>Usuário de acesso<input name="username" autocomplete="off" maxlength="100" placeholder="Ex.: admin"></label>
           <label>Senha<div class="secret-wrap"><input name="password" type="password" autocomplete="off" maxlength="120"><button class="reveal" type="button" title="Mostrar senha">◉</button></div></label>
         </div>
         <label>Observações<textarea name="notes" maxlength="300"></textarea></label>
-        <div class="image-field"><span class="field-label">Foto do equipamento</span><div class="image-box"><span class="imageHint">Clique para escolher uma imagem<br>A foto aparecerá antes do nome</span><img class="imagePreview" alt="Prévia" hidden><input name="imageFile" type="file" accept="image/*"></div></div>
-        <div class="position-controls imagePositionControls" ${device.image ? '' : 'hidden'}>
-          <div class="hint" style="padding:8px">Arraste a foto na prévia ou use os controles para escolher qual parte ficará visível no quadro.</div>
-          <div class="position-row"><span>Horizontal</span><input name="imagePosX" type="range" min="0" max="100" step="1"><span class="position-value posXValue"></span></div>
-          <div class="position-row"><span>Vertical</span><input name="imagePosY" type="range" min="0" max="100" step="1"><span class="position-value posYValue"></span></div>
-          <button class="btn centerImage" type="button">⊙ Centralizar foto</button>
-        </div>
-        <label class="opacityLabel">Transparência da foto<div class="opacity-control"><input name="imageOpacity" type="range" min="20" max="100" step="1"><span class="opacity-value"></span></div></label>
-        <div class="image-actions" ${device.image ? '' : 'hidden'}><button class="btn changeImage" type="button">Trocar foto</button><button class="btn danger removeImage" type="button">Remover foto</button></div>
-        <div class="hint">Os dados são salvos somente neste navegador. Faça um backup para usar em outro aparelho.</div>
+        <div class="hint"><b>Privacidade:</b> a senha fica somente neste navegador. Os demais dados sincronizam com sua conta Google.</div>
         <div class="form-actions"><button class="btn danger deleteDevice" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
-      for (const key of ['name','type','mode','brand','model','wan','lan','username','password','notes']) form.elements[key].value = device[key] || '';
-      const preview = form.querySelector('.imagePreview'); const hint = form.querySelector('.imageHint');
-      const imageBox = form.querySelector('.image-box');
-      const imageActions = form.querySelector('.image-actions');
-      const positionControls = form.querySelector('.imagePositionControls');
-      const opacityInput = form.elements.imageOpacity; const opacityValue = form.querySelector('.opacity-value');
-      const posXInput = form.elements.imagePosX; const posYInput = form.elements.imagePosY;
-      const posXValue = form.querySelector('.posXValue'); const posYValue = form.querySelector('.posYValue');
-      device.imageOpacity = device.imageOpacity ?? .72;
-      device.imagePosX = device.imagePosX ?? 50;
-      device.imagePosY = device.imagePosY ?? 50;
-      opacityInput.value = Math.round(device.imageOpacity * 100);
-      posXInput.value = Math.round(device.imagePosX);
-      posYInput.value = Math.round(device.imagePosY);
-      const updateOpacity = () => {
-        device.imageOpacity = Number(opacityInput.value) / 100;
-        opacityValue.textContent = opacityInput.value + '%';
-        preview.style.opacity = device.imageOpacity;
+      const editableKeys = ['name','location','type','mode','brand','model','mac','lan','wanIp','vlan','firmware','username','notes'];
+      for (const key of editableKeys) form.elements[key].value = device[key] || '';
+      form.elements.password.value = getLocalPassword(device.id);
+      const validateMacInput = () => {
+        form.elements.mac.value = formatMac(form.elements.mac.value);
+        form.elements.mac.setCustomValidity(validMac(form.elements.mac.value) ? '' : 'Digite os 12 caracteres do MAC. Ex.: 00:11:22:AA:BB:CC');
       };
-      const updateImagePosition = () => {
-        device.imagePosX = Number(posXInput.value);
-        device.imagePosY = Number(posYInput.value);
-        posXValue.textContent = Math.round(device.imagePosX) + '%';
-        posYValue.textContent = Math.round(device.imagePosY) + '%';
-        preview.style.objectPosition = `${device.imagePosX}% ${device.imagePosY}%`;
-      };
-      const syncImageUi = () => {
-        const hasImage = Boolean(device.image);
-        preview.hidden = !hasImage; hint.hidden = hasImage;
-        positionControls.hidden = !hasImage; imageActions.hidden = !hasImage;
-        imageBox.classList.toggle('has-image', hasImage);
-        if (hasImage) preview.src = device.image;
-      };
-      updateOpacity(); updateImagePosition(); syncImageUi();
-      const editableKeys = ['name','type','mode','brand','model','wan','lan','username','password','notes'];
       const saveTypedFields = () => {
         for (const key of editableKeys) device[key] = form.elements[key].value.trim();
         saveState('Alterações salvas automaticamente');
@@ -746,53 +1065,25 @@
         form.elements[key].addEventListener('input', saveTypedFields);
         form.elements[key].addEventListener('change', saveTypedFields);
       }
-      opacityInput.addEventListener('input', () => { updateOpacity(); renderNodes(); saveState(); });
-      for (const input of [posXInput, posYInput]) input.addEventListener('input', () => { updateImagePosition(); renderNodes(); saveState(); });
+      form.elements.mac.addEventListener('input', () => { validateMacInput(); saveTypedFields(); });
+      form.elements.password.addEventListener('input', () => {
+        setLocalPassword(device.id, form.elements.password.value);
+        $('saveState').textContent = 'Senha salva somente neste navegador';
+      });
       form.querySelector('.reveal').onclick = () => { const input = form.elements.password; input.type = input.type === 'password' ? 'text' : 'password'; };
-      form.elements.imageFile.onchange = async () => {
-        const file = form.elements.imageFile.files[0]; if (!file) return;
-        const data = await resizeImage(file, 640, .82); device.image = data; device.imageOpacity = .72; device.imagePosX = 50; device.imagePosY = 50;
-        opacityInput.value = '72'; posXInput.value = '50'; posYInput.value = '50'; updateOpacity(); updateImagePosition(); syncImageUi();
-        saveState(); renderNodes(); toast('Foto adicionada. Arraste na prévia para ajustar o enquadramento');
-      };
-      form.querySelector('.changeImage').onclick = () => form.elements.imageFile.click();
-      form.querySelector('.centerImage').onclick = () => {
-        posXInput.value = '50'; posYInput.value = '50'; updateImagePosition(); renderNodes(); saveState(); toast('Foto centralizada');
-      };
-      let imageDrag = null;
-      preview.addEventListener('pointerdown', event => {
-        if (!device.image || event.button !== 0) return;
-        event.preventDefault(); event.stopPropagation();
-        imageDrag = { id:event.pointerId, x:event.clientX, y:event.clientY, posX:Number(posXInput.value), posY:Number(posYInput.value) };
-        preview.classList.add('dragging'); preview.setPointerCapture(event.pointerId);
-      });
-      preview.addEventListener('pointermove', event => {
-        if (!imageDrag || event.pointerId !== imageDrag.id) return;
-        const rect = preview.getBoundingClientRect();
-        const sensitivityX = 100 / Math.max(120, rect.width);
-        const sensitivityY = 100 / Math.max(80, rect.height);
-        posXInput.value = String(clamp(imageDrag.posX - (event.clientX - imageDrag.x) * sensitivityX, 0, 100));
-        posYInput.value = String(clamp(imageDrag.posY - (event.clientY - imageDrag.y) * sensitivityY, 0, 100));
-        updateImagePosition(); renderNodes();
-      });
-      const endImageDrag = event => {
-        if (!imageDrag || event.pointerId !== imageDrag.id) return;
-        imageDrag = null; preview.classList.remove('dragging'); saveState();
-      };
-      preview.addEventListener('pointerup', endImageDrag);
-      preview.addEventListener('pointercancel', endImageDrag);
-      form.querySelector('.removeImage').onclick = () => {
-        device.image = ''; preview.src = ''; syncImageUi(); saveState(); renderNodes(); toast('Foto removida');
-      };
       form.querySelector('.deleteDevice').onclick = () => {
         if (!confirm(`Excluir “${device.name}” e suas conexões?`)) return;
         state.devices = state.devices.filter(d => d.id !== device.id);
         state.links = state.links.filter(l => l.from !== device.id && l.to !== device.id);
+        setLocalPassword(device.id, '');
         closePanel(); saveState(); render(); toast('Equipamento excluído');
       };
       form.onsubmit = event => {
         event.preventDefault();
+        validateMacInput();
+        if (!form.reportValidity()) return;
         for (const key of editableKeys) device[key] = form.elements[key].value.trim();
+        setLocalPassword(device.id, form.elements.password.value);
         saveState(); render(); openDevice(device.id); toast('Equipamento salvo');
       };
       return form;
@@ -833,11 +1124,7 @@
         const info = infoFor(device.type);
         const card = document.createElement('div'); card.className = 'device-list-card';
         const photo = document.createElement('div'); photo.className = 'device-list-photo';
-        if (device.image) {
-          const img = document.createElement('img'); img.src = device.image; img.alt = '';
-          img.style.objectPosition = `${device.imagePosX ?? 50}% ${device.imagePosY ?? 50}%`;
-          photo.appendChild(img);
-        } else photo.textContent = info.icon;
+        photo.textContent = info.icon;
         const text = document.createElement('div'); text.className = 'device-list-info';
         const name = document.createElement('strong'); name.textContent = device.name || 'Sem nome';
         const details = document.createElement('span');
@@ -865,7 +1152,8 @@
           const card = document.createElement('div');
           card.className = 'link-card';
           const title = document.createElement('div'); title.className = 'link-card-title'; title.textContent = `${from} → ${to}`;
-          const meta = document.createElement('div'); meta.className = 'link-card-meta'; meta.textContent = `${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}${link.label ? ' • ' + link.label : ''}`;
+          const portSummary = [link.fromPort, link.toPort].some(Boolean) ? ` • ${link.fromPort || 'porta não informada'} → ${link.toPort || 'porta não informada'}` : '';
+          const meta = document.createElement('div'); meta.className = 'link-card-meta'; meta.textContent = `${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}${link.label ? ' • ' + link.label : ''}${portSummary}`;
           const actions = document.createElement('div'); actions.className = 'link-card-actions';
           const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn'; editBtn.textContent = 'Editar'; editBtn.onclick = () => openLink(link.id);
           const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.className = 'btn danger'; delBtn.textContent = 'Excluir'; delBtn.onclick = () => { deleteLinkById(link.id); if (state.links.length) openLinkManager(); else closePanel(); };
@@ -883,22 +1171,34 @@
         <label>De<select name="from">${options}</select></label>
         <label>Para<select name="to">${options}</select></label>
         <div class="form-row">
+          <label class="fromPortLabel">Porta de saída<input name="fromPort" maxlength="80" placeholder="Ex.: LAN 4, SFP1, Rádio 5 GHz"></label>
+          <label class="toPortLabel">Porta de entrada<input name="toPort" maxlength="80" placeholder="Ex.: WAN, LAN 1, PoE"></label>
+        </div>
+        <div class="form-row">
           <label>Tipo<select name="type"><option value="wireless">WiFi / rádio</option><option value="cable">Cabo</option></select></label>
           <label>Cor<input name="color" type="color"></label>
         </div>
         <label>Rótulo<input name="label" maxlength="60" placeholder="Ex.: WiFi 5 GHz"></label>
         <div class="hint"><b>WiFi / rádio</b> fica pontilhado. <b>Cabo</b> fica contínuo.</div>
         <div class="form-actions"><button class="btn danger deleteLink" type="button">Excluir</button><button class="btn primary" type="submit">Salvar</button></div>`;
-      for (const key of ['from','to','type','color','label']) form.elements[key].value = link[key] || (key === 'color' ? '#38d8ff' : '');
+      const linkKeys = ['from','to','fromPort','toPort','type','color','label'];
+      for (const key of linkKeys) form.elements[key].value = link[key] || (key === 'color' ? '#38d8ff' : '');
+      const updatePortLabels = () => {
+        const fromName = state.devices.find(device => device.id === form.elements.from.value)?.name || 'origem';
+        const toName = state.devices.find(device => device.id === form.elements.to.value)?.name || 'destino';
+        form.querySelector('.fromPortLabel').firstChild.textContent = `Porta em ${fromName}`;
+        form.querySelector('.toPortLabel').firstChild.textContent = `Porta em ${toName}`;
+      };
       const saveLinkFields = () => {
         const from = form.elements.from.value;
         const to = form.elements.to.value;
         if (from === to) return;
-        for (const key of ['from','to','type','color','label']) link[key] = form.elements[key].value.trim();
+        for (const key of linkKeys) link[key] = form.elements[key].value.trim();
+        updatePortLabels();
         saveState('Conexão salva automaticamente');
         renderLinks();
       };
-      for (const key of ['from','to','type','color','label']) {
+      for (const key of linkKeys) {
         form.elements[key].addEventListener('input', saveLinkFields);
         form.elements[key].addEventListener('change', saveLinkFields);
       }
@@ -906,9 +1206,10 @@
       form.onsubmit = event => {
         event.preventDefault();
         if (form.elements.from.value === form.elements.to.value) return toast('Escolha dois equipamentos diferentes');
-        for (const key of ['from','to','type','color','label']) link[key] = form.elements[key].value.trim();
+        for (const key of linkKeys) link[key] = form.elements[key].value.trim();
         saveState(); render(); openLink(link.id); toast('Conexão salva');
       };
+      updatePortLabels();
       return form;
     }
 
@@ -920,13 +1221,13 @@
 
     function addDevice() {
       const id = uid('device');
-      state.devices.push({ id, name:'Novo equipamento', type:'router', mode:'', brand:'', model:'', wan:'', lan:'', username:'', password:'', notes:'', x:620, y:430, image:'', imageOpacity:.72, imagePosX:50, imagePosY:50 });
+      state.devices.push({ id, name:'Novo equipamento', type:'router', mode:'', brand:'', model:'', mac:'', location:'', vlan:'', firmware:'', wanIp:'', lan:'', username:'', notes:'', x:620, y:430 });
       render(); openDevice(id, true); saveState();
     }
     function addLink() {
       if (state.devices.length < 2) return toast('Adicione pelo menos dois equipamentos');
       const id = uid('link');
-      state.links.push({ id, from:state.devices[0].id, to:state.devices[1].id, type:'wireless', label:'', color:'#38d8ff' });
+      state.links.push({ id, from:state.devices[0].id, to:state.devices[1].id, fromPort:'', toPort:'', type:'wireless', label:'', color:'#38d8ff' });
       render(); openLink(id, true); saveState();
     }
 
@@ -1017,25 +1318,14 @@
     });
     viewport.addEventListener('pointerup', () => { panDrag = null; viewport.classList.remove('panning'); });
 
-    async function resizeImage(file, maxSize, quality) {
-      const data = await fileToDataURL(file);
-      const image = await loadImage(data);
-      const ratio = Math.min(1, maxSize / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width*ratio); canvas.height = Math.round(image.height*ratio);
-      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg', quality);
-    }
-    function fileToDataURL(file) { return new Promise((resolve,reject) => { const r = new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
-    function loadImage(src) { return new Promise((resolve,reject) => { const img = new Image(); img.onload=()=>resolve(img); img.onerror=reject; img.src=src; }); }
-
     function exportBackup() {
       persistNow();
-      const blob = new Blob([JSON.stringify({ ...state, exportedAt:new Date().toISOString() }, null, 2)], {type:'application/json'});
+      const blob = new Blob([JSON.stringify({ ...sanitizedState(), exportedAt:new Date().toISOString() }, null, 2)], {type:'application/json'});
       downloadBlob(blob, `mapa-rede-backup-${new Date().toISOString().slice(0,10)}.json`); toast('Backup baixado');
     }
     function exportCompleteHtml() {
       persistNow('Mapa pronto para baixar');
-      const safeState = JSON.stringify(state)
+      const safeState = JSON.stringify(sanitizedState())
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e')
         .replace(/\u2028/g, '\\u2028')
@@ -1051,26 +1341,25 @@
       toast('HTML completo baixado com todas as alterações');
     }
     function exportCompleteReport() {
-      const confirmed = confirm('O relatório completo mostrará usuários e senhas cadastrados. Deseja continuar?');
-      if (!confirmed) return;
       persistNow();
       const report = window.open('', '_blank');
       if (!report) return toast('O navegador bloqueou o relatório. Permita janelas para este arquivo.');
       const shown = value => value === undefined || value === null || value === '' ? '—' : escapeHtml(String(value));
       const deviceCards = state.devices.map((device, index) => {
         const info = infoFor(device.type);
-        const image = typeof device.image === 'string' && device.image.startsWith('data:image/')
-          ? `<img class="device-photo" src="${escapeAttr(device.image)}" alt="Foto de ${escapeAttr(device.name || 'equipamento')}">`
-          : `<div class="device-photo placeholder">${escapeHtml(info.icon)}</div>`;
+        const image = `<div class="device-photo placeholder">${escapeHtml(info.icon)}</div>`;
         const rows = [
           ['Tipo', info.label],
           ['Marca', device.brand],
           ['Modelo', device.model],
           ['Modo', device.mode],
-          ['Porta de conexão', device.wan],
+          ['Localização física', device.location],
+          ['Endereço MAC', device.mac],
           ['LAN / IP', device.lan],
+          ['IP de WAN', device.wanIp],
+          ['VLAN', device.vlan],
+          ['Versão de firmware', device.firmware],
           ['Usuário de acesso', device.username],
-          ['Senha', device.password],
           ['Observações', device.notes],
           ['Identificação interna', device.id],
           ['Posição no mapa', `X ${Math.round(Number(device.x) || 0)} · Y ${Math.round(Number(device.y) || 0)}`]
@@ -1084,12 +1373,12 @@
         const from = state.devices.find(device => device.id === link.from)?.name || 'Equipamento removido';
         const to = state.devices.find(device => device.id === link.to)?.name || 'Equipamento removido';
         const safeColor = /^#[0-9a-f]{6}$/i.test(link.color || '') ? link.color : '#38d8ff';
-        return `<tr><td>${index + 1}</td><td>${shown(from)}</td><td>${shown(to)}</td><td>${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}</td><td>${shown(link.label)}</td><td><span class="color" style="background:${safeColor}"></span>${shown(safeColor)}</td></tr>`;
-      }).join('') || '<tr><td colspan="6">Nenhuma conexão cadastrada.</td></tr>';
+        return `<tr><td>${index + 1}</td><td>${shown(from)}</td><td>${shown(link.fromPort)}</td><td>${shown(to)}</td><td>${shown(link.toPort)}</td><td>${link.type === 'wireless' ? 'WiFi / rádio' : 'Cabo'}</td><td>${shown(link.label)}</td><td><span class="color" style="background:${safeColor}"></span>${shown(safeColor)}</td></tr>`;
+      }).join('') || '<tr><td colspan="8">Nenhuma conexão cadastrada.</td></tr>';
       const generatedAt = new Intl.DateTimeFormat('pt-BR', { dateStyle:'long', timeStyle:'short' }).format(new Date());
       const reportHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório completo da infraestrutura de rede</title><style>
         *{box-sizing:border-box}body{margin:0;background:#eef3f8;color:#132238;font-family:Arial,sans-serif;font-size:14px}.actions{position:sticky;top:0;display:flex;justify-content:flex-end;gap:10px;padding:12px 5%;background:rgba(238,243,248,.94);border-bottom:1px solid #ced9e6}.actions button{padding:10px 16px;border:0;border-radius:9px;background:#1267d6;color:#fff;font-weight:700;cursor:pointer}.actions .secondary{background:#50627a}.report{max-width:980px;margin:28px auto;padding:0 22px 50px}.report-head{padding:26px 28px;background:#071a33;color:#fff;border-radius:16px;margin-bottom:18px}.report-head h1{margin:0 0 8px;font-size:25px}.report-head p{margin:0;color:#b9cde5}.warning{margin-top:16px;padding:10px 12px;background:#fff2cc;color:#654900;border-radius:8px;font-weight:700}.device-card{background:#fff;border:1px solid #cfdae7;border-radius:14px;margin:0 0 16px;overflow:hidden;break-inside:avoid;box-shadow:0 4px 16px rgba(18,42,72,.07)}.device-card header{display:grid;grid-template-columns:76px 1fr;gap:16px;align-items:center;padding:16px 18px;background:#f7faff;border-bottom:1px solid #dde6f0}.device-photo{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid #c6d5e6}.device-photo.placeholder{display:grid;place-items:center;background:#102949;color:#59dfff;font-size:30px}.number{display:block;color:#53708f;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.device-card h2{margin:4px 0 3px;font-size:20px}.device-card header p{margin:0;color:#1267d6;font-weight:700}.device-card dl{margin:0;display:grid;grid-template-columns:1fr 1fr}.data-row{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:10px 16px;border-bottom:1px solid #e8eef5;min-width:0}.data-row:nth-child(odd){border-right:1px solid #e8eef5}.data-row dt{color:#5b6f86;font-weight:700}.data-row dd{margin:0;overflow-wrap:anywhere}.connections{background:#fff;border:1px solid #cfdae7;border-radius:14px;padding:20px;break-before:page}.connections h2{margin:0 0 14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px;border:1px solid #dce5ef;text-align:left;vertical-align:top}th{background:#edf4fb}.color{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.footer{color:#687d95;text-align:center;margin-top:20px;font-size:11px}@media(max-width:700px){.device-card dl{grid-template-columns:1fr}.data-row:nth-child(odd){border-right:0}.actions{padding:10px}.report{padding:0 10px 30px}.report-head{border-radius:10px}}@media print{body{background:#fff}.actions{display:none}.report{max-width:none;margin:0;padding:0}.report-head{border-radius:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.device-card{box-shadow:none}.connections{break-before:page}.warning,.device-photo.placeholder,th,.color{-webkit-print-color-adjust:exact;print-color-adjust:exact}}@page{size:A4 portrait;margin:12mm}
-      </style></head><body><div class="actions"><button class="secondary" onclick="window.close()">Fechar</button><button onclick="window.print()">Imprimir / Salvar PDF</button></div><main class="report"><section class="report-head"><h1>Relatório completo da infraestrutura de rede</h1><p>${state.devices.length} equipamentos · ${state.links.length} conexões · Gerado em ${escapeHtml(generatedAt)}</p><div class="warning">Documento confidencial — contém credenciais de acesso.</div></section>${deviceCards}<section class="connections"><h2>Conexões cadastradas</h2><table><thead><tr><th>#</th><th>De</th><th>Para</th><th>Tipo</th><th>Rótulo</th><th>Cor</th></tr></thead><tbody>${connectionRows}</tbody></table></section><p class="footer">Mapa de Rede — relatório gerado pelo editor portátil</p></main></body></html>`;
+      </style></head><body><div class="actions"><button class="secondary" onclick="window.close()">Fechar</button><button onclick="window.print()">Imprimir / Salvar PDF</button></div><main class="report"><section class="report-head"><h1>${shown(state.mapName)}</h1><p>${state.devices.length} equipamentos · ${state.links.length} conexões · Gerado em ${escapeHtml(generatedAt)}</p><div class="warning">Por segurança, as senhas locais não são incluídas neste relatório.</div></section>${deviceCards}<section class="connections"><h2>Conexões cadastradas</h2><table><thead><tr><th>#</th><th>De</th><th>Porta de saída</th><th>Para</th><th>Porta de entrada</th><th>Tipo</th><th>Rótulo</th><th>Cor</th></tr></thead><tbody>${connectionRows}</tbody></table></section><p class="footer">Mapa de Rede — relatório gerado pelo editor portátil</p></main></body></html>`;
       report.document.open();
       report.document.write(reportHtml);
       report.document.close();
@@ -1102,7 +1391,7 @@
       try {
         const data = JSON.parse(await file.text());
         if (!Array.isArray(data.devices) || !Array.isArray(data.links)) throw new Error('Formato inválido');
-        state = data; if (state.mode3d === undefined) state.mode3d = true;
+        state = migrateState(data, data.mapName || state.mapName);
         undoStack = [];
         saveState(); closePanel(); render(); fitView(); updateLayoutButtons(); toast('Backup restaurado');
       } catch (error) { toast('Esse arquivo não é um backup válido'); }
@@ -1132,6 +1421,31 @@
     $('zoomIn').onclick = () => setZoom(scale*1.15);
     $('zoomOut').onclick = () => setZoom(scale/1.15);
     $('fitBtn').onclick = fitView;
+    $('mapSelect').onchange = event => switchMap(event.target.value);
+    $('newMapBtn').onclick = createMap;
+    $('renameMapBtn').onclick = renameMap;
+    $('deleteMapBtn').onclick = deleteMap;
+    $('loginGoogleBtn').onclick = signInGoogle;
+    $('localModeBtn').onclick = () => {
+      localOnlyMode = true; updateAuthUi(authUser); renderMapSwitcher();
+      $('saveState').textContent = 'Modo local — salvo neste navegador';
+      toast('Modo local ativado');
+    };
+    $('authBtn').onclick = async () => {
+      if (authUser && auth) {
+        if (confirm('Sair da conta Google? As senhas locais continuarão somente neste navegador.')) await auth.signOut();
+      } else {
+        localOnlyMode = false; updateAuthUi(null); await signInGoogle();
+      }
+    };
+    document.querySelectorAll('.tool-menu-panel .btn').forEach(button => {
+      button.addEventListener('click', () => button.closest('details')?.removeAttribute('open'));
+    });
+    document.addEventListener('click', event => {
+      document.querySelectorAll('.tool-menu[open]').forEach(menu => {
+        if (!menu.contains(event.target)) menu.removeAttribute('open');
+      });
+    });
     window.addEventListener('resize', fitView);
     window.addEventListener('pagehide', () => persistNow());
     window.addEventListener('keydown', event => {
@@ -1147,7 +1461,7 @@
       }
     });
 
-    closePanel(); render(); updateLayoutButtons(); requestAnimationFrame(fitView);
+    renderMapSwitcher(); closePanel(); render(); updateLayoutButtons(); requestAnimationFrame(fitView); initFirebase();
   </script>
 </body>
 </html>
