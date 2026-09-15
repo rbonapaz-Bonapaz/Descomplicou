@@ -165,17 +165,21 @@
     .side-tools > .btn .label, .side-tools > .tool-menu > summary .label { display: none; }
     .side-tools.expanded > .btn .label, .side-tools.expanded > .tool-menu > summary .label { display: inline; }
     .side-tools > .tool-menu { width: 100%; }
-    .side-tools > .tool-menu .tool-menu-panel {
-      position: static; width: auto; margin: 4px 0 2px 17px; padding: 2px 0 2px 10px;
+    .side-tools > .tool-menu .side-submenu {
+      position: relative; inset: auto; width: calc(100% - 17px); margin: 4px 0 2px 17px; padding: 2px 0 2px 10px;
+      display: grid;
       gap: 2px; border: 0; border-left: 2px solid rgba(128,166,220,.24); border-radius: 0;
       background: transparent; box-shadow: none; backdrop-filter: none;
     }
-    .side-tools > .tool-menu .tool-menu-panel .menu-title { display: none; }
-    .side-tools > .tool-menu .tool-menu-panel .btn { min-height: 35px; height: auto; padding: 7px 9px; border-color: transparent; border-radius: 9px; background: transparent; font-size: 12px; font-weight: 650; white-space: normal; line-height: 1.25; text-align: left; }
-    .side-tools > .tool-menu .tool-menu-panel .btn:hover { background: rgba(255,255,255,.07); transform: none; }
-    .side-tools > .tool-menu .tool-menu-panel .btn.primary { color: var(--text); background: rgba(56,216,255,.10); }
+    .side-tools > .tool-menu:not([open]) > .side-submenu { display: none; }
+    .side-tools > .tool-menu .side-submenu .menu-title { display: none; }
+    .side-tools > .tool-menu .side-submenu .btn { width: 100%; min-height: 35px; height: auto; padding: 7px 9px; justify-content: flex-start; border-color: transparent; border-radius: 9px; background: transparent; font-size: 12px; font-weight: 650; white-space: normal; line-height: 1.25; text-align: left; }
+    .side-tools > .tool-menu .side-submenu .btn .label { display: inline; }
+    .side-tools > .tool-menu .side-submenu .btn:hover { background: rgba(255,255,255,.07); transform: none; }
+    .side-tools > .tool-menu .side-submenu .btn.primary { color: var(--text); background: rgba(56,216,255,.10); }
+    .side-tools > .tool-menu .side-submenu .btn.active::after { content: 'Ativo'; margin-left: auto; color: var(--mint); font-size: 9px; font-weight: 850; text-transform: uppercase; }
     .side-tools > .tool-menu[open] > summary { background: linear-gradient(90deg, rgba(56,216,255,.15), rgba(56,216,255,.03)); box-shadow: inset 3px 0 0 var(--cyan); }
-    .side-tools:not(.expanded) > .tool-menu .tool-menu-panel { display: none; }
+    .side-tools:not(.expanded) > .tool-menu .side-submenu { display: none; }
     .side-tools .sidebar-divider { height: 1px; margin: 1px 4px; background: var(--line); }
     .side-tools .sidebar-help { margin-top: auto; }
     .side-tools:not(.expanded) > .btn, .side-tools:not(.expanded) > .tool-menu > summary { justify-content: center; padding: 0; }
@@ -370,7 +374,24 @@
       .auth-btn { width: 40px; min-height: 40px; }
       .tool-menu-panel { position: fixed; top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: calc(100dvh - 20px); overflow: auto; }
       .mobile-main-menu > summary { min-width: 48px; }
-      .mobile-main-menu .tool-menu-panel { grid-template-columns: 1fr; bottom: 72px; }
+      .mobile-main-menu[open]::before { content: ''; position: fixed; inset: 0; z-index: 100; background: rgba(2,5,14,.68); backdrop-filter: blur(3px); }
+      .mobile-main-menu .mobile-drawer {
+        position: fixed; inset: 0 auto 0 0; z-index: 101; width: min(340px, 88vw); height: 100dvh; max-height: none;
+        display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden;
+        border: 0; border-right: 1px solid rgba(128,166,220,.28); border-radius: 0 18px 18px 0;
+        background: rgba(7,13,29,.99); box-shadow: 24px 0 55px rgba(0,0,0,.48);
+      }
+      .mobile-menu-head { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+      .mobile-menu-head strong { font-size: 16px; }
+      .mobile-menu-head button { width: 42px!important; min-height: 42px!important; padding: 0!important; justify-content: center!important; font-size: 24px; }
+      .mobile-menu-scroll { min-height: 0; padding: 12px; overflow-y: auto; }
+      .mobile-menu-section { border-bottom: 1px solid var(--line); }
+      .mobile-menu-section > summary { min-height: 48px; display: flex; align-items: center; gap: 9px; padding: 0 8px; list-style: none; color: var(--text); font-size: 14px; font-weight: 800; cursor: pointer; }
+      .mobile-menu-section > summary::-webkit-details-marker { display: none; }
+      .mobile-menu-section > summary::after { content: '▸'; margin-left: auto; color: var(--muted); transition: transform .18s ease; }
+      .mobile-menu-section[open] > summary::after { transform: rotate(90deg); }
+      .mobile-menu-section-body { display: grid; gap: 5px; padding: 0 4px 11px 18px; border-left: 2px solid rgba(56,216,255,.2); margin-left: 8px; }
+      .mobile-menu-section-body .btn { width: 100%; min-height: 42px; justify-content: flex-start; background: rgba(20,34,67,.45); }
       .workspace:has(.sidepanel.open) .mobile-bottom-tools { display: none; }
       .viewport { min-height: 0; touch-action: none; }
       .sidepanel { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0 14px max(14px, env(safe-area-inset-bottom)); transform: translateX(101%); border-left: 0; }
@@ -446,7 +467,7 @@
         <div class="sidebar-section">Gestão do mapa</div>
         <details class="tool-menu" id="manageMenu">
           <summary class="btn" title="Gerenciar equipamentos e conexões"><span>☷</span><span class="label">Gerenciar</span></summary>
-          <div class="tool-menu-panel">
+          <div class="side-submenu">
             <div class="menu-title">Cadastros</div>
             <button class="btn" id="manageDevices" type="button" title="Listar e editar equipamentos"><span>▣</span><span class="label">Equipamentos</span></button>
             <button class="btn" id="manageLinks" type="button" title="Ver, editar ou excluir conexões"><span>⌁</span><span class="label">Conexões</span></button>
@@ -455,7 +476,7 @@
         <button class="btn" id="undoBtn" type="button" title="Desfazer último movimento" disabled><span>↶</span><span class="label">Desfazer</span></button>
         <details class="tool-menu" id="viewMenu">
           <summary class="btn" title="Organização e aparência"><span>◈</span><span class="label">Visualização</span></summary>
-          <div class="tool-menu-panel">
+          <div class="side-submenu">
             <div class="menu-title">Aparência e posição</div>
             <button class="btn active" id="toggle3d" type="button" title="Alternar profundidade visual"><span>◈</span><span class="label">Modo 3D</span></button>
             <button class="btn" id="autoLayout" type="button" title="Organizar automaticamente"><span>✦</span><span class="label">Organizar automaticamente</span></button>
@@ -465,7 +486,7 @@
         </details>
         <details class="tool-menu" id="reportMenu">
           <summary class="btn" title="Visualizar e exportar relatórios"><span>▤</span><span class="label">Relatórios</span></summary>
-          <div class="tool-menu-panel">
+          <div class="side-submenu">
             <div class="menu-title">Documentação</div>
             <button class="btn" id="completeReportBtn" type="button" title="Ver todos os dados, equipamento por equipamento"><span>☷</span><span class="label">Visualizar relatório completo</span></button>
             <button class="btn" id="printBtn" type="button" title="Organizar temporariamente e exportar em PDF"><span>▣</span><span class="label">Exportar diagrama em PDF</span></button>
@@ -473,7 +494,7 @@
         </details>
         <details class="tool-menu" id="fileMenu">
           <summary class="btn" title="Backup e arquivos"><span>⇩</span><span class="label">Arquivo</span></summary>
-          <div class="tool-menu-panel">
+          <div class="side-submenu">
             <div class="menu-title">Backup e segurança</div>
             <button class="btn primary" id="exportBtn" type="button" title="Baixar cópia de segurança"><span>⇩</span><span class="label">Baixar backup JSON</span></button>
             <button class="btn" id="importBtn" type="button" title="Restaurar uma cópia de segurança"><span>⇧</span><span class="label">Restaurar backup JSON</span></button>
@@ -503,24 +524,42 @@
         <button class="btn mint" type="button" data-proxy="addLink"><span>⌁</span><span class="label">Conexão</span></button>
         <details class="tool-menu mobile-main-menu" id="mobileMainMenu">
           <summary class="btn" title="Abrir menu"><span>☰</span><span class="label">Menu</span></summary>
-          <div class="tool-menu-panel">
-            <div class="menu-title">Gerenciar</div>
-            <button class="btn" type="button" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
-            <button class="btn" type="button" data-proxy="manageLinks"><span>⌁</span><span class="label">Conexões</span></button>
-            <button class="btn" type="button" data-proxy="undoBtn"><span>↶</span><span class="label">Desfazer</span></button>
-            <div class="menu-divider"></div>
-            <div class="menu-title">Visualização</div>
-            <button class="btn" type="button" data-proxy="toggle3d"><span>◈</span><span class="label">Modo 3D</span></button>
-            <button class="btn" type="button" data-proxy="autoLayout"><span>✦</span><span class="label">Organizar automaticamente</span></button>
-            <button class="btn" type="button" data-proxy="saveLayout"><span>★</span><span class="label">Salvar posições atuais</span></button>
-            <button class="btn" type="button" data-proxy="restoreLayout"><span>↺</span><span class="label">Restaurar posições salvas</span></button>
-            <div class="menu-divider"></div>
-            <div class="menu-title">Relatórios e arquivo</div>
-            <button class="btn" type="button" data-proxy="completeReportBtn"><span>☷</span><span class="label">Relatório completo</span></button>
-            <button class="btn" type="button" data-proxy="printBtn"><span>▣</span><span class="label">Exportar PDF</span></button>
-            <button class="btn" type="button" data-proxy="exportBtn"><span>⇩</span><span class="label">Baixar backup</span></button>
-            <button class="btn" type="button" data-proxy="importBtn"><span>⇧</span><span class="label">Restaurar backup</span></button>
-            <button class="btn" type="button" data-proxy="helpBtn"><span>?</span><span class="label">Ajuda</span></button>
+          <div class="tool-menu-panel mobile-drawer">
+            <div class="mobile-menu-head"><strong>Ferramentas</strong><button class="btn" id="closeMobileMenu" type="button" aria-label="Fechar menu">×</button></div>
+            <div class="mobile-menu-scroll">
+              <details class="mobile-menu-section" open>
+                <summary><span>☷</span><span>Gerenciar</span></summary>
+                <div class="mobile-menu-section-body">
+                  <button class="btn" type="button" data-proxy="manageDevices"><span>▣</span><span class="label">Equipamentos</span></button>
+                  <button class="btn" type="button" data-proxy="manageLinks"><span>⌁</span><span class="label">Conexões</span></button>
+                  <button class="btn" type="button" data-proxy="undoBtn"><span>↶</span><span class="label">Desfazer</span></button>
+                </div>
+              </details>
+              <details class="mobile-menu-section">
+                <summary><span>◈</span><span>Visualização</span></summary>
+                <div class="mobile-menu-section-body">
+                  <button class="btn" type="button" data-proxy="toggle3d"><span>◈</span><span class="label">Modo 3D</span></button>
+                  <button class="btn" type="button" data-proxy="autoLayout"><span>✦</span><span class="label">Organizar automaticamente</span></button>
+                  <button class="btn" type="button" data-proxy="saveLayout"><span>★</span><span class="label">Salvar posições atuais</span></button>
+                  <button class="btn" type="button" data-proxy="restoreLayout"><span>↺</span><span class="label">Restaurar posições salvas</span></button>
+                </div>
+              </details>
+              <details class="mobile-menu-section">
+                <summary><span>▤</span><span>Relatórios</span></summary>
+                <div class="mobile-menu-section-body">
+                  <button class="btn" type="button" data-proxy="completeReportBtn"><span>☷</span><span class="label">Relatório completo</span></button>
+                  <button class="btn" type="button" data-proxy="printBtn"><span>▣</span><span class="label">Exportar PDF</span></button>
+                </div>
+              </details>
+              <details class="mobile-menu-section">
+                <summary><span>⇩</span><span>Arquivo</span></summary>
+                <div class="mobile-menu-section-body">
+                  <button class="btn" type="button" data-proxy="exportBtn"><span>⇩</span><span class="label">Baixar backup</span></button>
+                  <button class="btn" type="button" data-proxy="importBtn"><span>⇧</span><span class="label">Restaurar backup</span></button>
+                </div>
+              </details>
+              <button class="btn" type="button" data-proxy="helpBtn" style="width:100%;margin-top:12px"><span>?</span><span class="label">Ajuda</span></button>
+            </div>
           </div>
         </details>
       </nav>
@@ -559,7 +598,7 @@
         <li>Na ficha do equipamento, use <b>Adicionar foto</b>. A imagem será comprimida e salva no Firebase Storage.</li>
         <li>A <b>Identificação amigável</b> aparece no diagrama; o hostname fica registrado na ficha e no relatório.</li>
         <li>Marca, modelo, MAC, WAN, VLAN e firmware ficam recolhidos em <b>Informações avançadas</b>.</li>
-        <li>No celular, use a barra inferior e <b>Menu → Equipamentos</b> para abrir a lista e lançar os dados com campos maiores.</li>
+        <li>No celular, use a barra inferior. O botão <b>Menu</b> abre um painel lateral com os mesmos submenus; use <b>Gerenciar → Equipamentos</b> para lançar os dados.</li>
         <li>Clique em <b>Conexão</b> para ligar dois equipamentos. Wi‑Fi aparece pontilhado; cabo, contínuo. As portas aparecem somente para conexões por cabo.</li>
         <li>Os campos são salvos enquanto você digita, mesmo antes de clicar no botão Salvar.</li>
       </ol>
@@ -1591,7 +1630,7 @@
       world.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
       $('zoomLabel').textContent = Math.round(scale * 100) + '%';
     }
-    function minimumZoom() { return window.matchMedia('(max-width: 680px)').matches ? .22 : .35; }
+    function minimumZoom() { return window.matchMedia('(max-width: 680px)').matches ? .30 : .35; }
     function setZoom(next, anchorX = viewport.clientWidth/2, anchorY = viewport.clientHeight/2) {
       const old = scale; scale = clamp(next, minimumZoom(), 1.5);
       pan.x = anchorX - (anchorX - pan.x) * (scale / old);
@@ -1771,6 +1810,11 @@
         localStorage.removeItem('mapa-rede-3d-side-group');
       }
     }));
+    const mobileSections = [...document.querySelectorAll('.mobile-menu-section')];
+    mobileSections.forEach(section => section.addEventListener('toggle', () => {
+      if (!section.open) return;
+      mobileSections.forEach(other => { if (other !== section) other.open = false; });
+    }));
     $('loginGoogleBtn').onclick = signInGoogle;
     $('localModeBtn').onclick = () => {
       localOnlyMode = true; updateAuthUi(authUser); renderMapSwitcher();
@@ -1792,8 +1836,12 @@
     });
     document.querySelectorAll('.tool-menu-panel .btn').forEach(button => {
       button.addEventListener('click', () => {
-        const menu = button.closest('details');
-        if (menu && !menu.closest('#sideTools')) menu.removeAttribute('open');
+        const mobileMenu = button.closest('#mobileMainMenu');
+        if (mobileMenu) mobileMenu.removeAttribute('open');
+        else {
+          const menu = button.closest('details');
+          if (menu && !menu.closest('#sideTools')) menu.removeAttribute('open');
+        }
       });
     });
     document.addEventListener('click', event => {
