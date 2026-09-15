@@ -1900,7 +1900,8 @@
       panDrag = null;
     }
     viewport.addEventListener('pointerdown', event => {
-      if (event.target.closest('.node') || event.target.closest('text') || event.target.closest('path')) return;
+      if (event.target.closest('.node, .zoom-controls, button, input, select, textarea, summary')) return;
+      if (event.target.closest('text') || event.target.closest('path')) return;
       event.preventDefault();
       viewport.classList.add('mobile-hint-hidden', 'panning');
       viewportPointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
@@ -2034,8 +2035,11 @@
     $('helpBtn').onclick = () => $('helpDialog').showModal();
     $('closeHelp').onclick = () => $('helpDialog').close();
     $('closePanel').onclick = closePanel;
-    $('zoomIn').onclick = () => setZoom(scale*1.15);
-    $('zoomOut').onclick = () => setZoom(scale/1.15);
+    const zoomControls = viewport.querySelector('.zoom-controls');
+    zoomControls.addEventListener('pointerdown', event => event.stopPropagation());
+    zoomControls.addEventListener('click', event => event.stopPropagation());
+    $('zoomIn').onclick = () => setZoom(scale + .12);
+    $('zoomOut').onclick = () => setZoom(scale - .12);
     $('fitBtn').onclick = () => { viewport.classList.add('mobile-hint-hidden'); fitOverview(); };
     $('mapSelect').onchange = event => switchMap(event.target.value);
     $('newMapBtn').onclick = createMap;
